@@ -48,12 +48,14 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 |---|---|---|
 | Fase 1.1 - Inicializacion base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseno preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
+| Fase 1.3 - Politica de duplicados y versionado | Completado (documental) | Politica preliminar creada y ADR-010 propuesta |
 | Crear estructura base | Completado | Estructura inicial del repositorio creada |
 | Crear CONTEXT.md | Completado | Documento de gobernanza inicial creado |
 | Crear ADRs.md | Completado | Decisiones arquitectonicas iniciales documentadas |
 | Crear README.md | Completado | Guia inicial del proyecto creada |
 | Crear scripts iniciales | Completado | `validate_context.py` e `inspect_repo.py` |
 | Revision humana de diseno preliminar del master | Pendiente | Gate obligatorio antes de parsers |
+| Revision humana de politica de duplicados y versionado | Pendiente | Gate obligatorio antes de analisis real |
 | Analizar Excel de ejemplo | Pendiente | Requiere muestras reales controladas |
 | Analizar BC3 real | Pendiente | Requiere archivo BC3/Presto real |
 | Definir estructura final del master | En curso | Basado en `docs/decisions/master_schema_preliminar.md` |
@@ -76,6 +78,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Decisiones formales sobre prioridad de fuentes.
 - Definicion explicita de superficie base.
 - Revision humana del diseno preliminar del master (gate).
+- Revision humana de politica de duplicados y versionado (gate).
 
 ### P1
 
@@ -111,4 +114,4 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Cada decision arquitectonica nueva o cambio sustancial debe registrarse en `ADRs.md`.
 - El estado y backlog deben reflejar el avance real del repositorio.
 - No se deben cerrar tareas sin evidencia verificable (codigo, tests, o documentacion).
-- No avanzar a implementacion de parsers hasta validar documentalmente Fase 1.2.
+- No avanzar a implementacion de parsers ni al analisis de archivos reales hasta validar documentalmente Fase 1.2 y Fase 1.3.
