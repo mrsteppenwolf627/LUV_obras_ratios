@@ -1,41 +1,53 @@
 # ADRs.md
 
-Registro de decisiones arquitect?nicas del proyecto.
+Registro de decisiones arquitectonicas del proyecto.
 
-## ADR-001: Adaptaci?n de roles multi-modelo
+## Indice ADR
+
+- ADR-001: Adaptacion de roles multi-modelo (Aprobado inicial)
+- ADR-002: El dato bruto nunca se sobrescribe (Aprobado inicial)
+- ADR-003: Separacion entre RAW, normalizado, validacion, calculo y exportacion (Aprobado inicial)
+- ADR-004: No se actualizan ratios sin validacion (Aprobado inicial)
+- ADR-005: Prioridad de fuentes (Aprobado inicial)
+- ADR-006: Trazabilidad obligatoria (Aprobado inicial)
+- ADR-007: Exclusion sin borrado (Aprobado inicial)
+- ADR-008: Superficie base pendiente de definicion (Aprobado inicial)
+- ADR-009: Diseno preliminar del master de ratios (PROPUESTA, ver `docs/adr/ADR-009-master-schema-preliminar.md`)
+
+## ADR-001: Adaptacion de roles multi-modelo
 
 **Estado:** Aprobado (inicial)
 
-**Decisi?n**
+**Decision**
 
 - ChatGPT coordina y razona.
-- Codex implementa backend, parsers, validaciones, tests y auditor?a.
+- Codex implementa backend, parsers, validaciones, tests y auditoria.
 - Gemini CLI desarrolla frontend y prototipos visuales.
 - Claude no forma parte de la suite actual del estudio.
 
 **Racional**
 
-Separaci?n expl?cita de responsabilidades para reducir fricci?n y mejorar trazabilidad de decisiones.
+Separacion explicita de responsabilidades para reducir friccion y mejorar trazabilidad de decisiones.
 
 ## ADR-002: El dato bruto nunca se sobrescribe
 
 **Estado:** Aprobado (inicial)
 
-**Decisi?n**
+**Decision**
 
 - Todo archivo importado debe conservarse.
-- La normalizaci?n no sustituye al dato original.
-- Las correcciones se registran como capas adicionales, no como destrucci?n del dato fuente.
+- La normalizacion no sustituye al dato original.
+- Las correcciones se registran como capas adicionales, no como destruccion del dato fuente.
 
 **Racional**
 
-Garantiza auditor?a retroactiva, reproducibilidad y control de cambios de interpretaci?n.
+Garantiza auditoria retroactiva, reproducibilidad y control de cambios de interpretacion.
 
-## ADR-003: Separaci?n entre RAW, normalizado, validaci?n, c?lculo y exportaci?n
+## ADR-003: Separacion entre RAW, normalizado, validacion, calculo y exportacion
 
 **Estado:** Aprobado (inicial)
 
-**Decisi?n**
+**Decision**
 
 El sistema debe separar claramente:
 
@@ -44,80 +56,80 @@ El sistema debe separar claramente:
 - mapeos;
 - validaciones;
 - ratios calculados;
-- logs de importaci?n;
+- logs de importacion;
 - exportaciones.
 
 **Racional**
 
-Permite aislar errores por etapa y evita contaminaci?n de datos entre capas.
+Permite aislar errores por etapa y evita contaminacion de datos entre capas.
 
-## ADR-004: No se actualizan ratios sin validaci?n
+## ADR-004: No se actualizan ratios sin validacion
 
 **Estado:** Aprobado (inicial)
 
-**Decisi?n**
+**Decision**
 
-- Una importaci?n solo puede afectar a ratios agregados si supera controles m?nimos.
-- Si faltan datos cr?ticos, la importaci?n queda pendiente de revisi?n.
+- Una importacion solo puede afectar a ratios agregados si supera controles minimos.
+- Si faltan datos criticos, la importacion queda pendiente de revision.
 
 **Racional**
 
-Evita introducir ruido sist?mico y protege la fiabilidad del master.
+Evita introducir ruido sistemico y protege la fiabilidad del master.
 
 ## ADR-005: Prioridad de fuentes
 
 **Estado:** Aprobado (inicial)
 
-**Decisi?n inicial**
+**Decision inicial**
 
 - BC3 y Excel son fuentes preferentes.
-- PDF es respaldo documental o fuente manual, no fuente autom?tica principal.
-- Archivos Presto nativos o PZH requieren an?lisis antes de considerarse fuente fiable.
+- PDF es respaldo documental o fuente manual, no fuente automatica principal.
+- Archivos Presto nativos o PZH requieren analisis antes de considerarse fuente fiable.
 
 **Racional**
 
-Minimiza p?rdida sem?ntica y reduce errores de extracci?n no estructurada.
+Minimiza perdida semantica y reduce errores de extraccion no estructurada.
 
 ## ADR-006: Trazabilidad obligatoria
 
 **Estado:** Aprobado (inicial)
 
-**Decisi?n**
+**Decision**
 
 Cada dato importado debe poder vincularse a:
 
 - archivo origen;
 - hash del archivo;
-- fecha de importaci?n;
+- fecha de importacion;
 - tipo de archivo;
 - proyecto;
-- l?nea, hoja, partida o cap?tulo de origen cuando sea posible.
+- linea, hoja, partida o capitulo de origen cuando sea posible.
 
 **Racional**
 
-Habilita auditor?a extremo a extremo y depuraci?n precisa de discrepancias.
+Habilita auditoria extremo a extremo y depuracion precisa de discrepancias.
 
-## ADR-007: Exclusi?n sin borrado
+## ADR-007: Exclusion sin borrado
 
 **Estado:** Aprobado (inicial)
 
-**Decisi?n**
+**Decision**
 
 - Si un dato es incorrecto, dudoso o no comparable, se marca como excluido.
-- No se elimina f?sicamente del hist?rico.
+- No se elimina fisicamente del historico.
 
 **Racional**
 
-Mantiene evidencia hist?rica y evita p?rdida irreversible de contexto.
+Mantiene evidencia historica y evita perdida irreversible de contexto.
 
-## ADR-008: Superficie base pendiente de definici?n
+## ADR-008: Superficie base pendiente de definicion
 
 **Estado:** Aprobado (inicial)
 
-**Decisi?n**
+**Decision**
 
-- No se calcular?n ratios definitivos si no est? definida la superficie base aplicable.
-- La superficie base debe decidirse expl?citamente antes de consolidar ratios.
+- No se calcularan ratios definitivos si no esta definida la superficie base aplicable.
+- La superficie base debe decidirse explicitamente antes de consolidar ratios.
 
 **Racional**
 

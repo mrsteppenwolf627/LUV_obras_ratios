@@ -8,11 +8,11 @@ REQUIRED_SECTIONS = [
     "## Arquitectura",
     "## Objetivo del proyecto",
     "## Herramientas operativas",
-    "## Restricciones cr?ticas",
+    "## Restricciones críticas",
     "## Estado actual",
     "## Backlog priorizado",
-    "## Riesgos t?cnicos",
-    "## Reglas de actualizaci?n",
+    "## Riesgos técnicos",
+    "## Reglas de actualización",
 ]
 
 
@@ -21,7 +21,7 @@ def main() -> int:
     context_path = root / "CONTEXT.md"
 
     if not context_path.exists():
-        print("ERROR: CONTEXT.md no existe en la ra?z del repositorio.")
+        print("ERROR: CONTEXT.md no existe en la raíz del repositorio.")
         return 1
 
     content = context_path.read_text(encoding="utf-8")
