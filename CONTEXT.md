@@ -25,7 +25,6 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Gemini CLI: frontend, UX, prototipado visual e interfaz interna.
 
 ## Restricciones críticas
-<!-- Compatibilidad temporal con validador actual: ## Restricciones crÃ­ticas -->
 
 1. No inventar datos.
 2. No estimar datos ausentes.
@@ -50,6 +49,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
+| Fase 1.4 - Reglas de validación matemática y consistencia | Completado (documental) | Política preliminar creada y ADR-011 propuesta |
 | Crear estructura base | Completado | Estructura inicial del repositorio creada |
 | Crear CONTEXT.md | Completado | Documento de gobernanza inicial creado |
 | Crear ADRs.md | Completado | Decisiones arquitectónicas iniciales documentadas |
@@ -57,6 +57,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Crear scripts iniciales | Completado | `validate_context.py` e `inspect_repo.py` |
 | Revisión humana de diseño preliminar del master | Pendiente | Gate obligatorio antes de parsers |
 | Revisión humana de política de duplicados y versionado | Pendiente | Gate obligatorio antes de análisis real |
+| Revisión humana de reglas de validación | Pendiente | Gate obligatorio antes de análisis real y parsers |
 | Analizar Excel de ejemplo | Pendiente | Requiere muestras reales controladas |
 | Analizar BC3 real | Pendiente | Requiere archivo BC3/Presto real |
 | Definir estructura final del master | En curso | Basado en `docs/decisions/master_schema_preliminar.md` |
@@ -80,6 +81,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Definición explícita de superficie base.
 - Revisión humana del diseño preliminar del master (gate).
 - Revisión humana de política de duplicados y versionado (gate).
+- Revisión humana de reglas de validación matemática y consistencia (gate).
 
 ### P1
 
@@ -97,7 +99,6 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Visualización de ratios y evolución histórica.
 
 ## Riesgos técnicos
-<!-- Compatibilidad temporal con validador actual: ## Riesgos tÃ©cnicos -->
 
 - Alta variabilidad de formatos Excel entre estudios/proyectos.
 - Variabilidad estructural de archivos BC3 según origen/versiones.
@@ -111,10 +112,10 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Cambios futuros en categorías de ratios y criterios comparativos.
 
 ## Reglas de actualización
-<!-- Compatibilidad temporal con validador actual: ## Reglas de actualizaciÃ³n -->
 
 - `CONTEXT.md` debe actualizarse después de cada tarea relevante.
 - Cada decisión arquitectónica nueva o cambio sustancial debe registrarse en `ADRs.md`.
 - El estado y backlog deben reflejar el avance real del repositorio.
 - No se deben cerrar tareas sin evidencia verificable (código, tests, o documentación).
-- No se puede avanzar a parsers ni análisis real hasta completar la revisión humana de Fase 1.2 y Fase 1.3.
+- No se puede avanzar a parsers ni análisis real hasta completar la revisión humana de Fase 1.2, Fase 1.3 y Fase 1.4.
+

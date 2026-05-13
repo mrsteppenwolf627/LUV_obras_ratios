@@ -14,6 +14,7 @@ Registro de decisiones arquitectonicas del proyecto.
 - ADR-008: Superficie base pendiente de definicion (Aprobado inicial)
 - ADR-009: Diseno preliminar del master de ratios (PROPUESTA, ver `docs/adr/ADR-009-master-schema-preliminar.md`)
 - ADR-010: Politica preliminar de duplicados y versionado de presupuestos (PROPUESTA, ver `docs/adr/ADR-010-duplicates-and-budget-versions.md`)
+- ADR-011: Politica preliminar de validacion matematica y consistencia (PROPUESTA, ver `docs/adr/ADR-011-validation-rules.md`)
 
 ## ADR-001: Adaptacion de roles multi-modelo
 

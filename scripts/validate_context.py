@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Validate that CONTEXT.md contains mandatory governance sections."""
 
 from pathlib import Path
