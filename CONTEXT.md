@@ -50,21 +50,23 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
 | Fase 1.4 - Reglas de validación matemática y consistencia | Completado (documental) | Política preliminar creada y ADR-011 propuesta |
+| Fase 1.5 - Revisión humana y congelación parcial | Completado (documental) | Revisión formal creada y ADR-012 propuesta |
 | Crear estructura base | Completado | Estructura inicial del repositorio creada |
 | Crear CONTEXT.md | Completado | Documento de gobernanza inicial creado |
 | Crear ADRs.md | Completado | Decisiones arquitectónicas iniciales documentadas |
 | Crear README.md | Completado | Guía inicial del proyecto creada |
 | Crear scripts iniciales | Completado | `validate_context.py` e `inspect_repo.py` |
-| Revisión humana de diseño preliminar del master | Pendiente | Gate obligatorio antes de parsers |
-| Revisión humana de política de duplicados y versionado | Pendiente | Gate obligatorio antes de análisis real |
-| Revisión humana de reglas de validación | Pendiente | Gate obligatorio antes de análisis real y parsers |
+| Revisión humana de diseño preliminar del master | Pendiente | Gate obligatorio antes de Fase 2 |
+| Revisión humana de política de duplicados y versionado | Pendiente | Gate obligatorio antes de Fase 2 |
+| Revisión humana de reglas de validación | Pendiente | Gate obligatorio antes de Fase 2 |
+| Revisión humana de congelación parcial metodológica | Pendiente | Gate obligatorio antes de Fase 2 |
 | Analizar Excel de ejemplo | Pendiente | Requiere muestras reales controladas |
 | Analizar BC3 real | Pendiente | Requiere archivo BC3/Presto real |
 | Definir estructura final del master | En curso | Basado en `docs/decisions/master_schema_preliminar.md` |
 | Definir categorías de ratios | Pendiente | No fijar sin evidencia de datos |
 | Definir superficie base | Pendiente | Bloqueante para ratios consolidados |
-| Crear parser Excel | Pendiente | No iniciar antes de revisión de Fase 1.2 |
-| Crear parser BC3 | Pendiente | No iniciar antes de revisión de Fase 1.2 |
+| Crear parser Excel | Pendiente | No iniciar antes de revisión humana Fases 1.2-1.5 |
+| Crear parser BC3 | Pendiente | No iniciar antes de revisión humana Fases 1.2-1.5 |
 | Crear validador matemático | Pendiente | Reglas tras definición final de master |
 | Crear exportador al master | Pendiente | Solo con esquema y validaciones cerradas |
 | Crear interfaz | Pendiente | Fase posterior (Gemini CLI) |
@@ -82,6 +84,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Revisión humana del diseño preliminar del master (gate).
 - Revisión humana de política de duplicados y versionado (gate).
 - Revisión humana de reglas de validación matemática y consistencia (gate).
+- Revisión humana de congelación parcial metodológica (gate).
 
 ### P1
 
@@ -117,5 +120,5 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Cada decisión arquitectónica nueva o cambio sustancial debe registrarse en `ADRs.md`.
 - El estado y backlog deben reflejar el avance real del repositorio.
 - No se deben cerrar tareas sin evidencia verificable (código, tests, o documentación).
-- No se puede avanzar a parsers ni análisis real hasta completar la revisión humana de Fase 1.2, Fase 1.3 y Fase 1.4.
-
+- No se puede avanzar a parsers ni análisis real hasta completar la revisión humana de Fase 1.2, Fase 1.3, Fase 1.4 y Fase 1.5.
+- Fase 2 solo puede ejecutarse como análisis diagnóstico de muestras; no permite importación definitiva ni actualización del master.
