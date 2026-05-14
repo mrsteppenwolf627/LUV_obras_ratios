@@ -24,6 +24,7 @@ UNIT_RE = re.compile(r"^(m2|m3|ml|m|ud|u|kg|l|h)$", re.IGNORECASE)
 CODE_CHAPTER_RE = re.compile(r"^[A-Za-z]{0,3}\d+[A-Za-z0-9]*#?$")
 CODE_ITEM_RE = re.compile(r"^[A-Za-z]{0,3}\d+[A-Za-z0-9]+$")
 ABSOLUTE_PATH_HINT_RE = re.compile(r"(?i)([a-z]:\\\\|/home/|/users/|\\\\\\\\)")
+KNOWN_VARIANT_RECORD_TYPES = {"~G", "~L", "~X"}
 
 
 def detect_encoding(raw: bytes) -> dict[str, Any]:
@@ -96,49 +97,136 @@ def _build_file_risks(inspection: dict[str, Any]) -> list[dict[str, str]]:
     risks: list[dict[str, str]] = []
     status = inspection.get("status")
     if status in {"BC3_READ_FAILED", "BC3_DECODE_UNCERTAIN"}:
-        risks.append({"severity": "BLOCKED", "code": "DECODE_OR_READ_BLOCKED", "detail": status})
+        risks.append(
+            {
+                "severity": "BLOCKED",
+                "code": "DECODE_OR_READ_BLOCKED",
+                "detail": status,
+                "risk_type": "parser_design_blocker",
+            }
+        )
     if not inspection.get("fiebdc_header_line"):
-        risks.append({"severity": "ERROR", "code": "MISSING_V_HEADER", "detail": "No ~V header detected"})
+        risks.append(
+            {
+                "severity": "ERROR",
+                "code": "MISSING_V_HEADER",
+                "detail": "No ~V header detected",
+                "risk_type": "parser_design_blocker",
+            }
+        )
     if inspection.get("encoding_confidence") == "medium":
-        risks.append({"severity": "WARNING", "code": "ENCODING_MEDIUM_CONFIDENCE", "detail": "Encoding fallback used"})
+        risks.append(
+            {
+                "severity": "WARNING",
+                "code": "ENCODING_MEDIUM_CONFIDENCE",
+                "detail": "Encoding fallback used",
+                "risk_type": "diagnostic_warning",
+            }
+        )
     if inspection.get("hierarchy_summary", {}).get("incomplete_relations_count", 0) > 0:
-        risks.append({"severity": "MANUAL_REVIEW_REQUIRED", "code": "INCOMPLETE_RELATIONS", "detail": "Found relations without parent/child"})
+        risks.append(
+            {
+                "severity": "MANUAL_REVIEW_REQUIRED",
+                "code": "INCOMPLETE_RELATIONS",
+                "detail": "Found relations without parent/child",
+                "risk_type": "parser_design_blocker",
+            }
+        )
     if not inspection.get("hierarchy_relations_candidates"):
-        risks.append({"severity": "WARNING", "code": "NO_D_RELATIONS", "detail": "No ~D relations detected"})
+        risks.append(
+            {
+                "severity": "WARNING",
+                "code": "NO_D_RELATIONS",
+                "detail": "No ~D relations detected",
+                "risk_type": "diagnostic_warning",
+            }
+        )
     non_common = inspection.get("fiebdc_variant_signals", {}).get("non_common_record_types", [])
-    if len(non_common) >= 3:
-        risks.append({"severity": "MANUAL_REVIEW_REQUIRED", "code": "MANY_UNKNOWN_RECORDS", "detail": f"{len(non_common)} non-common record types"})
+    if len(non_common) >= 3 and any(code not in KNOWN_VARIANT_RECORD_TYPES for code in non_common):
+        risks.append(
+            {
+                "severity": "MANUAL_REVIEW_REQUIRED",
+                "code": "MANY_UNKNOWN_RECORDS",
+                "detail": f"{len(non_common)} non-common record types",
+                "risk_type": "parser_design_blocker",
+            }
+        )
     elif non_common:
-        risks.append({"severity": "WARNING", "code": "UNKNOWN_RECORD_TYPES", "detail": ",".join(non_common)})
+        risks.append(
+            {
+                "severity": "WARNING",
+                "code": "VARIANT_RECORD_TYPES_DIFFERENCE",
+                "detail": ",".join(non_common),
+                "risk_type": "diagnostic_warning",
+            }
+        )
     if inspection.get("economic_field_diagnostics", {}).get("ambiguous_economic_tokens"):
-        risks.append({"severity": "WARNING", "code": "AMBIGUOUS_ECONOMIC_TOKENS", "detail": "Numeric tokens exceed amount-like tokens"})
+        risks.append(
+            {
+                "severity": "WARNING",
+                "code": "AMBIGUOUS_ECONOMIC_TOKENS",
+                "detail": "Numeric tokens exceed amount-like tokens",
+                "risk_type": "diagnostic_warning",
+            }
+        )
     units_count = len(inspection.get("units_detected", []))
     if units_count > 5:
-        risks.append({"severity": "WARNING", "code": "MULTIPLE_UNITS", "detail": str(units_count)})
+        risks.append(
+            {
+                "severity": "WARNING",
+                "code": "MULTIPLE_UNITS",
+                "detail": str(units_count),
+                "risk_type": "diagnostic_warning",
+            }
+        )
     elif units_count > 1:
-        risks.append({"severity": "INFO", "code": "MULTIPLE_UNITS", "detail": str(units_count)})
+        risks.append(
+            {
+                "severity": "INFO",
+                "code": "MULTIPLE_UNITS",
+                "detail": str(units_count),
+                "risk_type": "diagnostic_warning",
+            }
+        )
     if not risks:
-        risks.append({"severity": "INFO", "code": "NO_RELEVANT_RISKS", "detail": "Diagnostic signals look stable"})
+        risks.append(
+            {
+                "severity": "INFO",
+                "code": "NO_RELEVANT_RISKS",
+                "detail": "Diagnostic signals look stable",
+                "risk_type": "diagnostic_warning",
+            }
+        )
     return risks
 
 
 def _compute_readiness(files: list[dict[str, Any]]) -> dict[str, Any]:
     severity_counts = Counter()
+    parser_blocker_codes: set[str] = set()
+    non_blocking_warning_codes: set[str] = set()
+    manual_review_reasons: set[str] = set()
     reasons: list[str] = []
     for entry in files:
         for risk in entry.get("risk_matrix", []):
             sev = risk.get("severity", "INFO")
             severity_counts[sev] += 1
+            rcode = risk.get("code", "UNKNOWN")
+            if risk.get("risk_type") == "parser_design_blocker":
+                parser_blocker_codes.add(rcode)
+            else:
+                non_blocking_warning_codes.add(rcode)
+            if sev == "MANUAL_REVIEW_REQUIRED":
+                manual_review_reasons.add(rcode)
 
     if severity_counts["BLOCKED"] > 0:
         status = "BLOCKED_BY_DECODING_OR_STRUCTURE"
         reasons.append("At least one file is blocked by decoding/readability issues.")
-    elif severity_counts["ERROR"] > 0 or severity_counts["MANUAL_REVIEW_REQUIRED"] > 0:
+    elif parser_blocker_codes:
         status = "NEEDS_MORE_DIAGNOSTIC_HEURISTICS"
-        reasons.append("Critical structure warnings still require manual/heuristic iteration.")
+        reasons.append("There are parser-design blockers that still require clarification.")
     else:
         status = "READY_FOR_PRELIMINARY_PARSER_DESIGN"
-        reasons.append("No blocked or critical structural risks detected.")
+        reasons.append("No parser-design blockers detected in current BC3 diagnostics.")
 
     conditions = [
         "Keep parser scope preliminary and diagnostic-aware.",
@@ -146,10 +234,20 @@ def _compute_readiness(files: list[dict[str, Any]]) -> dict[str, Any]:
         "Keep sensitive real reports outside Git.",
     ]
     blockers = [k for k in ("BLOCKED", "ERROR", "MANUAL_REVIEW_REQUIRED") if severity_counts[k] > 0]
+    if status == "READY_FOR_PRELIMINARY_PARSER_DESIGN":
+        phase_4_recommendation = "Proceed to Phase 4 preliminary parser design with current diagnostic safeguards."
+    elif status == "NEEDS_MORE_DIAGNOSTIC_HEURISTICS":
+        phase_4_recommendation = "Apply a minor diagnostic adjustment before moving to Phase 4."
+    else:
+        phase_4_recommendation = "Do not start Phase 4 until decoding/structure blockers are resolved."
     return {
         "status": status,
         "reasons": reasons,
         "blockers": blockers,
+        "readiness_blockers": sorted(parser_blocker_codes),
+        "readiness_non_blocking_warnings": sorted(non_blocking_warning_codes),
+        "manual_review_reasons": sorted(manual_review_reasons),
+        "phase_4_recommendation": phase_4_recommendation,
         "severity_counts": dict(severity_counts),
         "minimum_conditions_for_phase_4": conditions,
     }
@@ -552,6 +650,14 @@ def write_reports(root: Path, report: dict[str, Any]) -> tuple[Path, Path]:
     if readiness:
         lines.append(f"- Status: {readiness.get('status')}")
         lines.append(f"- Blockers: {', '.join(readiness.get('blockers', [])) or 'none'}")
+        lines.append(f"- Readiness blockers: {', '.join(readiness.get('readiness_blockers', [])) or 'none'}")
+        lines.append(
+            f"- Non-blocking warnings: {', '.join(readiness.get('readiness_non_blocking_warnings', [])) or 'none'}"
+        )
+        lines.append(
+            f"- Manual review reasons: {', '.join(readiness.get('manual_review_reasons', [])) or 'none'}"
+        )
+        lines.append(f"- Phase 4 recommendation: {readiness.get('phase_4_recommendation')}")
         sev = readiness.get("severity_counts", {})
         lines.append(
             "- Severity counts: "

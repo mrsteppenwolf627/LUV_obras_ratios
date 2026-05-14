@@ -53,7 +53,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 3.1 - Implementación extractor BC3 | Completado (técnico) | Plan, ADR-013, script, tests y validaciones cerradas |
 | Fase 3.2 - Revisión diagnóstica BC3 real | Completado (documental) | Revisión cerrada en `docs/decisions/phase_3_2_bc3_diagnostic_review.md` |
 | Fase 3.3 - Heurísticas diagnósticas BC3 | Completado (técnico) | Heurísticas ampliadas, validaciones y ejecución real cerradas |
-| Fase 3.4 - Iteración diagnóstica final BC3 | En curso | Robustecer sanitización, matriz de riesgos y readiness global antes de Fase 4 |
+| Fase 3.4 - Iteración diagnóstica final BC3 | Completado (técnico) | Sanitización reforzada, matriz de riesgos, readiness y comparativa BC3 implementadas |
+| Fase 3.5 - Cierre de readiness BC3 | En curso | Revisión de bloqueadores manuales y cierre de criterio de paso a Fase 4 |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -91,9 +92,11 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 - Objetivo: construir extractor diagnóstico BC3 no destructivo para entender encoding, cabecera/FIEBDC, tipos de registro, relaciones básicas y riesgos de estructura.
 - Objetivo Fase 3.3: ampliar heurísticas diagnósticas BC3 para reducir riesgo antes de diseño de parser preliminar (cerrado técnicamente).
-- Objetivo Fase 3.4: iteración diagnóstica final BC3 para reforzar sanitización, clasificación de riesgos y criterio de readiness.
+- Objetivo Fase 3.4: iteración diagnóstica final BC3 para reforzar sanitización, clasificación de riesgos y criterio de readiness (cerrado técnicamente).
+- Objetivo Fase 3.5: revisar bloqueadores manuales y cerrar readiness BC3 con criterios explícitos de paso/no paso a Fase 4.
 - Restricciones activas:
   - No crear parser definitivo.
+  - No diseñar todavía parser preliminar salvo recomendación final documentada.
   - No importar al master.
   - No calcular ratios.
   - No normalizar categorías finales.

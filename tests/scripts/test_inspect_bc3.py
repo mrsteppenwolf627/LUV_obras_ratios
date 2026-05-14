@@ -77,6 +77,10 @@ def test_reports_json_and_markdown_generated():
         assert payload["bc3_files_count"] == 1
         assert "variant_warnings" in payload
         assert "readiness_summary" in payload
+        assert "readiness_blockers" in payload["readiness_summary"]
+        assert "readiness_non_blocking_warnings" in payload["readiness_summary"]
+        assert "manual_review_reasons" in payload["readiness_summary"]
+        assert "phase_4_recommendation" in payload["readiness_summary"]
         assert "bc3_comparison" in payload
         assert "sensitivity" in payload
         assert "BC3 Diagnostic Report" in md_path.read_text(encoding="utf-8")
@@ -201,6 +205,8 @@ def test_markdown_contains_new_heuristics_summary():
         assert "Text diagnostics:" in md
         assert "## Global Readiness" in md
         assert "## BC3 Comparison" in md
+        assert "Readiness blockers:" in md
+        assert "Phase 4 recommendation:" in md
     finally:
         _cleanup(root)
 
@@ -269,6 +275,7 @@ def test_readiness_ready_for_preliminary_design():
         (samples / "clean.bc3").write_text("~V|FIEBDC-3/2020\n~C|AB12#\\Cap\n~D|AB12#|AB1201\n", encoding="utf-8")
         report = inspect_bc3_samples(root)
         assert report["readiness_summary"]["status"] == "READY_FOR_PRELIMINARY_PARSER_DESIGN"
+        assert report["readiness_summary"]["readiness_blockers"] == []
     finally:
         _cleanup(root)
 
@@ -281,6 +288,8 @@ def test_readiness_needs_more_heuristics_on_structural_warning():
         (samples / "warn.bc3").write_text("~V|FIEBDC-3/2020\n~D|ROOT|\n", encoding="utf-8")
         report = inspect_bc3_samples(root)
         assert report["readiness_summary"]["status"] == "NEEDS_MORE_DIAGNOSTIC_HEURISTICS"
+        assert "INCOMPLETE_RELATIONS" in report["readiness_summary"]["readiness_blockers"]
+        assert "INCOMPLETE_RELATIONS" in report["readiness_summary"]["manual_review_reasons"]
     finally:
         _cleanup(root)
 
@@ -309,5 +318,21 @@ def test_comparison_between_two_bc3_with_distinct_record_types():
         assert len(comp["files_considered"]) == 2
         assert "~V" in comp["record_types_common_to_all"]
         assert any(comp["record_types_exclusive_by_file"][sid] for sid in comp["files_considered"])
+    finally:
+        _cleanup(root)
+
+
+def test_variant_difference_is_non_blocking_warning():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        (samples / "a.bc3").write_text("~V|FIEBDC-3/2020\n~C|AB12#\\Cap\n~G|X\n", encoding="utf-8")
+        (samples / "b.bc3").write_text("~V|FIEBDC-3/2002\n~C|CD34#\\Cap\n", encoding="utf-8")
+        report = inspect_bc3_samples(root)
+        rd = report["readiness_summary"]
+        assert "VARIANT_RECORD_TYPES_DIFFERENCE" in rd["readiness_non_blocking_warnings"]
+        assert "VARIANT_RECORD_TYPES_DIFFERENCE" not in rd["readiness_blockers"]
+        assert rd["status"] == "READY_FOR_PRELIMINARY_PARSER_DESIGN"
     finally:
         _cleanup(root)
