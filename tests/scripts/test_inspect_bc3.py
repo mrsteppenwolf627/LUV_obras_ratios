@@ -42,6 +42,9 @@ def test_minimal_bc3_header_and_counts():
         assert insp["hierarchy_relations_candidates"][0]["parent"] == "CAP01"
         assert insp["hierarchy_relations_candidates"][0]["child"] == "PAR01"
         assert "m2" in insp["units_detected"]
+        assert insp["c_code_classification"]["chapter_candidates_count"] >= 1
+        assert "~C" in insp["record_type_stats"]
+        assert insp["record_type_stats"]["~C"]["count"] == 1
 
     finally:
         _cleanup(root)
@@ -72,6 +75,7 @@ def test_reports_json_and_markdown_generated():
         assert md_path.exists()
         payload = json.loads(json_path.read_text(encoding="utf-8"))
         assert payload["bc3_files_count"] == 1
+        assert "variant_warnings" in payload
         assert "BC3 Diagnostic Report" in md_path.read_text(encoding="utf-8")
     finally:
         _cleanup(root)
@@ -112,5 +116,85 @@ def test_input_file_not_modified():
         _ = inspect_bc3_file(bc3)
         after = bc3.read_bytes()
         assert before == after
+    finally:
+        _cleanup(root)
+
+
+def test_c_code_classification_chapter_item_other():
+    root = _make_root()
+    try:
+        bc3 = root / "codes.bc3"
+        bc3.write_text(
+            "~V|FIEBDC-3/2020\n"
+            "~C|CAP01#\\Capitulo\n"
+            "~C|CAP0101\\Partida\n"
+            "~C|X_MISC\\Otro\n",
+            encoding="utf-8",
+        )
+        insp = inspect_bc3_file(bc3)
+        cls = insp["c_code_classification"]
+        assert cls["chapter_candidates_count"] == 1
+        assert cls["item_candidates_count"] == 1
+        assert cls["other_candidates_count"] == 1
+    finally:
+        _cleanup(root)
+
+
+def test_hierarchy_depth_and_incomplete_relations_warning():
+    root = _make_root()
+    try:
+        bc3 = root / "hier.bc3"
+        bc3.write_text(
+            "~V|FIEBDC-3/2020\n"
+            "~D|A#|B1\n"
+            "~D|B1|C1\n"
+            "~D|C1|\n",
+            encoding="utf-8",
+        )
+        insp = inspect_bc3_file(bc3)
+        hs = insp["hierarchy_summary"]
+        assert hs["max_depth_approx"] >= 2
+        assert hs["incomplete_relations_count"] == 1
+        assert any(w.startswith("INCOMPLETE_RELATIONS:") for w in insp["warnings"])
+    finally:
+        _cleanup(root)
+
+
+def test_economic_and_text_diagnostics_and_unknown_record_warning():
+    root = _make_root()
+    try:
+        bc3 = root / "diag.bc3"
+        bc3.write_text(
+            "~V|FIEBDC-3/2020\n"
+            "~Z|foo|bar\n"
+            "~K|IT01\\Descripcion de prueba muy larga para diagnostico textual|m2|10,00|100,00\n",
+            encoding="utf-8",
+        )
+        insp = inspect_bc3_file(bc3)
+        eco = insp["economic_field_diagnostics"]
+        txt = insp["text_field_diagnostics"]
+        assert eco["numeric_tokens_by_record_type"]["~K"] >= 1
+        assert isinstance(eco["ambiguous_economic_tokens"], bool)
+        assert "~K" in txt["most_textual_record_types"]
+        assert any(w.startswith("NON_COMMON_RECORD_TYPES:") for w in insp["warnings"])
+    finally:
+        _cleanup(root)
+
+
+def test_markdown_contains_new_heuristics_summary():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        (samples / "a.bc3").write_text(
+            "~V|FIEBDC-3/2020\n~C|CAP01#\\Capitulo\n~D|CAP01#|ITEM01\n~K|ITEM01\\Desc larga larga larga larga larga|m2|1,00|2,00\n",
+            encoding="utf-8",
+        )
+        report = inspect_bc3_samples(root)
+        _, md_path = write_reports(root, report)
+        md = md_path.read_text(encoding="utf-8")
+        assert "C code classes:" in md
+        assert "Hierarchy summary:" in md
+        assert "Text diagnostics:" in md
     finally:
         _cleanup(root)
