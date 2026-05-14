@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -45,6 +45,12 @@ temp/
 .context-backups/*
 !.context-backups/.gitkeep
 
+# Samples policy:
+# data/samples may contain controlled examples that can be versioned.
+# Real/sensitive samples must not be added to git; keep them local and untracked.
+# Use .git/info/exclude or local ignore rules for sensitive sample files.
+data/samples/*
+!data/samples/.gitkeep
 # Raw data policy:
 # Keep folder structure in git, but ignore real imported files by default.
 # Unignore placeholder file.
@@ -71,3 +77,11 @@ logs/validation/*
 # Reports generated during analysis
 reports/*
 !reports/.gitkeep
+!reports/sample_inspections/
+reports/sample_inspections/*
+!reports/sample_inspections/.gitkeep
+
+
+# Local test scratch
+.tmp_tests/
+

@@ -60,8 +60,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Revisión humana de política de duplicados y versionado | Pendiente | Gate obligatorio antes de Fase 2 |
 | Revisión humana de reglas de validación | Pendiente | Gate obligatorio antes de Fase 2 |
 | Revisión humana de congelación parcial metodológica | Pendiente | Gate obligatorio antes de Fase 2 |
-| Analizar Excel de ejemplo | Pendiente | Requiere muestras reales controladas |
-| Analizar BC3 real | Pendiente | Requiere archivo BC3/Presto real |
+| Analizar Excel de ejemplo | En curso (diagnóstico) | Fase 2: inspección controlada sin importación |
+| Analizar BC3 real | En curso (diagnóstico) | Fase 2: inspección superficial sin parser definitivo |
 | Definir estructura final del master | En curso | Basado en `docs/decisions/master_schema_preliminar.md` |
 | Definir categorías de ratios | Pendiente | No fijar sin evidencia de datos |
 | Definir superficie base | Pendiente | Bloqueante para ratios consolidados |
@@ -120,5 +120,6 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Cada decisión arquitectónica nueva o cambio sustancial debe registrarse en `ADRs.md`.
 - El estado y backlog deben reflejar el avance real del repositorio.
 - No se deben cerrar tareas sin evidencia verificable (código, tests, o documentación).
-- No se puede avanzar a parsers ni análisis real hasta completar la revisión humana de Fase 1.2, Fase 1.3, Fase 1.4 y Fase 1.5.
+- No se puede avanzar a parsers definitivos, importación al master ni cálculo de ratios hasta completar las revisiones humanas pendientes.
 - Fase 2 solo puede ejecutarse como análisis diagnóstico de muestras; no permite importación definitiva ni actualización del master.
+
