@@ -17,6 +17,7 @@ Registro de decisiones arquitectonicas del proyecto.
 - ADR-011: Politica preliminar de validacion matematica y consistencia (PROPUESTA, ver `docs/adr/ADR-011-validation-rules.md`)
 - ADR-012: Congelacion parcial metodologica antes del analisis de datos reales (PROPUESTA, ver `docs/adr/ADR-012-freeze-methodology-before-real-data.md`)
 - ADR-013: Extractor diagnostico BC3 antes de parser definitivo (Aprobado fase 3)
+- ADR-014: Diseno preliminar de parser BC3 antes de importacion al master (Aprobado fase 4.0)
 
 ## ADR-001: Adaptacion de roles multi-modelo
 
@@ -156,3 +157,21 @@ Sin superficie base estable no hay comparabilidad confiable entre proyectos.
 **Racional**
 
 La evidencia de Fase 2.2 muestra variabilidad real de fuentes y necesidad de inspeccion controlada previa. Un extractor diagnostico reduce riesgo de disenar un parser definitivo sobre supuestos incorrectos y preserva la separacion entre diagnostico e integracion al master.
+
+## ADR-014: Diseno preliminar de parser BC3 antes de importacion al master
+
+**Estado:** Aprobado (fase 4.0)
+
+**Decision**
+
+- Antes de implementar parser BC3, se realiza diseno documental preliminar.
+- El parser BC3 preliminar no alimenta directamente el master.
+- El parser BC3 preliminar produce estructura intermedia trazable.
+- Parsing, validacion, normalizacion e importacion se mantienen como fases separadas.
+- Los datos ambiguos se marcan para revision humana y no se fuerzan.
+- Los registros desconocidos no rompen el proceso salvo bloqueo estructural minimo.
+- El calculo de ratios queda explicitamente fuera de alcance en esta fase.
+
+**Racional**
+
+Tras Fase 3.5 hay readiness positivo para diseno preliminar, pero persiste variabilidad de variantes FIEBDC y ambiguedad de senales economicas/unidades. Congelar esta separacion en ADR evita acoplar prematuramente parsing con decisiones de negocio, protege trazabilidad y reduce riesgo de contaminar el master con interpretaciones no consolidadas.

@@ -49,12 +49,13 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 2 - Diagnóstico real de muestras | Completado | Base diagnóstica ejecutada sobre `data/samples` sin importación al master |
 | Fase 2.1 - Endurecimiento diagnóstico | Completado | Soporte Chartsheet y reportes sanitizados implementados |
 | Fase 2.2 - Revisión técnica del diagnóstico real | Completado (documental) | Revisión técnica formal documentada en `docs/decisions/phase_2_2_real_sample_diagnostic_review.md` |
-| Fase 3 - Extractor diagnóstico BC3 | En curso | Línea activa; Fase 3.1 cerrada técnicamente y Fase 3.2 iniciada |
+| Fase 3 - Extractor diagnóstico BC3 | Completado (técnico) | Readiness cerrado en Fase 3.5 con estado `READY_FOR_PRELIMINARY_PARSER_DESIGN` |
 | Fase 3.1 - Implementación extractor BC3 | Completado (técnico) | Plan, ADR-013, script, tests y validaciones cerradas |
 | Fase 3.2 - Revisión diagnóstica BC3 real | Completado (documental) | Revisión cerrada en `docs/decisions/phase_3_2_bc3_diagnostic_review.md` |
 | Fase 3.3 - Heurísticas diagnósticas BC3 | Completado (técnico) | Heurísticas ampliadas, validaciones y ejecución real cerradas |
 | Fase 3.4 - Iteración diagnóstica final BC3 | Completado (técnico) | Sanitización reforzada, matriz de riesgos, readiness y comparativa BC3 implementadas |
-| Fase 3.5 - Cierre de readiness BC3 | En curso | Revisión de bloqueadores manuales y cierre de criterio de paso a Fase 4 |
+| Fase 3.5 - Cierre de readiness BC3 | Completado (técnico) | Bloqueadores tipados, warnings no bloqueantes explicitados y criterio de paso cerrado |
+| Fase 4.0 - Diseño documental parser BC3 preliminar | En curso | Diseño técnico previo a implementación controlada |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -103,6 +104,19 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No consolidar importes.
   - No modificar RAW.
 - Seguridad de reportes: los reportes completos con datos reales pueden contener información sensible y no deben subirse a Git.
+
+## Estado Fase 4.0 (diseño parser BC3 preliminar)
+
+- Objetivo: definir documentalmente la arquitectura, estructura intermedia, trazabilidad, errores, warnings y criterios de aceptación del parser BC3 preliminar antes de implementarlo.
+- Decisión de entrada: Fase 3 cerrada técnicamente con readiness `READY_FOR_PRELIMINARY_PARSER_DESIGN`.
+- Restricciones activas:
+  - No implementar parser definitivo.
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes finales.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+- Seguridad de reportes: los reports reales completos pueden contener información sensible y deben permanecer fuera de Git.
 
 ## Backlog priorizado
 
