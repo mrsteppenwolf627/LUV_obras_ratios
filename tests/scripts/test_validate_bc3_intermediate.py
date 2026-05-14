@@ -45,7 +45,7 @@ def _valid_intermediate() -> dict:
 
 def test_valid_intermediate_json():
     report = validate_intermediate(_valid_intermediate(), "synthetic.json")
-    assert report["validation_metadata"]["status"] in {"VALID", "WARNING"}
+    assert report["validation_readiness"]["global"] == "VALIDATION_READY_FOR_STRICTER_PARSER_DESIGN"
     assert report["global_validation_summary"]["files_count"] == 1
 
 
@@ -53,21 +53,22 @@ def test_missing_metadata_blocks():
     payload = _valid_intermediate()
     payload.pop("metadata")
     report = validate_intermediate(payload, "synthetic.json")
-    assert report["validation_metadata"]["status"] == "BLOCKED"
+    assert report["validation_readiness"]["global"] == "VALIDATION_BLOCKED"
 
 
 def test_missing_files_blocks():
     payload = _valid_intermediate()
     payload.pop("files")
     report = validate_intermediate(payload, "synthetic.json")
-    assert report["validation_metadata"]["status"] == "BLOCKED"
+    assert report["validation_readiness"]["global"] == "VALIDATION_BLOCKED"
 
 
 def test_missing_v_header_is_error():
     payload = _valid_intermediate()
     payload["files"][0]["header"]["has_v"] = False
     report = validate_intermediate(payload, "synthetic.json")
-    assert any(item["code"] == "MISSING_V_HEADER" for item in report["blocking_errors"])
+    assert any(item["code"] == "MISSING_V_HEADER" for item in report["blocking_items"])
+    assert report["validation_readiness"]["files"][0]["readiness"] == "VALIDATION_BLOCKED"
 
 
 def test_missing_concepts_flags_warning_and_manual_review():
@@ -75,7 +76,7 @@ def test_missing_concepts_flags_warning_and_manual_review():
     payload["files"][0]["concepts"] = []
     report = validate_intermediate(payload, "synthetic.json")
     assert any(item["code"] == "MISSING_C_CONCEPTS" for item in report["warnings"])
-    assert any(item["code"] == "CONCEPTS_ABSENT_REVIEW" for item in report["manual_review_items"])
+    assert any(item["code"] == "CONCEPTS_ABSENT_REVIEW" for item in report["blocking_items"])
 
 
 def test_relation_with_missing_parent():
@@ -83,6 +84,7 @@ def test_relation_with_missing_parent():
     payload["files"][0]["relations"]["links"] = [{"line_number": 3, "parent_code": "P1", "child_code": "CAP01#"}]
     report = validate_intermediate(payload, "synthetic.json")
     assert any(item["code"] == "RELATION_PARENT_NOT_IN_CONCEPTS" for item in report["warnings"])
+    assert any(item["code"] == "RELATION_ORPHAN_CHILD_NON_BLOCKING" for item in report["non_blocking_manual_review_items"])
 
 
 def test_relation_with_missing_child():
@@ -96,14 +98,14 @@ def test_unknown_records_under_threshold_is_warning():
     payload = _valid_intermediate()
     payload["files"][0]["records"]["unknown_record_types"] = ["~Z"]
     report = validate_intermediate(payload, "synthetic.json", unknown_threshold=2)
-    assert any(item["code"] == "UNKNOWN_RECORDS_UNDER_THRESHOLD" for item in report["warnings"])
+    assert any(item["code"] == "UNKNOWN_RECORDS_UNDER_THRESHOLD" for item in report["non_blocking_manual_review_items"])
 
 
 def test_unknown_records_over_threshold_is_manual_review():
     payload = _valid_intermediate()
     payload["files"][0]["records"]["unknown_record_types"] = ["~Z", "~Y", "~X"]
     report = validate_intermediate(payload, "synthetic.json", unknown_threshold=2)
-    assert any(item["code"] == "UNKNOWN_RECORDS_OVER_THRESHOLD" for item in report["manual_review_items"])
+    assert any(item["code"] == "UNKNOWN_RECORDS_OVER_THRESHOLD" for item in report["blocking_items"])
 
 
 def test_manual_review_without_explicit_reason():
@@ -111,7 +113,7 @@ def test_manual_review_without_explicit_reason():
     payload["files"][0]["concepts"] = []
     payload["files"][0]["manual_review_required"] = []
     report = validate_intermediate(payload, "synthetic.json")
-    assert any(item["code"] == "MISSING_MANUAL_REASONS" for item in report["manual_review_items"])
+    assert any(item["code"] == "MISSING_MANUAL_REASONS" for item in report["minor_adjustment_items"])
 
 
 def test_separation_errors_warnings_manual_review():
@@ -119,9 +121,8 @@ def test_separation_errors_warnings_manual_review():
     payload["files"][0]["header"]["has_v"] = False
     payload["files"][0]["records"]["unknown_record_types"] = ["~Z"]
     report = validate_intermediate(payload, "synthetic.json", unknown_threshold=2)
-    assert report["blocking_errors"]
-    assert report["warnings"]
-    assert report["manual_review_items"] is not None
+    assert report["blocking_items"]
+    assert report["non_blocking_manual_review_items"] is not None
 
 
 def test_json_and_markdown_generation():
@@ -133,7 +134,10 @@ def test_json_and_markdown_generation():
         assert md_path.exists()
         loaded = json.loads(json_path.read_text(encoding="utf-8"))
         assert "global_validation_summary" in loaded
-        assert "BC3 Intermediate Validation Report" in md_path.read_text(encoding="utf-8")
+        assert "validation_readiness" in loaded
+        md = md_path.read_text(encoding="utf-8")
+        assert "BC3 Intermediate Validation Report" in md
+        assert "## Readiness" in md
     finally:
         _cleanup(root)
 
@@ -151,3 +155,34 @@ def test_no_ratio_or_master_import_fields_in_validation():
     serialized = json.dumps(report)
     assert "master_import" not in serialized
     assert "ratio_calculation" not in serialized
+
+
+def test_manual_review_non_blocking_multiple_units():
+    payload = _valid_intermediate()
+    payload["files"][0]["units"] = ["m2", "m3"]
+    report = validate_intermediate(payload, "synthetic.json")
+    assert any(item["code"] == "MULTIPLE_UNITS_NON_BLOCKING" for item in report["non_blocking_manual_review_items"])
+
+
+def test_future_human_decision_units_and_economic():
+    payload = _valid_intermediate()
+    payload["files"][0]["units"] = ["m2", "m3"]
+    payload["files"][0]["economic_signals"] = {"ambiguous_economic_tokens": True}
+    report = validate_intermediate(payload, "synthetic.json")
+    assert any(item["code"] == "UNITS_POLICY_PENDING" for item in report["future_human_decisions"])
+    assert any(item["code"] == "ECONOMIC_POLICY_PENDING" for item in report["future_human_decisions"])
+
+
+def test_readiness_ready_with_non_blocking_manual_review():
+    payload = _valid_intermediate()
+    payload["files"][0]["records"]["unknown_record_types"] = ["~Z"]
+    payload["files"][0]["manual_review_required"] = ["UNKNOWN_TYPES_TRACKED"]
+    report = validate_intermediate(payload, "synthetic.json")
+    assert report["validation_readiness"]["global"] == "VALIDATION_READY_WITH_NON_BLOCKING_MANUAL_REVIEW"
+
+
+def test_readiness_needs_minor_adjustments_on_unclassified_warning():
+    payload = _valid_intermediate()
+    payload["files"][0]["warnings"] = ["SOME_NEW_WARNING"]
+    report = validate_intermediate(payload, "synthetic.json")
+    assert report["validation_readiness"]["global"] == "VALIDATION_NEEDS_MINOR_ADJUSTMENTS"

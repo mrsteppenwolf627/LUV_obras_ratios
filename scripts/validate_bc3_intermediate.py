@@ -29,6 +29,11 @@ REQUIRED_FILE_KEYS = [
     "manual_review_required",
 ]
 
+READINESS_READY_STRICT = "VALIDATION_READY_FOR_STRICTER_PARSER_DESIGN"
+READINESS_READY_NON_BLOCKING = "VALIDATION_READY_WITH_NON_BLOCKING_MANUAL_REVIEW"
+READINESS_NEEDS_MINOR = "VALIDATION_NEEDS_MINOR_ADJUSTMENTS"
+READINESS_BLOCKED = "VALIDATION_BLOCKED"
+
 
 def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -39,12 +44,45 @@ def _entry_id(entry: dict[str, Any], idx: int) -> str:
     return ref.get("sanitized_id") or f"FILE_{idx:02d}"
 
 
+def _classify_item(code: str) -> str:
+    if code in {
+        "MISSING_ROOT_KEYS",
+        "FILES_NOT_A_LIST",
+        "MISSING_V_HEADER",
+        "MISSING_C_CONCEPTS",
+        "CONCEPTS_ABSENT_REVIEW",
+        "DECODE_FAILED",
+        "UNKNOWN_RECORDS_OVER_THRESHOLD",
+        "ORPHAN_RELATIONS_BLOCKING",
+    }:
+        return "validation_blocker"
+    if code in {
+        "UNKNOWN_RECORDS_UNDER_THRESHOLD",
+        "MULTIPLE_UNITS_NON_BLOCKING",
+        "AMBIGUOUS_ECONOMIC_TOKENS_NON_BLOCKING",
+        "RELATION_ORPHAN_CHILD_NON_BLOCKING",
+        "RELATION_ORPHAN_PARENT_NON_BLOCKING",
+    }:
+        return "non_blocking_manual_review"
+    if code in {
+        "UNITS_POLICY_PENDING",
+        "ECONOMIC_POLICY_PENDING",
+        "CATEGORY_POLICY_PENDING",
+    }:
+        return "future_policy_decision"
+    return "minor_adjustment_item"
+
+
 def validate_intermediate(report: dict[str, Any], source_path: str, unknown_threshold: int = 2) -> dict[str, Any]:
     validation_files: list[dict[str, Any]] = []
     blocking_errors: list[dict[str, Any]] = []
     manual_review_items: list[dict[str, Any]] = []
     warnings_items: list[dict[str, Any]] = []
     info_items: list[dict[str, Any]] = []
+    blocking_items: list[dict[str, Any]] = []
+    non_blocking_manual_review_items: list[dict[str, Any]] = []
+    future_human_decisions: list[dict[str, Any]] = []
+    minor_adjustment_items: list[dict[str, Any]] = []
 
     missing_root = [k for k in REQUIRED_ROOT_KEYS if k not in report]
     if missing_root:
@@ -73,9 +111,19 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
                 "files_with_warnings": 0,
             },
             "blocking_errors": blocking_errors,
+            "blocking_items": blocking_errors,
+            "non_blocking_manual_review_items": [],
+            "future_human_decisions": [],
+            "minor_adjustment_items": [],
             "manual_review_items": [],
             "warnings": [],
             "info": [],
+            "validation_readiness": {
+                "global": READINESS_BLOCKED,
+                "files": [],
+                "phase_4_next_recommendation": "Fix blocked structural validation issues before any stricter parser phase.",
+            },
+            "phase_4_next_recommendation": "Fix blocked structural validation issues before any stricter parser phase.",
         }
 
     files = report.get("files", [])
@@ -140,6 +188,7 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
             if isinstance(c, dict) and str(c.get("code", "")).strip()
         }
         relations = entry.get("relations", {}).get("links", [])
+        orphan_count = 0
         for rel in relations:
             parent = str(rel.get("parent_code", "")).strip()
             child = str(rel.get("child_code", "")).strip()
@@ -151,13 +200,7 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
                         "detail": parent,
                     }
                 )
-                file_manual.append(
-                    {
-                        "severity": "MANUAL_REVIEW_REQUIRED",
-                        "code": "RELATION_ORPHAN_PARENT",
-                        "detail": parent,
-                    }
-                )
+                orphan_count += 1
             if child and concept_codes and child not in concept_codes:
                 file_warnings.append(
                     {
@@ -166,13 +209,24 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
                         "detail": child,
                     }
                 )
-                file_manual.append(
-                    {
-                        "severity": "MANUAL_REVIEW_REQUIRED",
-                        "code": "RELATION_ORPHAN_CHILD",
-                        "detail": child,
-                    }
-                )
+                orphan_count += 1
+
+        if orphan_count > 10:
+            file_manual.append(
+                {
+                    "severity": "MANUAL_REVIEW_REQUIRED",
+                    "code": "ORPHAN_RELATIONS_BLOCKING",
+                    "detail": f"{orphan_count} orphan relations over blocking threshold",
+                }
+            )
+        elif orphan_count > 0:
+            file_manual.append(
+                {
+                    "severity": "MANUAL_REVIEW_REQUIRED",
+                    "code": "RELATION_ORPHAN_CHILD_NON_BLOCKING",
+                    "detail": f"{orphan_count} orphan relations under blocking threshold",
+                }
+            )
 
         unknowns = entry.get("records", {}).get("unknown_record_types", [])
         if isinstance(unknowns, list) and unknowns:
@@ -185,23 +239,76 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
                     }
                 )
             else:
-                file_warnings.append(
+                file_manual.append(
                     {
-                        "severity": "WARNING",
+                        "severity": "MANUAL_REVIEW_REQUIRED",
                         "code": "UNKNOWN_RECORDS_UNDER_THRESHOLD",
                         "detail": f"{len(unknowns)}<={unknown_threshold}",
                     }
                 )
 
-        manual_reasons = entry.get("manual_review_required", [])
-        if file_manual and (not isinstance(manual_reasons, list) or len(manual_reasons) == 0):
+        existing_warnings = entry.get("warnings", [])
+        if isinstance(existing_warnings, list):
+            for item in existing_warnings:
+                if isinstance(item, str):
+                    file_warnings.append(
+                        {
+                            "severity": "WARNING",
+                            "code": item,
+                            "detail": "propagated_from_preliminary_parse",
+                        }
+                    )
+
+        units = entry.get("units", [])
+        if isinstance(units, list) and len(units) > 1:
             file_manual.append(
                 {
                     "severity": "MANUAL_REVIEW_REQUIRED",
+                    "code": "MULTIPLE_UNITS_NON_BLOCKING",
+                    "detail": f"{len(units)} units detected",
+                }
+            )
+            future_human_decisions.append(
+                {
+                    "file": sid,
+                    "severity": "MANUAL_REVIEW_REQUIRED",
+                    "code": "UNITS_POLICY_PENDING",
+                    "detail": "Final unit normalization policy remains pending.",
+                }
+            )
+
+        eco = entry.get("economic_signals", {})
+        if eco.get("ambiguous_economic_tokens"):
+            file_manual.append(
+                {
+                    "severity": "MANUAL_REVIEW_REQUIRED",
+                    "code": "AMBIGUOUS_ECONOMIC_TOKENS_NON_BLOCKING",
+                    "detail": "Ambiguous tokens present without consolidation.",
+                }
+            )
+            future_human_decisions.append(
+                {
+                    "file": sid,
+                    "severity": "MANUAL_REVIEW_REQUIRED",
+                    "code": "ECONOMIC_POLICY_PENDING",
+                    "detail": "Economic interpretation policy is pending final phases.",
+                }
+            )
+
+        manual_reasons = entry.get("manual_review_required", [])
+        if file_manual and (not isinstance(manual_reasons, list) or len(manual_reasons) == 0):
+            minor_adjustment_items.append(
+                {
+                    "file": sid,
+                    "severity": "WARNING",
                     "code": "MISSING_MANUAL_REASONS",
                     "detail": "manual_review_required is empty while manual flags exist.",
                 }
             )
+
+        for warning in file_warnings:
+            if _classify_item(warning["code"]) == "minor_adjustment_item":
+                minor_adjustment_items.append({"file": sid, **warning})
 
         if not file_errors and not file_warnings and not file_manual:
             file_info.append(
@@ -212,19 +319,29 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
                 }
             )
 
+        file_blockers = [item for item in file_errors if _classify_item(item["code"]) == "validation_blocker"]
+        file_manual_blockers = [item for item in file_manual if _classify_item(item["code"]) == "validation_blocker"]
+        file_manual_non_blocking = [
+            item for item in file_manual if _classify_item(item["code"]) == "non_blocking_manual_review"
+        ]
         status = "VALID"
-        if file_errors:
+        readiness = READINESS_READY_STRICT
+        if file_blockers or file_manual_blockers:
             status = "ERROR"
-        elif file_manual:
+            readiness = READINESS_BLOCKED
+        elif file_manual_non_blocking:
             status = "MANUAL_REVIEW_REQUIRED"
+            readiness = READINESS_READY_NON_BLOCKING
         elif file_warnings:
             status = "WARNING"
+            readiness = READINESS_NEEDS_MINOR
 
         validation_files.append(
             {
                 "sanitized_id": sid,
                 "relative_path": entry.get("file_ref", {}).get("relative_path"),
                 "status": status,
+                "validation_readiness": readiness,
                 "errors": file_errors,
                 "warnings": file_warnings,
                 "manual_review_items": file_manual,
@@ -235,21 +352,40 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
         manual_review_items.extend({"file": sid, **item} for item in file_manual)
         warnings_items.extend({"file": sid, **item} for item in file_warnings)
         info_items.extend({"file": sid, **item} for item in file_info)
+        blocking_items.extend({"file": sid, **item} for item in file_blockers)
+        blocking_items.extend({"file": sid, **item} for item in file_manual_blockers)
+        non_blocking_manual_review_items.extend({"file": sid, **item} for item in file_manual_non_blocking)
+
+    if blocking_items:
+        global_readiness = READINESS_BLOCKED
+    elif minor_adjustment_items:
+        global_readiness = READINESS_NEEDS_MINOR
+    elif non_blocking_manual_review_items:
+        global_readiness = READINESS_READY_NON_BLOCKING
+    else:
+        global_readiness = READINESS_READY_STRICT
 
     global_status = "VALID"
-    if any(item.get("severity") == "BLOCKED" for item in blocking_errors):
-        global_status = "BLOCKED"
-    elif blocking_errors:
+    if global_readiness == READINESS_BLOCKED:
         global_status = "ERROR"
-    elif manual_review_items:
-        global_status = "MANUAL_REVIEW_REQUIRED"
-    elif warnings_items:
+    elif global_readiness == READINESS_NEEDS_MINOR:
         global_status = "WARNING"
+    elif global_readiness == READINESS_READY_NON_BLOCKING:
+        global_status = "MANUAL_REVIEW_REQUIRED"
+
+    if global_readiness == READINESS_BLOCKED:
+        phase_4_next_recommendation = "Do not advance: resolve validation blockers first."
+    elif global_readiness == READINESS_NEEDS_MINOR:
+        phase_4_next_recommendation = "Apply minor adjustments (4.3.1) before stricter parser design."
+    elif global_readiness == READINESS_READY_NON_BLOCKING:
+        phase_4_next_recommendation = "Advance with non-blocking manual review tracked."
+    else:
+        phase_4_next_recommendation = "Ready to advance to stricter parser design."
 
     return {
         "validation_metadata": {
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "validator_stage": "phase_4_2_preliminary",
+            "validator_stage": "phase_4_3_readiness",
             "unknown_record_threshold": unknown_threshold,
             "status": global_status,
         },
@@ -263,9 +399,25 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
             "files_with_warnings": sum(1 for f in validation_files if f["warnings"]),
         },
         "blocking_errors": blocking_errors,
+        "blocking_items": blocking_items,
+        "non_blocking_manual_review_items": non_blocking_manual_review_items,
+        "future_human_decisions": future_human_decisions,
+        "minor_adjustment_items": minor_adjustment_items,
         "manual_review_items": manual_review_items,
         "warnings": warnings_items,
         "info": info_items,
+        "validation_readiness": {
+            "global": global_readiness,
+            "files": [
+                {
+                    "sanitized_id": f["sanitized_id"],
+                    "readiness": f["validation_readiness"],
+                }
+                for f in validation_files
+            ],
+            "phase_4_next_recommendation": phase_4_next_recommendation,
+        },
+        "phase_4_next_recommendation": phase_4_next_recommendation,
     }
 
 
@@ -289,6 +441,9 @@ def write_outputs(root: Path, report: dict[str, Any]) -> tuple[Path, Path]:
     lines.append(f"- Files with errors: {gs.get('files_with_errors', 0)}")
     lines.append(f"- Files with manual review: {gs.get('files_with_manual_review', 0)}")
     lines.append(f"- Files with warnings: {gs.get('files_with_warnings', 0)}")
+    readiness = report.get("validation_readiness", {})
+    lines.append(f"- Validation readiness: {readiness.get('global')}")
+    lines.append(f"- Next recommendation: {report.get('phase_4_next_recommendation')}")
     lines.append("")
     lines.append("## Blocking Errors")
     lines.append("")
@@ -311,6 +466,14 @@ def write_outputs(root: Path, report: dict[str, Any]) -> tuple[Path, Path]:
     if report.get("warnings"):
         for item in report["warnings"]:
             lines.append(f"- {item.get('file', 'global')}: {item['code']} ({item['detail']})")
+    else:
+        lines.append("- none")
+    lines.append("")
+    lines.append("## Readiness")
+    lines.append("")
+    if report.get("validation_readiness"):
+        for item in report["validation_readiness"].get("files", []):
+            lines.append(f"- {item['sanitized_id']}: {item['readiness']}")
     else:
         lines.append("- none")
     lines.append("")
