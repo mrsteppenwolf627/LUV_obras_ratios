@@ -56,7 +56,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 3.4 - Iteración diagnóstica final BC3 | Completado (técnico) | Sanitización reforzada, matriz de riesgos, readiness y comparativa BC3 implementadas |
 | Fase 3.5 - Cierre de readiness BC3 | Completado (técnico) | Bloqueadores tipados, warnings no bloqueantes explicitados y criterio de paso cerrado |
 | Fase 4.0 - Diseño documental parser BC3 preliminar | Completado (documental) | Diseño cerrado en `docs/decisions/phase_4_0_bc3_preliminary_parser_design.md` y ADR-014 |
-| Fase 4.1 - Implementación parser BC3 preliminar | En curso | Implementación de estructura intermedia trazable sin importar al master |
+| Fase 4.1 - Implementación parser BC3 preliminar | Completado (técnico) | Parser preliminar implementado, validado y ejecutado localmente |
+| Fase 4.2 - Validación estructura intermedia BC3 | En curso | Contrato y validador preliminar sobre salida intermedia |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -132,6 +133,18 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No normalizar categorías finales.
   - No modificar RAW.
 - Seguridad de outputs: salidas sobre datos reales pueden ser sensibles y no deben subirse a Git.
+
+## Estado Fase 4.2 (validación estructura intermedia BC3)
+
+- Objetivo: validar coherencia estructural y completitud mínima del JSON intermedio generado por `scripts/parse_bc3_preliminary.py`.
+- Alcance: separación explícita de `errors`, `warnings`, `manual_review_required` y bloqueos metodológicos.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+- Seguridad de outputs: resultados de validación sobre datos reales pueden ser sensibles y no deben subirse a Git.
 
 ## Backlog priorizado
 

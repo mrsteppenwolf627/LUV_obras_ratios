@@ -86,6 +86,9 @@ reports/bc3_diagnostics/*
 !reports/bc3_preliminary_parse/
 reports/bc3_preliminary_parse/*
 !reports/bc3_preliminary_parse/.gitkeep
+!reports/bc3_intermediate_validation/
+reports/bc3_intermediate_validation/*
+!reports/bc3_intermediate_validation/.gitkeep
 
 
 # Local test scratch
