@@ -49,7 +49,9 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 2 - Diagnóstico real de muestras | Completado | Base diagnóstica ejecutada sobre `data/samples` sin importación al master |
 | Fase 2.1 - Endurecimiento diagnóstico | Completado | Soporte Chartsheet y reportes sanitizados implementados |
 | Fase 2.2 - Revisión técnica del diagnóstico real | Completado (documental) | Revisión técnica formal documentada en `docs/decisions/phase_2_2_real_sample_diagnostic_review.md` |
-| Fase 3 - Extractor diagnóstico BC3 | En curso | Inicio de implementación diagnóstica en `scripts/inspect_bc3.py` |
+| Fase 3 - Extractor diagnóstico BC3 | En curso | Línea activa; Fase 3.1 cerrada técnicamente y Fase 3.2 iniciada |
+| Fase 3.1 - Implementación extractor BC3 | Completado (técnico) | Plan, ADR-013, script, tests y validaciones cerradas |
+| Fase 3.2 - Revisión diagnóstica BC3 real | En curso (documental) | Revisión de reports BC3 reales en `docs/decisions/phase_3_2_bc3_diagnostic_review.md` |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -86,6 +88,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 ## Estado Fase 3 (BC3 diagnóstico)
 
 - Objetivo: construir extractor diagnóstico BC3 no destructivo para entender encoding, cabecera/FIEBDC, tipos de registro, relaciones básicas y riesgos de estructura.
+- Objetivo Fase 3.2: revisar outputs diagnósticos BC3 reales y extraer conclusiones técnicas para la siguiente iteración.
 - Restricciones activas:
   - No crear parser definitivo.
   - No importar al master.
