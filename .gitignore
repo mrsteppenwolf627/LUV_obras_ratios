@@ -80,6 +80,9 @@ reports/*
 !reports/sample_inspections/
 reports/sample_inspections/*
 !reports/sample_inspections/.gitkeep
+!reports/bc3_diagnostics/
+reports/bc3_diagnostics/*
+!reports/bc3_diagnostics/.gitkeep
 
 
 # Local test scratch

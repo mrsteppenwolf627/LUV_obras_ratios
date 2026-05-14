@@ -46,9 +46,10 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 | Tarea | Estado | Notas |
 |---|---|---|
-| Fase 2 - Diagnóstico real de muestras | En curso (diagnóstico ejecutado) | Ejecutada sobre `data/samples` sin importación al master |
+| Fase 2 - Diagnóstico real de muestras | Completado | Base diagnóstica ejecutada sobre `data/samples` sin importación al master |
 | Fase 2.1 - Endurecimiento diagnóstico | Completado | Soporte Chartsheet y reportes sanitizados implementados |
 | Fase 2.2 - Revisión técnica del diagnóstico real | Completado (documental) | Revisión técnica formal documentada en `docs/decisions/phase_2_2_real_sample_diagnostic_review.md` |
+| Fase 3 - Extractor diagnóstico BC3 | En curso | Inicio de implementación diagnóstica en `scripts/inspect_bc3.py` |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -81,6 +82,18 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Los reportes sanitizados son la base para revisión humana de diagnóstico.
 - Sigue bloqueado avanzar a parsers definitivos, importación al master o cálculo de ratios.
 - Recomendación para Fase 3: iniciar extractor diagnóstico BC3 (sin parser definitivo, sin actualización de master).
+
+## Estado Fase 3 (BC3 diagnóstico)
+
+- Objetivo: construir extractor diagnóstico BC3 no destructivo para entender encoding, cabecera/FIEBDC, tipos de registro, relaciones básicas y riesgos de estructura.
+- Restricciones activas:
+  - No crear parser definitivo.
+  - No importar al master.
+  - No calcular ratios.
+  - No normalizar categorías finales.
+  - No consolidar importes.
+  - No modificar RAW.
+- Seguridad de reportes: los reportes completos con datos reales pueden contener información sensible y no deben subirse a Git.
 
 ## Backlog priorizado
 
@@ -134,4 +147,5 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No se puede avanzar a parsers definitivos, importación al master ni cálculo de ratios hasta completar las revisiones humanas pendientes.
 - Fase 2 solo puede ejecutarse como análisis diagnóstico de muestras; no permite importación definitiva ni actualización del master.
 - En Fase 2, los reportes completos que incluyan contenido potencialmente sensible deben mantenerse fuera de Git; solo se comparte reporte sanitizado.
+- Fase 3 BC3 se limita a extracción diagnóstica y no puede alimentar el master ni consolidar importes.
 

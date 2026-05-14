@@ -16,6 +16,7 @@ Registro de decisiones arquitectonicas del proyecto.
 - ADR-010: Politica preliminar de duplicados y versionado de presupuestos (PROPUESTA, ver `docs/adr/ADR-010-duplicates-and-budget-versions.md`)
 - ADR-011: Politica preliminar de validacion matematica y consistencia (PROPUESTA, ver `docs/adr/ADR-011-validation-rules.md`)
 - ADR-012: Congelacion parcial metodologica antes del analisis de datos reales (PROPUESTA, ver `docs/adr/ADR-012-freeze-methodology-before-real-data.md`)
+- ADR-013: Extractor diagnostico BC3 antes de parser definitivo (Aprobado fase 3)
 
 ## ADR-001: Adaptacion de roles multi-modelo
 
@@ -137,3 +138,21 @@ Mantiene evidencia historica y evita perdida irreversible de contexto.
 **Racional**
 
 Sin superficie base estable no hay comparabilidad confiable entre proyectos.
+
+## ADR-013: Extractor diagnostico BC3 antes de parser definitivo
+
+**Estado:** Aprobado (fase 3)
+
+**Decision**
+
+- Fase 3 implementa solo un extractor diagnostico BC3.
+- Fase 3 no crea parser definitivo BC3.
+- Fase 3 no alimenta el master.
+- Fase 3 no calcula ratios.
+- Fase 3 no decide categorias finales.
+- Fase 3 no consolida importes.
+- Fase 3 se enfoca en estructura, encoding, tipos de registro y riesgos antes del parser real.
+
+**Racional**
+
+La evidencia de Fase 2.2 muestra variabilidad real de fuentes y necesidad de inspeccion controlada previa. Un extractor diagnostico reduce riesgo de disenar un parser definitivo sobre supuestos incorrectos y preserva la separacion entre diagnostico e integracion al master.
