@@ -12,6 +12,7 @@ import sys
 
 SAMPLES_DIR = Path("data/samples")
 REPORT_PATH = Path("reports/sample_inspections/file_hashes.json")
+IGNORED_FILENAMES = {".gitkeep"}
 
 
 def sha256_file(path: Path) -> str:
@@ -31,6 +32,9 @@ def collect_hashes(root: Path, samples_dir: Path) -> dict:
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "samples_dir": str(samples_dir).replace("\\", "/"),
             "exists": False,
+            "files_count_total": 0,
+            "sample_files_count": 0,
+            "ignored_files_count": 0,
             "files_count": 0,
             "duplicates_by_hash": [],
             "files": [],
@@ -38,7 +42,11 @@ def collect_hashes(root: Path, samples_dir: Path) -> dict:
         }
 
     files = [p for p in absolute_samples.rglob("*") if p.is_file()]
+    ignored_files_count = 0
     for file_path in sorted(files):
+        is_ignored = file_path.name.lower() in IGNORED_FILENAMES
+        if is_ignored:
+            ignored_files_count += 1
         stat = file_path.stat()
         file_hash = sha256_file(file_path)
         rel_path = file_path.relative_to(root)
@@ -49,6 +57,7 @@ def collect_hashes(root: Path, samples_dir: Path) -> dict:
                 "extension": file_path.suffix.lower(),
                 "size_bytes": stat.st_size,
                 "sha256": file_hash,
+                "is_ignored": is_ignored,
                 "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
             }
         )
@@ -68,7 +77,10 @@ def collect_hashes(root: Path, samples_dir: Path) -> dict:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "samples_dir": str(samples_dir).replace("\\", "/"),
         "exists": True,
-        "files_count": len(entries),
+        "files_count_total": len(entries),
+        "sample_files_count": len(entries) - ignored_files_count,
+        "ignored_files_count": ignored_files_count,
+        "files_count": len(entries) - ignored_files_count,
         "duplicates_by_hash": duplicates,
         "files": entries,
         "message": "OK",
@@ -89,7 +101,9 @@ def print_summary(report: dict, report_path: Path) -> None:
     print("Hash scan summary")
     print(f"- Samples dir: {report['samples_dir']}")
     print(f"- Exists: {report['exists']}")
-    print(f"- Files: {report['files_count']}")
+    print(f"- Files total: {report['files_count_total']}")
+    print(f"- Sample files: {report['sample_files_count']}")
+    print(f"- Ignored files: {report['ignored_files_count']}")
     print(f"- Duplicate groups: {len(report['duplicates_by_hash'])}")
     print(f"- JSON report: {str(report_path).replace('\\', '/')}")
 
@@ -102,7 +116,7 @@ def main() -> int:
 
     if not report["exists"]:
         print("WARNING: data/samples directory does not exist.")
-    elif report["files_count"] == 0:
+    elif report["sample_files_count"] == 0:
         print("INFO: No files found in data/samples.")
 
     return 0

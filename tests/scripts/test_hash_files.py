@@ -31,7 +31,8 @@ def test_collect_hashes_detects_duplicates():
         report = collect_hashes(root, Path("data/samples"))
 
         assert report["exists"] is True
-        assert report["files_count"] == 3
+        assert report["files_count_total"] == 3
+        assert report["sample_files_count"] == 3
         assert len(report["duplicates_by_hash"]) == 1
         assert report["duplicates_by_hash"][0]["count"] == 2
     finally:
@@ -46,7 +47,27 @@ def test_collect_hashes_empty_samples():
         report = collect_hashes(root, Path("data/samples"))
 
         assert report["exists"] is True
-        assert report["files_count"] == 0
+        assert report["files_count_total"] == 0
+        assert report["sample_files_count"] == 0
         assert report["duplicates_by_hash"] == []
+    finally:
+        _cleanup(root)
+
+
+def test_collect_hashes_excludes_gitkeep_from_sample_count():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        (samples / ".gitkeep").write_text("", encoding="utf-8")
+        (samples / "real.bc3").write_text("~K|sample", encoding="utf-8")
+
+        report = collect_hashes(root, Path("data/samples"))
+
+        assert report["files_count_total"] == 2
+        assert report["sample_files_count"] == 1
+        assert report["ignored_files_count"] == 1
+        gitkeep_entry = next(f for f in report["files"] if f["filename"] == ".gitkeep")
+        assert gitkeep_entry["is_ignored"] is True
     finally:
         _cleanup(root)
