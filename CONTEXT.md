@@ -52,7 +52,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 3 - Extractor diagnóstico BC3 | En curso | Línea activa; Fase 3.1 cerrada técnicamente y Fase 3.2 iniciada |
 | Fase 3.1 - Implementación extractor BC3 | Completado (técnico) | Plan, ADR-013, script, tests y validaciones cerradas |
 | Fase 3.2 - Revisión diagnóstica BC3 real | Completado (documental) | Revisión cerrada en `docs/decisions/phase_3_2_bc3_diagnostic_review.md` |
-| Fase 3.3 - Heurísticas diagnósticas BC3 | En curso | Ampliación de heurísticas diagnósticas antes de parser preliminar |
+| Fase 3.3 - Heurísticas diagnósticas BC3 | Completado (técnico) | Heurísticas ampliadas, validaciones y ejecución real cerradas |
+| Fase 3.4 - Iteración diagnóstica final BC3 | En curso | Robustecer sanitización, matriz de riesgos y readiness global antes de Fase 4 |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -89,7 +90,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 ## Estado Fase 3 (BC3 diagnóstico)
 
 - Objetivo: construir extractor diagnóstico BC3 no destructivo para entender encoding, cabecera/FIEBDC, tipos de registro, relaciones básicas y riesgos de estructura.
-- Objetivo Fase 3.3: ampliar heurísticas diagnósticas BC3 para reducir riesgo antes de diseño de parser preliminar.
+- Objetivo Fase 3.3: ampliar heurísticas diagnósticas BC3 para reducir riesgo antes de diseño de parser preliminar (cerrado técnicamente).
+- Objetivo Fase 3.4: iteración diagnóstica final BC3 para reforzar sanitización, clasificación de riesgos y criterio de readiness.
 - Restricciones activas:
   - No crear parser definitivo.
   - No importar al master.

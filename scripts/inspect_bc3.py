@@ -23,6 +23,7 @@ AMOUNT_LIKE_RE = re.compile(r"^-?\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})$")
 UNIT_RE = re.compile(r"^(m2|m3|ml|m|ud|u|kg|l|h)$", re.IGNORECASE)
 CODE_CHAPTER_RE = re.compile(r"^[A-Za-z]{0,3}\d+[A-Za-z0-9]*#?$")
 CODE_ITEM_RE = re.compile(r"^[A-Za-z]{0,3}\d+[A-Za-z0-9]+$")
+ABSOLUTE_PATH_HINT_RE = re.compile(r"(?i)([a-z]:\\\\|/home/|/users/|\\\\\\\\)")
 
 
 def detect_encoding(raw: bytes) -> dict[str, Any]:
@@ -50,8 +51,18 @@ def _candidate_code(token: str) -> str:
     return token.split("\\", 1)[0].strip()
 
 
-def _sanitize_sample(line: str, limit: int = 120) -> str:
-    return line.replace("\t", " ").strip()[:limit]
+def _sanitize_sample(line: str, limit: int = 80) -> str:
+    compact = line.replace("\t", " ").strip()
+    compact = re.sub(r"\d{3,}", "[NUM]", compact)
+    compact = ABSOLUTE_PATH_HINT_RE.sub("[PATH]", compact)
+    return compact[:limit]
+
+
+def _sanitize_code(code: str, keep: int = 4) -> str:
+    cleaned = code.strip()
+    if len(cleaned) <= keep:
+        return cleaned
+    return f"{cleaned[:keep]}..."
 
 
 def _is_chapter_candidate(code: str) -> bool:
@@ -81,6 +92,69 @@ def _estimate_depth(relations: set[tuple[str, str]]) -> int:
     return max_depth
 
 
+def _build_file_risks(inspection: dict[str, Any]) -> list[dict[str, str]]:
+    risks: list[dict[str, str]] = []
+    status = inspection.get("status")
+    if status in {"BC3_READ_FAILED", "BC3_DECODE_UNCERTAIN"}:
+        risks.append({"severity": "BLOCKED", "code": "DECODE_OR_READ_BLOCKED", "detail": status})
+    if not inspection.get("fiebdc_header_line"):
+        risks.append({"severity": "ERROR", "code": "MISSING_V_HEADER", "detail": "No ~V header detected"})
+    if inspection.get("encoding_confidence") == "medium":
+        risks.append({"severity": "WARNING", "code": "ENCODING_MEDIUM_CONFIDENCE", "detail": "Encoding fallback used"})
+    if inspection.get("hierarchy_summary", {}).get("incomplete_relations_count", 0) > 0:
+        risks.append({"severity": "MANUAL_REVIEW_REQUIRED", "code": "INCOMPLETE_RELATIONS", "detail": "Found relations without parent/child"})
+    if not inspection.get("hierarchy_relations_candidates"):
+        risks.append({"severity": "WARNING", "code": "NO_D_RELATIONS", "detail": "No ~D relations detected"})
+    non_common = inspection.get("fiebdc_variant_signals", {}).get("non_common_record_types", [])
+    if len(non_common) >= 3:
+        risks.append({"severity": "MANUAL_REVIEW_REQUIRED", "code": "MANY_UNKNOWN_RECORDS", "detail": f"{len(non_common)} non-common record types"})
+    elif non_common:
+        risks.append({"severity": "WARNING", "code": "UNKNOWN_RECORD_TYPES", "detail": ",".join(non_common)})
+    if inspection.get("economic_field_diagnostics", {}).get("ambiguous_economic_tokens"):
+        risks.append({"severity": "WARNING", "code": "AMBIGUOUS_ECONOMIC_TOKENS", "detail": "Numeric tokens exceed amount-like tokens"})
+    units_count = len(inspection.get("units_detected", []))
+    if units_count > 5:
+        risks.append({"severity": "WARNING", "code": "MULTIPLE_UNITS", "detail": str(units_count)})
+    elif units_count > 1:
+        risks.append({"severity": "INFO", "code": "MULTIPLE_UNITS", "detail": str(units_count)})
+    if not risks:
+        risks.append({"severity": "INFO", "code": "NO_RELEVANT_RISKS", "detail": "Diagnostic signals look stable"})
+    return risks
+
+
+def _compute_readiness(files: list[dict[str, Any]]) -> dict[str, Any]:
+    severity_counts = Counter()
+    reasons: list[str] = []
+    for entry in files:
+        for risk in entry.get("risk_matrix", []):
+            sev = risk.get("severity", "INFO")
+            severity_counts[sev] += 1
+
+    if severity_counts["BLOCKED"] > 0:
+        status = "BLOCKED_BY_DECODING_OR_STRUCTURE"
+        reasons.append("At least one file is blocked by decoding/readability issues.")
+    elif severity_counts["ERROR"] > 0 or severity_counts["MANUAL_REVIEW_REQUIRED"] > 0:
+        status = "NEEDS_MORE_DIAGNOSTIC_HEURISTICS"
+        reasons.append("Critical structure warnings still require manual/heuristic iteration.")
+    else:
+        status = "READY_FOR_PRELIMINARY_PARSER_DESIGN"
+        reasons.append("No blocked or critical structural risks detected.")
+
+    conditions = [
+        "Keep parser scope preliminary and diagnostic-aware.",
+        "Do not import into master during parser design.",
+        "Keep sensitive real reports outside Git.",
+    ]
+    blockers = [k for k in ("BLOCKED", "ERROR", "MANUAL_REVIEW_REQUIRED") if severity_counts[k] > 0]
+    return {
+        "status": status,
+        "reasons": reasons,
+        "blockers": blockers,
+        "severity_counts": dict(severity_counts),
+        "minimum_conditions_for_phase_4": conditions,
+    }
+
+
 def inspect_bc3_file(path: Path) -> dict[str, Any]:
     try:
         raw = path.read_bytes()
@@ -103,7 +177,7 @@ def inspect_bc3_file(path: Path) -> dict[str, Any]:
             "economic_field_diagnostics": {},
             "text_field_diagnostics": {},
             "fiebdc_variant_signals": {},
-            "warnings": [f"READ_FAILED: {exc}"],
+            "warnings": ["READ_FAILED"],
             "notes": f"Could not read file: {exc}",
         }
 
@@ -169,7 +243,7 @@ def inspect_bc3_file(path: Path) -> dict[str, Any]:
             record_type_samples[record_type].append(_sanitize_sample(line))
 
         if record_type == "~V" and fiebdc_header_line is None:
-            fiebdc_header_line = line[:200]
+            fiebdc_header_line = _sanitize_sample(line, 120)
             m_fiebdc = FIEBDC_RE.search(line)
             if m_fiebdc:
                 fiebdc_version_candidate = m_fiebdc.group(0)
@@ -265,9 +339,9 @@ def inspect_bc3_file(path: Path) -> dict[str, Any]:
             "chapter_candidates_count": len(chapter_codes),
             "item_candidates_count": len(item_codes),
             "other_candidates_count": len(other_codes),
-            "chapter_candidates_sample": sorted(chapter_codes)[:10],
-            "item_candidates_sample": sorted(item_codes)[:10],
-            "other_candidates_sample": sorted(other_codes)[:10],
+            "chapter_candidates_sample": [_sanitize_code(c) for c in sorted(chapter_codes)[:10]],
+            "item_candidates_sample": [_sanitize_code(c) for c in sorted(item_codes)[:10]],
+            "other_candidates_sample": [_sanitize_code(c) for c in sorted(other_codes)[:10]],
         },
         "hierarchy_relations_candidates": [
             {"parent": parent, "child": child} for parent, child in sorted(relations)
@@ -325,16 +399,20 @@ def inspect_bc3_samples(root: Path) -> dict[str, Any]:
 
     bc3_files = sorted([p for p in samples_path.rglob("*") if p.is_file() and p.suffix.lower() == ".bc3"])
     entries: list[dict[str, Any]] = []
-    for file_path in bc3_files:
+    for index, file_path in enumerate(bc3_files, start=1):
         rel = file_path.relative_to(root)
         inspection = inspect_bc3_file(file_path)
+        risk_matrix = _build_file_risks(inspection)
+        sanitized_id = f"BC3_{index:02d}"
         entries.append(
             {
+                "sanitized_id": sanitized_id,
                 "relative_path": str(rel).replace("\\", "/"),
                 "filename": file_path.name,
                 "extension": file_path.suffix.lower(),
                 "size_bytes": file_path.stat().st_size,
                 "inspection": inspection,
+                "risk_matrix": risk_matrix,
             }
         )
 
@@ -363,6 +441,70 @@ def inspect_bc3_samples(root: Path) -> dict[str, Any]:
         if uncommon:
             variant_warnings.append(f"RECORD_TYPES_NOT_COMMON_TO_ALL:{','.join(uncommon)}")
 
+    common_units: set[str] | None = None
+    units_union: set[str] = set()
+    for entry in entries:
+        u = set(entry["inspection"].get("units_detected", []))
+        units_union |= u
+        if common_units is None:
+            common_units = u
+        else:
+            common_units = common_units & u
+
+    by_file_exclusive_types: dict[str, list[str]] = {}
+    by_file_exclusive_units: dict[str, list[str]] = {}
+    all_types_by_file = {
+        e["sanitized_id"]: set(e["inspection"].get("record_types_present", []))
+        for e in entries
+    }
+    all_units_by_file = {
+        e["sanitized_id"]: set(e["inspection"].get("units_detected", []))
+        for e in entries
+    }
+    for sid, rtypes in all_types_by_file.items():
+        others = set().union(*(v for k, v in all_types_by_file.items() if k != sid)) if len(all_types_by_file) > 1 else set()
+        by_file_exclusive_types[sid] = sorted(rtypes - others)
+    for sid, units in all_units_by_file.items():
+        others = set().union(*(v for k, v in all_units_by_file.items() if k != sid)) if len(all_units_by_file) > 1 else set()
+        by_file_exclusive_units[sid] = sorted(units - others)
+
+    hierarchy_depths = {
+        e["sanitized_id"]: e["inspection"].get("hierarchy_summary", {}).get("max_depth_approx", 0)
+        for e in entries
+    }
+    economic_density = {
+        e["sanitized_id"]: e["inspection"].get("amount_indicators", {}).get("numeric_tokens_count", 0)
+        for e in entries
+    }
+    text_density = {
+        e["sanitized_id"]: sum(e["inspection"].get("text_field_diagnostics", {}).get("long_text_fields_by_record_type", {}).values())
+        for e in entries
+    }
+
+    comparison = {
+        "files_considered": [e["sanitized_id"] for e in entries],
+        "fiebdc_versions_detected": variant_versions,
+        "record_types_common_to_all": sorted(common_types or set()),
+        "record_types_exclusive_by_file": by_file_exclusive_types,
+        "units_common_to_all": sorted(common_units or set()),
+        "units_exclusive_by_file": by_file_exclusive_units,
+        "hierarchy_depth_by_file": hierarchy_depths,
+        "economic_density_by_file": economic_density,
+        "text_density_by_file": text_density,
+        "variability_warnings": variant_warnings,
+    }
+
+    readiness = _compute_readiness(entries)
+    sensitive = any(
+        entry["inspection"].get("amount_indicators", {}).get("numeric_tokens_count", 0) > 0
+        or bool(entry["inspection"].get("chapter_code_candidates"))
+        for entry in entries
+    )
+    sensitivity = {
+        "contains_potentially_sensitive_data": sensitive,
+        "policy": "Real BC3 reports are local-only and must stay outside Git.",
+    }
+
     return {
         "generated_at": generated_at,
         "samples_dir": str(SAMPLES_DIR).replace("\\", "/"),
@@ -370,6 +512,9 @@ def inspect_bc3_samples(root: Path) -> dict[str, Any]:
         "bc3_files_count": len(entries),
         "message": "OK" if entries else "No BC3 files found in data/samples.",
         "variant_warnings": variant_warnings,
+        "readiness_summary": readiness,
+        "bc3_comparison": comparison,
+        "sensitivity": sensitivity,
         "files": entries,
     }
 
@@ -391,8 +536,37 @@ def write_reports(root: Path, report: dict[str, Any]) -> tuple[Path, Path]:
     lines.append(f"- Exists: {report['exists']}")
     lines.append(f"- BC3 files count: {report['bc3_files_count']}")
     lines.append(f"- Message: {report['message']}")
+    if report.get("sensitivity"):
+        lines.append(
+            f"- Potentially sensitive: {report['sensitivity'].get('contains_potentially_sensitive_data')}"
+        )
     if report.get("variant_warnings"):
         lines.append(f"- Variant warnings: {', '.join(report['variant_warnings'])}")
+    readiness = report.get("readiness_summary", {})
+    if readiness:
+        lines.append(f"- Readiness: {readiness.get('status')}")
+        lines.append(f"- Readiness reasons: {', '.join(readiness.get('reasons', []))}")
+    lines.append("")
+    lines.append("## Global Readiness")
+    lines.append("")
+    if readiness:
+        lines.append(f"- Status: {readiness.get('status')}")
+        lines.append(f"- Blockers: {', '.join(readiness.get('blockers', [])) or 'none'}")
+        sev = readiness.get("severity_counts", {})
+        lines.append(
+            "- Severity counts: "
+            + ", ".join(f"{k}={v}" for k, v in sorted(sev.items()))
+        )
+    lines.append("")
+    lines.append("## BC3 Comparison")
+    lines.append("")
+    comparison = report.get("bc3_comparison", {})
+    if comparison:
+        lines.append(f"- Files considered: {', '.join(comparison.get('files_considered', [])) or 'none'}")
+        lines.append(f"- FIEBDC versions: {', '.join(comparison.get('fiebdc_versions_detected', [])) or 'none'}")
+        lines.append(f"- Common record types: {', '.join(comparison.get('record_types_common_to_all', [])) or 'none'}")
+        if comparison.get("variability_warnings"):
+            lines.append(f"- Variability warnings: {', '.join(comparison.get('variability_warnings', []))}")
     lines.append("")
     lines.append("## Files")
     lines.append("")
@@ -400,7 +574,7 @@ def write_reports(root: Path, report: dict[str, Any]) -> tuple[Path, Path]:
     if report.get("files"):
         for entry in report["files"]:
             insp = entry["inspection"]
-            lines.append(f"### {entry['relative_path']}")
+            lines.append(f"### {entry.get('sanitized_id', 'BC3')} ({entry['extension']}, {entry['size_bytes']} bytes)")
             lines.append(f"- Status: {insp['status']}")
             lines.append(f"- Encoding: {insp['encoding']} ({insp['encoding_confidence']})")
             lines.append(f"- FIEBDC candidate: {insp.get('fiebdc_version_candidate')}")
@@ -425,6 +599,9 @@ def write_reports(root: Path, report: dict[str, Any]) -> tuple[Path, Path]:
             )
             if insp.get("warnings"):
                 lines.append(f"- Warnings: {', '.join(insp['warnings'])}")
+            if entry.get("risk_matrix"):
+                rendered_risks = [f"{r['severity']}:{r['code']}" for r in entry["risk_matrix"]]
+                lines.append(f"- Risk matrix: {', '.join(rendered_risks)}")
             lines.append("")
     else:
         lines.append("No BC3 files found.")

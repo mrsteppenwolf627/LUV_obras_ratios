@@ -76,6 +76,9 @@ def test_reports_json_and_markdown_generated():
         payload = json.loads(json_path.read_text(encoding="utf-8"))
         assert payload["bc3_files_count"] == 1
         assert "variant_warnings" in payload
+        assert "readiness_summary" in payload
+        assert "bc3_comparison" in payload
+        assert "sensitivity" in payload
         assert "BC3 Diagnostic Report" in md_path.read_text(encoding="utf-8")
     finally:
         _cleanup(root)
@@ -196,5 +199,115 @@ def test_markdown_contains_new_heuristics_summary():
         assert "C code classes:" in md
         assert "Hierarchy summary:" in md
         assert "Text diagnostics:" in md
+        assert "## Global Readiness" in md
+        assert "## BC3 Comparison" in md
+    finally:
+        _cleanup(root)
+
+
+def test_sanitizes_absolute_path_and_truncates_long_text():
+    root = _make_root()
+    try:
+        bc3 = root / "sanitize.bc3"
+        long_text = "A" * 220
+        bc3.write_text(
+            "~V|FIEBDC-3/2020|C:\\\\sensitive\\\\path\\\\file\n"
+            f"~K|IT01\\{long_text}|m2|1,00|2,00\n",
+            encoding="utf-8",
+        )
+        insp = inspect_bc3_file(bc3)
+        samples = insp["record_type_stats"]["~V"]["samples_sanitized"]
+        assert all("C:\\sensitive" not in s for s in samples)
+        assert all(len(s) <= 80 for s in samples)
+    finally:
+        _cleanup(root)
+
+
+def test_report_marks_potentially_sensitive_data():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        (samples / "a.bc3").write_text("~V|FIEBDC-3/2020\n~K|I\\D|m2|1,00|2,00\n", encoding="utf-8")
+        report = inspect_bc3_samples(root)
+        assert report["sensitivity"]["contains_potentially_sensitive_data"] is True
+    finally:
+        _cleanup(root)
+
+
+def test_blocked_risk_for_non_decodable_file():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        (samples / "bad.bc3").write_bytes(b"\x81\x8d\x8f\x90\x9d")
+        report = inspect_bc3_samples(root)
+        risks = report["files"][0]["risk_matrix"]
+        assert any(r["severity"] == "BLOCKED" for r in risks)
+    finally:
+        _cleanup(root)
+
+
+def test_missing_v_header_raises_error_risk():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        (samples / "nov.bc3").write_text("~C|CAP01#\\Cap\n~D|CAP01#|ITEM1\n", encoding="utf-8")
+        report = inspect_bc3_samples(root)
+        risks = report["files"][0]["risk_matrix"]
+        assert any(r["severity"] in {"ERROR", "BLOCKED"} and r["code"] == "MISSING_V_HEADER" for r in risks)
+    finally:
+        _cleanup(root)
+
+
+def test_readiness_ready_for_preliminary_design():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        (samples / "clean.bc3").write_text("~V|FIEBDC-3/2020\n~C|AB12#\\Cap\n~D|AB12#|AB1201\n", encoding="utf-8")
+        report = inspect_bc3_samples(root)
+        assert report["readiness_summary"]["status"] == "READY_FOR_PRELIMINARY_PARSER_DESIGN"
+    finally:
+        _cleanup(root)
+
+
+def test_readiness_needs_more_heuristics_on_structural_warning():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        (samples / "warn.bc3").write_text("~V|FIEBDC-3/2020\n~D|ROOT|\n", encoding="utf-8")
+        report = inspect_bc3_samples(root)
+        assert report["readiness_summary"]["status"] == "NEEDS_MORE_DIAGNOSTIC_HEURISTICS"
+    finally:
+        _cleanup(root)
+
+
+def test_readiness_blocked_on_decode():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        (samples / "blocked.bc3").write_bytes(b"\x81\x8d\x8f\x90\x9d")
+        report = inspect_bc3_samples(root)
+        assert report["readiness_summary"]["status"] == "BLOCKED_BY_DECODING_OR_STRUCTURE"
+    finally:
+        _cleanup(root)
+
+
+def test_comparison_between_two_bc3_with_distinct_record_types():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        (samples / "a.bc3").write_text("~V|FIEBDC-3/2020\n~C|AB12#\\Cap\n~G|X\n", encoding="utf-8")
+        (samples / "b.bc3").write_text("~V|FIEBDC-3/2020\n~C|CD34#\\Cap\n~L|Y\n", encoding="utf-8")
+        report = inspect_bc3_samples(root)
+        comp = report["bc3_comparison"]
+        assert len(comp["files_considered"]) == 2
+        assert "~V" in comp["record_types_common_to_all"]
+        assert any(comp["record_types_exclusive_by_file"][sid] for sid in comp["files_considered"])
     finally:
         _cleanup(root)
