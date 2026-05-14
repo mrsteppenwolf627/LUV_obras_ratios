@@ -52,11 +52,12 @@ def _classify_item(code: str) -> str:
         "MISSING_C_CONCEPTS",
         "CONCEPTS_ABSENT_REVIEW",
         "DECODE_FAILED",
-        "UNKNOWN_RECORDS_OVER_THRESHOLD",
+        "UNKNOWN_RECORDS_PREDOMINANT",
         "ORPHAN_RELATIONS_BLOCKING",
     }:
         return "validation_blocker"
     if code in {
+        "UNKNOWN_RECORDS_OVER_THRESHOLD",
         "UNKNOWN_RECORDS_UNDER_THRESHOLD",
         "MULTIPLE_UNITS_NON_BLOCKING",
         "AMBIGUOUS_ECONOMIC_TOKENS_NON_BLOCKING",
@@ -211,31 +212,46 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
                 )
                 orphan_count += 1
 
-        if orphan_count > 10:
-            file_manual.append(
-                {
-                    "severity": "MANUAL_REVIEW_REQUIRED",
-                    "code": "ORPHAN_RELATIONS_BLOCKING",
-                    "detail": f"{orphan_count} orphan relations over blocking threshold",
-                }
-            )
-        elif orphan_count > 0:
-            file_manual.append(
-                {
-                    "severity": "MANUAL_REVIEW_REQUIRED",
-                    "code": "RELATION_ORPHAN_CHILD_NON_BLOCKING",
-                    "detail": f"{orphan_count} orphan relations under blocking threshold",
-                }
-            )
+        relation_count = len(relations)
+        orphan_ratio = (orphan_count / relation_count) if relation_count else 0.0
+        if orphan_count > 0 and relation_count > 0:
+            if orphan_count >= 15 and orphan_ratio >= 0.40:
+                file_manual.append(
+                    {
+                        "severity": "MANUAL_REVIEW_REQUIRED",
+                        "code": "ORPHAN_RELATIONS_BLOCKING",
+                        "detail": f"{orphan_count}/{relation_count} orphan relations (ratio={orphan_ratio:.2f}) over blocking threshold",
+                    }
+                )
+            else:
+                file_manual.append(
+                    {
+                        "severity": "MANUAL_REVIEW_REQUIRED",
+                        "code": "RELATION_ORPHAN_CHILD_NON_BLOCKING",
+                        "detail": f"{orphan_count}/{relation_count} orphan relations (ratio={orphan_ratio:.2f}) under blocking threshold",
+                    }
+                )
 
         unknowns = entry.get("records", {}).get("unknown_record_types", [])
         if isinstance(unknowns, list) and unknowns:
-            if len(unknowns) > unknown_threshold:
+            type_counts = entry.get("records", {}).get("record_type_counts", {})
+            total_records = sum(v for v in type_counts.values() if isinstance(v, int))
+            unknown_occurrences = sum(type_counts.get(t, 0) for t in unknowns)
+            unknown_occurrence_ratio = (unknown_occurrences / total_records) if total_records else 0.0
+            if len(unknowns) > unknown_threshold and unknown_occurrence_ratio >= 0.35:
+                file_manual.append(
+                    {
+                        "severity": "MANUAL_REVIEW_REQUIRED",
+                        "code": "UNKNOWN_RECORDS_PREDOMINANT",
+                        "detail": f"types={len(unknowns)} ratio={unknown_occurrence_ratio:.2f} over blocking threshold",
+                    }
+                )
+            elif len(unknowns) > unknown_threshold:
                 file_manual.append(
                     {
                         "severity": "MANUAL_REVIEW_REQUIRED",
                         "code": "UNKNOWN_RECORDS_OVER_THRESHOLD",
-                        "detail": f"{len(unknowns)}>{unknown_threshold}",
+                        "detail": f"types={len(unknowns)} ratio={unknown_occurrence_ratio:.2f} preserved as unsupported",
                     }
                 )
             else:
@@ -243,7 +259,7 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
                     {
                         "severity": "MANUAL_REVIEW_REQUIRED",
                         "code": "UNKNOWN_RECORDS_UNDER_THRESHOLD",
-                        "detail": f"{len(unknowns)}<={unknown_threshold}",
+                        "detail": f"types={len(unknowns)} ratio={unknown_occurrence_ratio:.2f}",
                     }
                 )
 

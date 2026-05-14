@@ -213,3 +213,15 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - En Fase 2, los reportes completos que incluyan contenido potencialmente sensible deben mantenerse fuera de Git; solo se comparte reporte sanitizado.
 - Fase 3 BC3 se limita a extracción diagnóstica y no puede alimentar el master ni consolidar importes.
 
+
+
+## Estado Fase 4.3.1 (ajuste menor de readiness BC3)
+
+- Objetivo: recalibrar reglas de readiness y umbrales de relaciones/unknown records para distinguir bloqueos estructurales reales de revisi?n manual no bloqueante.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categor?as finales.
+  - No modificar RAW.
+- Seguridad de outputs: resultados reales pueden ser sensibles y no deben subirse a Git.

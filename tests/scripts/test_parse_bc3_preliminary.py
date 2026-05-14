@@ -172,3 +172,24 @@ def test_no_ratios_or_master_import_fields():
             assert "final_categories" not in entry
     finally:
         _cleanup(root)
+
+
+def test_warnings_add_manual_review_reasons():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        samples.mkdir(parents=True)
+        payload = (
+            b"~V|FIEBDC-3/2020\n"
+            b"~C|CAP01#\\Cap\x96tulo\n"
+            b"~D|CAP01#|IT01\n"
+            b"~Z|variant\n"
+            b"~C|IT01|m2|Item|2|10,00|100,00\n"
+        )
+        (samples / "a.bc3").write_bytes(payload)
+        entry = parse_bc3_samples(root)["files"][0]
+        reasons = set(entry["manual_review_required"])
+        assert "ENCODING_REVIEW_RECOMMENDED" in reasons
+        assert "UNKNOWN_RECORD_TYPES_REVIEW" in reasons
+    finally:
+        _cleanup(root)

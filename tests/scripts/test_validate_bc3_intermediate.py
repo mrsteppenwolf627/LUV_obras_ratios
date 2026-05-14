@@ -101,11 +101,12 @@ def test_unknown_records_under_threshold_is_warning():
     assert any(item["code"] == "UNKNOWN_RECORDS_UNDER_THRESHOLD" for item in report["non_blocking_manual_review_items"])
 
 
-def test_unknown_records_over_threshold_is_manual_review():
+def test_unknown_records_over_threshold_non_predominant_is_non_blocking():
     payload = _valid_intermediate()
     payload["files"][0]["records"]["unknown_record_types"] = ["~Z", "~Y", "~X"]
+    payload["files"][0]["records"]["record_type_counts"].update({"~Z": 1, "~Y": 1, "~X": 1, "~C": 100})
     report = validate_intermediate(payload, "synthetic.json", unknown_threshold=2)
-    assert any(item["code"] == "UNKNOWN_RECORDS_OVER_THRESHOLD" for item in report["blocking_items"])
+    assert any(item["code"] == "UNKNOWN_RECORDS_OVER_THRESHOLD" for item in report["non_blocking_manual_review_items"])
 
 
 def test_manual_review_without_explicit_reason():
@@ -186,3 +187,32 @@ def test_readiness_needs_minor_adjustments_on_unclassified_warning():
     payload["files"][0]["warnings"] = ["SOME_NEW_WARNING"]
     report = validate_intermediate(payload, "synthetic.json")
     assert report["validation_readiness"]["global"] == "VALIDATION_NEEDS_MINOR_ADJUSTMENTS"
+
+
+def test_unknown_records_predominant_blocks():
+    payload = _valid_intermediate()
+    payload["files"][0]["records"]["unknown_record_types"] = ["~Z", "~Y", "~X"]
+    payload["files"][0]["records"]["record_type_counts"] = {"~V": 1, "~C": 1, "~D": 1, "~Z": 40, "~Y": 30, "~X": 20}
+    report = validate_intermediate(payload, "synthetic.json", unknown_threshold=2)
+    assert any(item["code"] == "UNKNOWN_RECORDS_PREDOMINANT" for item in report["blocking_items"])
+
+
+def test_orphan_relations_limited_non_blocking():
+    payload = _valid_intermediate()
+    payload["files"][0]["relations"]["links"] = [
+        {"line_number": 3, "parent_code": "CAP01#", "child_code": "X1"},
+        {"line_number": 4, "parent_code": "CAP01#", "child_code": "X2"},
+        {"line_number": 5, "parent_code": "CAP01#", "child_code": "CAP01#"},
+    ]
+    report = validate_intermediate(payload, "synthetic.json")
+    assert any(item["code"] == "RELATION_ORPHAN_CHILD_NON_BLOCKING" for item in report["non_blocking_manual_review_items"])
+
+
+def test_orphan_relations_massive_blocks():
+    payload = _valid_intermediate()
+    payload["files"][0]["concepts"] = [{"line_number": 1, "record_type": "~C", "code": "CAP01#"}]
+    payload["files"][0]["relations"]["links"] = [
+        {"line_number": i + 1, "parent_code": "CAP01#", "child_code": f"MISS{i}"} for i in range(20)
+    ]
+    report = validate_intermediate(payload, "synthetic.json")
+    assert any(item["code"] == "ORPHAN_RELATIONS_BLOCKING" for item in report["blocking_items"])

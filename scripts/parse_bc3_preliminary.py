@@ -223,6 +223,7 @@ def parse_bc3_file(path: Path, root: Path) -> dict[str, Any]:
 
     if decode["confidence"] == "medium":
         warnings.append("ENCODING_MEDIUM_CONFIDENCE")
+        manual_review_required.append("ENCODING_REVIEW_RECOMMENDED")
     if header_line_number is None:
         errors.append("Missing ~V header.")
         manual_review_required.append("MISSING_V_HEADER")
@@ -232,10 +233,13 @@ def parse_bc3_file(path: Path, root: Path) -> dict[str, Any]:
     unknown_types = sorted(rt for rt in record_counts if rt not in SUPPORTED_TYPES)
     if unknown_types:
         warnings.append("UNKNOWN_RECORD_TYPES_PRESENT")
+        manual_review_required.append("UNKNOWN_RECORD_TYPES_REVIEW")
     if amount_tokens > 0 and amount_tokens < numeric_tokens:
         warnings.append("AMBIGUOUS_ECONOMIC_TOKENS")
+        manual_review_required.append("AMBIGUOUS_ECONOMIC_SIGNALS_REVIEW")
     if len(units) > 3:
         warnings.append("MULTIPLE_UNITS_DETECTED")
+        manual_review_required.append("MULTIPLE_UNITS_REVIEW")
 
     risk_flags: list[str] = []
     if errors:
