@@ -46,6 +46,9 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 | Tarea | Estado | Notas |
 |---|---|---|
+| Fase 2 - Diagnóstico real de muestras | En curso (diagnóstico ejecutado) | Ejecutada sobre `data/samples` sin importación al master |
+| Fase 2.1 - Endurecimiento diagnóstico | Completado | Soporte Chartsheet y reportes sanitizados implementados |
+| Fase 2.2 - Revisión técnica del diagnóstico real | Completado (documental) | Revisión técnica formal documentada en `docs/decisions/phase_2_2_real_sample_diagnostic_review.md` |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -70,6 +73,14 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Crear validador matemático | Pendiente | Reglas tras definición final de master |
 | Crear exportador al master | Pendiente | Solo con esquema y validaciones cerradas |
 | Crear interfaz | Pendiente | Fase posterior (Gemini CLI) |
+
+## Estado Fase 2 (real samples)
+
+- Muestras detectadas: 7 archivos totales en `data/samples`, de los cuales 6 son muestras operativas y 1 es archivo de soporte ignorado (`.gitkeep`).
+- Los reportes completos locales pueden contener información sensible y deben permanecer fuera de Git.
+- Los reportes sanitizados son la base para revisión humana de diagnóstico.
+- Sigue bloqueado avanzar a parsers definitivos, importación al master o cálculo de ratios.
+- Recomendación para Fase 3: iniciar extractor diagnóstico BC3 (sin parser definitivo, sin actualización de master).
 
 ## Backlog priorizado
 
@@ -122,4 +133,5 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No se deben cerrar tareas sin evidencia verificable (código, tests, o documentación).
 - No se puede avanzar a parsers definitivos, importación al master ni cálculo de ratios hasta completar las revisiones humanas pendientes.
 - Fase 2 solo puede ejecutarse como análisis diagnóstico de muestras; no permite importación definitiva ni actualización del master.
+- En Fase 2, los reportes completos que incluyan contenido potencialmente sensible deben mantenerse fuera de Git; solo se comparte reporte sanitizado.
 
