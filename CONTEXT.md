@@ -313,3 +313,18 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No subir muestras reales.
   - No subir outputs reales sensibles.
 
+
+## Estado Fase 4.5 (diseño parser BC3 estricto sobre subconjunto válido)
+
+- Fase 4.4.4 cerrada técnicamente.
+- Decisión humana: no bloquear el proyecto por BC3_02 y avanzar con subconjunto válido.
+- BC3_02 queda excluido del flujo principal como NOT_ELIGIBLE_AUXILIARY_OR_CORRUPT y se mantiene solo como referencia técnica.
+- Fase 4.5 iniciada para diseñar documentalmente el parser BC3 más estricto sobre 4 BC3 válidos.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+  - No subir muestras reales ni reports reales sensibles.
+
