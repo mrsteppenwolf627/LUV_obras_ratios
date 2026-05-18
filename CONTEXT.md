@@ -254,3 +254,18 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No modificar RAW.
   - No subir muestras reales.
   - No subir outputs reales sensibles.
+
+## Estado Fase 4.4.1 (análisis acotado de BC3 bloqueados)
+
+- Fase 4.4 ejecutada sobre corpus ampliado local.
+- Resultado heredado: estado global bloqueado por 2 BC3 (`validation_readiness.global=VALIDATION_BLOCKED`).
+- Fase 4.4.1 iniciada para análisis acotado de archivos bloqueados.
+- Objetivo: determinar si los bloqueos provienen de archivo no válido/auxiliar, variante BC3 no cubierta, fallo de detección preliminar o estructura realmente incompleta.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+  - No subir muestras reales.
+  - No subir outputs reales sensibles.
