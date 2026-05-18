@@ -225,3 +225,16 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No normalizar categor?as finales.
   - No modificar RAW.
 - Seguridad de outputs: resultados reales pueden ser sensibles y no deben subirse a Git.
+
+## Estado Fase 4.3.2 (cierre de ajustes menores de readiness BC3)
+
+- Fase 4.3.1 implementada técnicamente.
+- Estado real heredado al inicio: `validation_metadata.status=WARNING` y `validation_readiness.global=VALIDATION_NEEDS_MINOR_ADJUSTMENTS`.
+- Objetivo: cerrar ajustes menores de clasificación/readiness para pasar a estado de avance sin forzar resultados.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+  - No subir outputs reales sensibles.

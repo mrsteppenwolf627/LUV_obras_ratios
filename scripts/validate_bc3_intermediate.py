@@ -63,6 +63,12 @@ def _classify_item(code: str) -> str:
         "AMBIGUOUS_ECONOMIC_TOKENS_NON_BLOCKING",
         "RELATION_ORPHAN_CHILD_NON_BLOCKING",
         "RELATION_ORPHAN_PARENT_NON_BLOCKING",
+        "RELATION_CHILD_NOT_IN_CONCEPTS",
+        "RELATION_PARENT_NOT_IN_CONCEPTS",
+        "AMBIGUOUS_ECONOMIC_TOKENS",
+        "ENCODING_MEDIUM_CONFIDENCE",
+        "MULTIPLE_UNITS_DETECTED",
+        "UNKNOWN_RECORD_TYPES_PRESENT",
     }:
         return "non_blocking_manual_review"
     if code in {
@@ -392,7 +398,7 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
     if global_readiness == READINESS_BLOCKED:
         phase_4_next_recommendation = "Do not advance: resolve validation blockers first."
     elif global_readiness == READINESS_NEEDS_MINOR:
-        phase_4_next_recommendation = "Apply minor adjustments (4.3.1) before stricter parser design."
+        phase_4_next_recommendation = "Apply minor readiness adjustments before stricter parser design."
     elif global_readiness == READINESS_READY_NON_BLOCKING:
         phase_4_next_recommendation = "Advance with non-blocking manual review tracked."
     else:
@@ -511,7 +517,7 @@ def write_outputs(root: Path, report: dict[str, Any]) -> tuple[Path, Path]:
     if status in {"BLOCKED", "ERROR"}:
         lines.append("- Do not proceed to next phase until structural issues are fixed.")
     elif status == "MANUAL_REVIEW_REQUIRED":
-        lines.append("- Proceed only after targeted manual review of flagged files.")
+        lines.append("- Proceed with non-blocking manual review items tracked and documented.")
     elif status == "WARNING":
         lines.append("- Proceed with caution and keep warnings tracked.")
     else:

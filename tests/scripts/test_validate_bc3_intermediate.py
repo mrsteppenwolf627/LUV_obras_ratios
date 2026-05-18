@@ -189,6 +189,16 @@ def test_readiness_needs_minor_adjustments_on_unclassified_warning():
     assert report["validation_readiness"]["global"] == "VALIDATION_NEEDS_MINOR_ADJUSTMENTS"
 
 
+def test_known_warning_codes_are_non_blocking_not_minor():
+    payload = _valid_intermediate()
+    payload["files"][0]["warnings"] = ["RELATION_CHILD_NOT_IN_CONCEPTS", "ENCODING_MEDIUM_CONFIDENCE"]
+    payload["files"][0]["manual_review_required"] = ["TRACKED"]
+    report = validate_intermediate(payload, "synthetic.json")
+    assert report["validation_readiness"]["global"] != "VALIDATION_NEEDS_MINOR_ADJUSTMENTS"
+    assert not any(item["code"] == "RELATION_CHILD_NOT_IN_CONCEPTS" for item in report["minor_adjustment_items"])
+    assert not any(item["code"] == "ENCODING_MEDIUM_CONFIDENCE" for item in report["minor_adjustment_items"])
+
+
 def test_unknown_records_predominant_blocks():
     payload = _valid_intermediate()
     payload["files"][0]["records"]["unknown_record_types"] = ["~Z", "~Y", "~X"]
@@ -216,3 +226,17 @@ def test_orphan_relations_massive_blocks():
     ]
     report = validate_intermediate(payload, "synthetic.json")
     assert any(item["code"] == "ORPHAN_RELATIONS_BLOCKING" for item in report["blocking_items"])
+
+
+def test_markdown_includes_non_blocking_recommendation():
+    root = _make_root()
+    try:
+        payload = _valid_intermediate()
+        payload["files"][0]["records"]["unknown_record_types"] = ["~Z"]
+        payload["files"][0]["manual_review_required"] = ["UNKNOWN_TYPES_TRACKED"]
+        report = validate_intermediate(payload, "synthetic.json")
+        _, md_path = write_outputs(root, report)
+        md = md_path.read_text(encoding="utf-8")
+        assert "non-blocking manual review items tracked and documented" in md
+    finally:
+        _cleanup(root)
