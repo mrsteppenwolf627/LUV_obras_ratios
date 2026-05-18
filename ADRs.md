@@ -20,6 +20,7 @@ Registro de decisiones arquitectonicas del proyecto.
 - ADR-014: Diseno preliminar de parser BC3 antes de importacion al master (Aprobado fase 4.0)
 - ADR-015: Normalizacion intermedia BC3 antes de importacion al master (Aprobado fase 5.0)
 - ADR-016: Estrategia multi-formato con prioridad Excel y Presto/PZH (Aprobado fase 5.3)
+- ADR-017: Contrato comun multi-formato para lectura y normalizacion intermedia (Aprobado fase 7.2)
 
 ## ADR-001: Adaptacion de roles multi-modelo
 
@@ -212,3 +213,19 @@ Con Fase 4 cerrada tecnicamente (parser y validador estrictos operativos, avance
 **Racional**
 
 La evidencia operativa indica que BC3 no sera siempre la fuente principal y que Excel/Presto/PZH tendran mayor presencia. Continuar invirtiendo solo en BC3 incrementa riesgo de desalineacion con la realidad de entrada. La estrategia multi-formato reduce ese riesgo, preserva el trabajo ya consolidado de BC3 y reequilibra esfuerzo hacia las fuentes con mayor impacto esperado.
+
+## ADR-017: Contrato comun multi-formato para lectura y normalizacion intermedia
+
+**Estado:** Aprobado (fase 7.2)
+
+**Decision**
+
+- El sistema debe converger a un contrato comun de lectura y diagnostico para Excel, Presto/PZH y BC3.
+- Excel requiere lector integral y una normalizacion intermedia antes de cualquier mapping final.
+- Presto/PZH se investigan primero con diagnostico tecnico para decidir si existe lectura directa o si requiere exportacion externa.
+- BC3 permanece como modulo avanzado ya operativo y no debe bloquear la consolidacion multi-formato.
+- Ningun formato debe importar al master ni calcular ratios en esta fase.
+
+**Racional**
+
+La realidad operativa mezcla formatos con frecuencias distintas. Un contrato comun evita desarrollar silos incompatibles, mantiene trazabilidad comparativa entre formatos y permite decidir por evidencia tecnica si Presto/PZH puede leerse nativamente o solo via exportacion.

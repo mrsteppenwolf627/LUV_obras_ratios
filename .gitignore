@@ -113,3 +113,15 @@ reports/bc3_intermediate_normalization_validation/*
 !reports/excel_full_reader/
 reports/excel_full_reader/*
 !reports/excel_full_reader/.gitkeep
+!reports/excel_full_reader_validation/
+reports/excel_full_reader_validation/*
+!reports/excel_full_reader_validation/.gitkeep
+!reports/excel_intermediate_normalization/
+reports/excel_intermediate_normalization/*
+!reports/excel_intermediate_normalization/.gitkeep
+!reports/presto_diagnostics/
+reports/presto_diagnostics/*
+!reports/presto_diagnostics/.gitkeep
+!reports/multiformat_inventory/
+reports/multiformat_inventory/*
+!reports/multiformat_inventory/.gitkeep

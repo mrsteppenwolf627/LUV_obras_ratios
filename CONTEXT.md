@@ -461,6 +461,24 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No modificar RAW.
   - No subir muestras reales ni reports reales.
 
+## Estado Fase 7.2 (consolidacion multi-formato Excel/Presto y contrato comun de lectura)
+
+- Fase 7.1 cerrada tecnicamente.
+- Fase 7.2 cerrada tecnicamente.
+- Objetivo cumplido: base comun de lectura y diagnostico para Excel y Presto/PZH, manteniendo BC3 como modulo avanzado ya operativo.
+- Excel: lector integral validado y normalizacion intermedia inicial implementada.
+- Presto/PZH: investigacion tecnica realizada; no se ha confirmado lectura nativa directa utilizable.
+- Inventario multi-formato comun implementado.
+- BC3 queda disponible, pero no es la prioridad unica.
+- Restricciones activas:
+  - No master.
+  - No ratios.
+  - No consolidacion final.
+  - No normalizacion final de categorias.
+  - No CATEGORY_MAPPING.
+  - No modificar RAW.
+  - No subir muestras reales ni reports reales.
+
 ## Estado Fase 7.1 (implementacion del lector integral Excel)
 
 - Fase 7.0 cerrada documentalmente.
