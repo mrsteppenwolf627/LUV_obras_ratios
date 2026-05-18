@@ -269,3 +269,17 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No modificar RAW.
   - No subir muestras reales.
   - No subir outputs reales sensibles.
+
+## Estado Fase 4.4.2 (tipificación de aptitud BC3 y exclusión controlada)
+
+- Fase 4.4.1 cerrada documentalmente.
+- Fase 4.4.2 iniciada para tipificar explícitamente aptitud de archivos BC3 y habilitar avance controlado por subconjunto válido.
+- Objetivo: distinguir archivos elegibles, elegibles con revisión no bloqueante, no aptos/auxiliares/corruptos y bloqueados estructurales.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+  - No subir muestras reales.
+  - No subir outputs reales sensibles.

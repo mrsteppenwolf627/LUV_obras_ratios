@@ -240,3 +240,69 @@ def test_markdown_includes_non_blocking_recommendation():
         assert "non-blocking manual review items tracked and documented" in md
     finally:
         _cleanup(root)
+
+
+def test_file_without_usable_structure_is_not_eligible_aux_or_corrupt():
+    payload = _valid_intermediate()
+    payload["files"][0]["header"]["has_v"] = False
+    payload["files"][0]["concepts"] = []
+    payload["files"][0]["relations"]["links"] = []
+    payload["files"][0]["risk_flags"] = ["DECODE_FAILED"]
+    payload["files"][0]["warnings"] = []
+    payload["files"][0]["manual_review_required"] = ["DECODE_BLOCKER"]
+    report = validate_intermediate(payload, "synthetic.json")
+    file_report = report["files"][0]
+    assert file_report["file_eligibility_status"] == "NOT_ELIGIBLE_AUXILIARY_OR_CORRUPT"
+    assert file_report["can_advance_in_valid_subset"] is False
+    assert file_report["blocks_full_corpus"] is False
+
+
+def test_massive_orphans_are_blocked_structural_issue():
+    payload = _valid_intermediate()
+    payload["files"][0]["concepts"] = [{"line_number": 1, "record_type": "~C", "code": "CAP01#"}]
+    payload["files"][0]["relations"]["links"] = [
+        {"line_number": i + 1, "parent_code": "CAP01#", "child_code": f"MISS{i}"} for i in range(20)
+    ]
+    report = validate_intermediate(payload, "synthetic.json")
+    file_report = report["files"][0]
+    assert file_report["file_eligibility_status"] == "BLOCKED_STRUCTURAL_ISSUE"
+    assert file_report["blocks_full_corpus"] is True
+
+
+def test_non_blocking_warnings_are_eligible_with_manual_review():
+    payload = _valid_intermediate()
+    payload["files"][0]["records"]["unknown_record_types"] = ["~Z"]
+    payload["files"][0]["manual_review_required"] = ["UNKNOWN_TYPES_TRACKED"]
+    report = validate_intermediate(payload, "synthetic.json")
+    file_report = report["files"][0]
+    assert file_report["file_eligibility_status"] == "ELIGIBLE_WITH_NON_BLOCKING_MANUAL_REVIEW"
+    assert file_report["can_advance_in_valid_subset"] is True
+
+
+def test_valid_subset_can_advance_with_excluded_file():
+    payload = _valid_intermediate()
+    payload["files"].append(_base_file_entry())
+    payload["files"][1]["file_ref"]["sanitized_id"] = "BC3_02"
+    payload["files"][1]["header"]["has_v"] = False
+    payload["files"][1]["concepts"] = []
+    payload["files"][1]["relations"]["links"] = []
+    payload["files"][1]["risk_flags"] = ["DECODE_FAILED"]
+    report = validate_intermediate(payload, "synthetic.json")
+    summary = report["global_validation_summary"]
+    assert summary["valid_subset_status"] == "ADVANCE_ALLOWED"
+    assert summary["eligible_files_count"] >= 1
+    assert summary["excluded_or_not_eligible_count"] >= 1
+
+
+def test_full_corpus_blocked_when_structural_issue_exists():
+    payload = _valid_intermediate()
+    payload["files"].append(_base_file_entry())
+    payload["files"][1]["file_ref"]["sanitized_id"] = "BC3_02"
+    payload["files"][1]["concepts"] = [{"line_number": 1, "record_type": "~C", "code": "CAP01#"}]
+    payload["files"][1]["relations"]["links"] = [
+        {"line_number": i + 1, "parent_code": "CAP01#", "child_code": f"MISS{i}"} for i in range(20)
+    ]
+    report = validate_intermediate(payload, "synthetic.json")
+    summary = report["global_validation_summary"]
+    assert summary["full_corpus_status"] == "BLOCKED"
+    assert summary["structurally_blocked_count"] >= 1

@@ -34,6 +34,11 @@ READINESS_READY_NON_BLOCKING = "VALIDATION_READY_WITH_NON_BLOCKING_MANUAL_REVIEW
 READINESS_NEEDS_MINOR = "VALIDATION_NEEDS_MINOR_ADJUSTMENTS"
 READINESS_BLOCKED = "VALIDATION_BLOCKED"
 
+ELIGIBLE_STRICT = "ELIGIBLE_FOR_PRELIMINARY_FLOW"
+ELIGIBLE_NON_BLOCKING = "ELIGIBLE_WITH_NON_BLOCKING_MANUAL_REVIEW"
+NOT_ELIGIBLE_AUX_CORRUPT = "NOT_ELIGIBLE_AUXILIARY_OR_CORRUPT"
+BLOCKED_STRUCTURAL = "BLOCKED_STRUCTURAL_ISSUE"
+
 
 def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -80,6 +85,55 @@ def _classify_item(code: str) -> str:
     return "minor_adjustment_item"
 
 
+def _infer_file_eligibility(
+    entry: dict[str, Any],
+    file_blockers: list[dict[str, str]],
+    file_manual_blockers: list[dict[str, str]],
+    file_manual_non_blocking: list[dict[str, str]],
+) -> dict[str, Any]:
+    header = entry.get("header", {})
+    concepts = entry.get("concepts", [])
+    relations = entry.get("relations", {}).get("links", [])
+    risk_flags = entry.get("risk_flags", [])
+    has_useful_structure = bool(header.get("has_v")) or bool(concepts) or bool(relations)
+    has_decode_failure = "DECODE_FAILED" in risk_flags
+
+    if has_decode_failure and not has_useful_structure:
+        return {
+            "file_eligibility_status": NOT_ELIGIBLE_AUX_CORRUPT,
+            "file_eligibility_reason": "Decode failure with no usable BC3 structure (~V/~C/~D).",
+            "can_advance_in_valid_subset": False,
+            "blocks_full_corpus": False,
+            "exclusion_recommendation": "Exclude from preliminary flow and keep as auxiliary/reference.",
+        }
+
+    if file_blockers or file_manual_blockers:
+        return {
+            "file_eligibility_status": BLOCKED_STRUCTURAL,
+            "file_eligibility_reason": "Structural blockers detected in intermediate validation.",
+            "can_advance_in_valid_subset": False,
+            "blocks_full_corpus": True,
+            "exclusion_recommendation": "Do not include in valid subset until structural issue is resolved.",
+        }
+
+    if file_manual_non_blocking:
+        return {
+            "file_eligibility_status": ELIGIBLE_NON_BLOCKING,
+            "file_eligibility_reason": "Non-blocking manual review items detected.",
+            "can_advance_in_valid_subset": True,
+            "blocks_full_corpus": False,
+            "exclusion_recommendation": "Include in valid subset with tracked manual review.",
+        }
+
+    return {
+        "file_eligibility_status": ELIGIBLE_STRICT,
+        "file_eligibility_reason": "No blocking issues and no non-blocking manual review items.",
+        "can_advance_in_valid_subset": True,
+        "blocks_full_corpus": False,
+        "exclusion_recommendation": "Include in preliminary flow.",
+    }
+
+
 def validate_intermediate(report: dict[str, Any], source_path: str, unknown_threshold: int = 2) -> dict[str, Any]:
     validation_files: list[dict[str, Any]] = []
     blocking_errors: list[dict[str, Any]] = []
@@ -90,6 +144,9 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
     non_blocking_manual_review_items: list[dict[str, Any]] = []
     future_human_decisions: list[dict[str, Any]] = []
     minor_adjustment_items: list[dict[str, Any]] = []
+    eligible_files_count = 0
+    excluded_or_not_eligible_count = 0
+    structurally_blocked_count = 0
 
     missing_root = [k for k in REQUIRED_ROOT_KEYS if k not in report]
     if missing_root:
@@ -370,6 +427,14 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
                 "info": file_info,
             }
         )
+        eligibility = _infer_file_eligibility(entry, file_blockers, file_manual_blockers, file_manual_non_blocking)
+        validation_files[-1].update(eligibility)
+        if eligibility["file_eligibility_status"] in {ELIGIBLE_STRICT, ELIGIBLE_NON_BLOCKING}:
+            eligible_files_count += 1
+        else:
+            excluded_or_not_eligible_count += 1
+        if eligibility["file_eligibility_status"] == BLOCKED_STRUCTURAL:
+            structurally_blocked_count += 1
         blocking_errors.extend({"file": sid, **item} for item in file_errors)
         manual_review_items.extend({"file": sid, **item} for item in file_manual)
         warnings_items.extend({"file": sid, **item} for item in file_warnings)
@@ -404,6 +469,9 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
     else:
         phase_4_next_recommendation = "Ready to advance to stricter parser design."
 
+    full_corpus_status = "BLOCKED" if structurally_blocked_count > 0 else "NOT_BLOCKED"
+    valid_subset_status = "ADVANCE_ALLOWED" if eligible_files_count > 0 else "NO_ELIGIBLE_FILES"
+
     return {
         "validation_metadata": {
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -419,6 +487,11 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
             "files_with_errors": sum(1 for f in validation_files if f["errors"]),
             "files_with_manual_review": sum(1 for f in validation_files if f["manual_review_items"]),
             "files_with_warnings": sum(1 for f in validation_files if f["warnings"]),
+            "full_corpus_status": full_corpus_status,
+            "valid_subset_status": valid_subset_status,
+            "eligible_files_count": eligible_files_count,
+            "excluded_or_not_eligible_count": excluded_or_not_eligible_count,
+            "structurally_blocked_count": structurally_blocked_count,
         },
         "blocking_errors": blocking_errors,
         "blocking_items": blocking_items,
