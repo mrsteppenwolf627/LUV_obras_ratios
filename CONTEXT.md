@@ -371,3 +371,18 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No normalizar categorias finales.
   - No modificar RAW.
   - No subir muestras reales ni reports reales sensibles.
+
+## Estado Fase 5.1 (implementacion inicial del normalizador intermedio BC3)
+
+- Fase 4 cerrada documentalmente como bloque BC3 de parsing/validacion estructural.
+- Fase 5.0 documentada como diseno de normalizacion intermedia BC3.
+- Fase 5.1 iniciada para implementar el primer normalizador intermedio BC3.
+- Fase 5 sigue abierta.
+- Objetivo: transformar salida estricta BC3 a estructura intermedia normalizada y trazable para validaciones futuras.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidacion final de importes.
+  - No normalizacion final de categorias.
+  - No modificar RAW.
+  - No subir samples ni reports reales sensibles.

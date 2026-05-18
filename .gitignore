@@ -102,3 +102,7 @@ reports/bc3_strict_parse/*
 !reports/bc3_strict_validation/
 reports/bc3_strict_validation/*
 !reports/bc3_strict_validation/.gitkeep
+# intermediate normalization reports
+!reports/bc3_intermediate_normalization/
+reports/bc3_intermediate_normalization/*
+!reports/bc3_intermediate_normalization/.gitkeep
