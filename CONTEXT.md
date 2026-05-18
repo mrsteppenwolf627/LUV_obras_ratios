@@ -430,3 +430,16 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No normalizar categorias finales.
   - No modificar RAW.
   - No subir muestras reales ni reports sensibles.
+
+## Estado Fase 6.1 (perfilado profundo de hojas Excel reales)
+
+- Fase 6 cerrada tecnicamente con diagnostico Excel operativo.
+- Fase 6.1 iniciada para perfilado profundo de hojas `WORKSHEET` reales.
+- Objetivo: entender por que no se detectaron tablas/cabeceras/columnas candidatas en Fase 6 y ampliar heuristicas de deteccion estructural.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidacion final.
+  - No normalizacion final.
+  - No modificar RAW.
+  - No subir muestras ni reports reales.
