@@ -58,7 +58,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 4.0 - Diseño documental parser BC3 preliminar | Completado (documental) | Diseño cerrado en `docs/decisions/phase_4_0_bc3_preliminary_parser_design.md` y ADR-014 |
 | Fase 4.1 - Implementación parser BC3 preliminar | Completado (técnico) | Parser preliminar implementado, validado y ejecutado localmente |
 | Fase 4.2 - Validación estructura intermedia BC3 | Completado (técnico) | Validador implementado, pruebas en verde y ejecución real con estado `MANUAL_REVIEW_REQUIRED` |
-| Fase 4.3 - Readiness de validación BC3 | En curso | Contrato de resolución de manual review y readiness por archivo/lote |
+| Fase 4.3 - Readiness de validación BC3 | Completado (técnico) | Readiness y manual review cerrados con exclusión controlada |
+| Fase 7.0 - Diseño lector integral Excel | En curso | Contrato documental del lector integral Excel |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -434,8 +435,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 ## Estado Fase 6.1 (perfilado profundo de hojas Excel reales)
 
 - Fase 6 cerrada tecnicamente con diagnostico Excel operativo.
-- Fase 6.1 iniciada para perfilado profundo de hojas `WORKSHEET` reales.
-- Objetivo: entender por que no se detectaron tablas/cabeceras/columnas candidatas en Fase 6 y ampliar heuristicas de deteccion estructural.
+- Fase 6.1 cerrada tecnicamente con perfilado profundo de hojas `WORKSHEET` reales.
+- Resultado: heuristicas ampliadas de rangos usados, densidad, cabeceras candidatas, columnas candidatas y muestras sanitizadas.
 - Restricciones activas:
   - No importar al master.
   - No calcular ratios.
@@ -443,3 +444,18 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No normalizacion final.
   - No modificar RAW.
   - No subir muestras ni reports reales.
+
+## Estado Fase 7.0 (diseno documental del lector integral Excel)
+
+- Fase 6.1 cerrada tecnicamente.
+- Fase 7.0 iniciada con objetivo documental: definir el contrato del lector integral Excel antes de implementar el lector final.
+- Excel queda como formato prioritario del sistema.
+- El lector integral Excel debe ser no destructivo, trazable por archivo/hoja/celda y consciente de hojas no tabulares.
+- Restricciones activas:
+  - No master.
+  - No ratios.
+  - No consolidacion final.
+  - No normalizacion final de categorias.
+  - No CATEGORY_MAPPING.
+  - No modificar RAW.
+  - No subir muestras reales ni reports reales.
