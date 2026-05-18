@@ -21,6 +21,7 @@ Registro de decisiones arquitectonicas del proyecto.
 - ADR-015: Normalizacion intermedia BC3 antes de importacion al master (Aprobado fase 5.0)
 - ADR-016: Estrategia multi-formato con prioridad Excel y Presto/PZH (Aprobado fase 5.3)
 - ADR-017: Contrato comun multi-formato para lectura y normalizacion intermedia (Aprobado fase 7.2)
+- ADR-018: Soporte obligatorio Presto/PZH mediante ruta tecnica evidenciada (Aprobado fase 8)
 
 ## ADR-001: Adaptacion de roles multi-modelo
 
@@ -229,3 +230,24 @@ La evidencia operativa indica que BC3 no sera siempre la fuente principal y que 
 **Racional**
 
 La realidad operativa mezcla formatos con frecuencias distintas. Un contrato comun evita desarrollar silos incompatibles, mantiene trazabilidad comparativa entre formatos y permite decidir por evidencia tecnica si Presto/PZH puede leerse nativamente o solo via exportacion.
+
+## ADR-018: Soporte obligatorio Presto/PZH mediante ruta tecnica evidenciada
+
+**Estado:** Aprobado (fase 8)
+
+**Decision**
+
+- Presto/PZH es un objetivo obligatorio del proyecto y no puede omitirse del roadmap sin permiso explicito.
+- El estado tecnico actual no justifica un parser nativo improvisado.
+- La via de soporte debe basarse en evidencia tecnica y puede ser una de estas rutas:
+  - exportacion desde Presto a BC3;
+  - exportacion desde Presto a Excel;
+  - herramienta externa especializada;
+  - libreria especializada si demuestra viabilidad real;
+  - investigacion tecnica adicional;
+  - flujo alternativo documentado.
+- Mientras no exista evidencia adicional, los archivos Presto-like clasificados como `NEEDS_VENDOR_EXPORT` permanecen como referencia tecnica y no se fuerzan a lectura nativa.
+
+**Racional**
+
+Presto/PZH forma parte del corpus real del proyecto y no debe desaparecer del roadmap por conveniencia tecnica. A la vez, el diagnostico actual muestra ausencia de lectura nativa directa utilizable, por lo que la opcion segura es sostener el soporte por una ruta evidenciada y trazable, no inventar un parser sin base suficiente.

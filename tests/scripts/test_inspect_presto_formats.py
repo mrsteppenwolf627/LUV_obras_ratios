@@ -33,6 +33,10 @@ def test_zip_container_classified_with_standard_library():
         assert item["support_classification"] == "READABLE_WITH_STANDARD_LIBRARY"
         assert item["parser_or_reader_used"] == "zipfile"
         assert item["internal_names_sample"] == ["inside.txt"]
+        assert item["is_zip"] is True
+        assert item["can_use_standard_library"] is True
+        assert item["has_internal_names_visible"] is True
+        assert item["requires_vendor_export"] is False
     finally:
         _cleanup(root)
 
@@ -53,6 +57,9 @@ def test_sqlite_container_classified_with_standard_library():
         assert item["support_classification"] == "READABLE_WITH_STANDARD_LIBRARY"
         assert item["parser_or_reader_used"] == "sqlite3"
         assert item["internal_names_sample"]
+        assert item["is_sqlite"] is True
+        assert item["can_use_standard_library"] is True
+        assert item["has_internal_names_visible"] is True
     finally:
         _cleanup(root)
 
@@ -67,6 +74,9 @@ def test_text_like_presto_file_classified_directly_readable():
         item = next(item for item in payload["files"] if item["relative_path_sanitized"] == "data/samples/record.PrestoRecord")
         assert item["support_classification"] == "DIRECTLY_READABLE"
         assert item["parser_or_reader_used"] == "text_decoder"
+        assert item["is_text"] is True
+        assert item["has_visible_strings"] is True
+        assert item["can_use_standard_library"] is True
     finally:
         _cleanup(root)
 
@@ -81,7 +91,25 @@ def test_binary_presto_like_file_needs_vendor_export():
         item = next(item for item in payload["files"] if item["relative_path_sanitized"] == "data/samples/backup.PrestoBackup")
         assert item["support_classification"] == "NEEDS_VENDOR_EXPORT"
         assert item["parser_or_reader_used"] == "none"
+        assert item["is_binary"] is True
+        assert item["requires_vendor_export"] is True
+        assert item["can_use_standard_library"] is False
         assert payload["manual_review"]
+    finally:
+        _cleanup(root)
+
+
+def test_unknown_magic_presto_like_file_needs_vendor_export():
+    root = _make_root()
+    try:
+        file_path = root / "data" / "samples" / "mystery.Presto"
+        file_path.write_bytes(b"")
+
+        payload = inspect_presto_formats(root)
+        item = next(item for item in payload["files"] if item["relative_path_sanitized"] == "data/samples/mystery.Presto")
+        assert item["magic_kind"] == "empty"
+        assert item["support_classification"] == "NEEDS_VENDOR_EXPORT"
+        assert item["requires_vendor_export"] is True
     finally:
         _cleanup(root)
 
@@ -129,4 +157,3 @@ def test_does_not_modify_input_file():
         assert before == after
     finally:
         _cleanup(root)
-

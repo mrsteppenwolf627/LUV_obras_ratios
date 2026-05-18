@@ -17,14 +17,15 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
   - `eligible_files_count=4`
   - `excluded_files_count=1`
 - Decision humana vigente: `BC3_02` queda excluido del flujo principal como `NOT_ELIGIBLE_AUXILIARY_OR_CORRUPT` y se mantiene solo como referencia tecnica.
-- Reorientacion vigente: estrategia multi-formato con prioridad alta en Excel y Presto/PZH; BC3 queda como modulo disponible, no como unica prioridad.
+- Reorientacion vigente: estrategia multi-formato con prioridad alta en Excel y Presto/PZH; Presto/PZH es obligatorio y no puede omitirse del roadmap sin permiso explicito; BC3 queda como modulo disponible, no como unica prioridad.
 
 ## Fase actual
 
 - Fase 7.2 cerrada tecnicamente: consolidacion multi-formato Excel/Presto y contrato comun de lectura.
+- Fase 8 iniciada: estrategia tecnica obligatoria para soporte Presto/PZH.
 - BC3 permanece como modulo avanzado ya operativo.
 - Excel cuenta con lector integral, validacion de contrato y normalizacion intermedia inicial.
-- Presto/PZH ha sido investigado tecnicamente y no ha mostrado lectura nativa directa utilizable.
+- Presto/PZH ha sido investigado tecnicamente; no ha mostrado lectura nativa directa utilizable y sigue requiriendo una via tecnica valida.
 - Inventario multi-formato comun disponible.
 
 ## Restricciones criticas activas

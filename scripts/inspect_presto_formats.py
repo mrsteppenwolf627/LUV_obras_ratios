@@ -66,6 +66,29 @@ def _sample_text(raw: bytes, limit: int = 16) -> list[str]:
     return lines
 
 
+def _base_physical_flags(magic: str, support_classification: str) -> dict[str, Any]:
+    is_zip = magic == "zip"
+    is_sqlite = magic == "sqlite"
+    is_text = magic == "text"
+    is_binary = magic in {"binary", "zip", "sqlite"}
+    has_visible_strings = is_text
+    can_use_standard_library = support_classification in {"DIRECTLY_READABLE", "READABLE_WITH_STANDARD_LIBRARY"}
+    requires_external_tool = support_classification == "NEEDS_EXTERNAL_TOOL"
+    requires_vendor_export = support_classification == "NEEDS_VENDOR_EXPORT"
+    return {
+        "is_binary": is_binary,
+        "is_text": is_text,
+        "is_zip": is_zip,
+        "is_sqlite": is_sqlite,
+        "has_visible_strings": has_visible_strings,
+        "has_internal_names_visible": False,
+        "can_use_standard_library": can_use_standard_library,
+        "requires_external_tool": requires_external_tool,
+        "requires_vendor_export": requires_vendor_export,
+        "header_identifiable": has_visible_strings or is_zip or is_sqlite,
+    }
+
+
 def _inspect_zip(path: Path) -> dict[str, Any]:
     names: list[str] = []
     try:
@@ -76,6 +99,8 @@ def _inspect_zip(path: Path) -> dict[str, Any]:
             "parser_or_reader_used": "zipfile",
             "internal_names_sample": names,
             "notes": "Zip container readable with standard library.",
+            **_base_physical_flags("zip", "READABLE_WITH_STANDARD_LIBRARY"),
+            "has_internal_names_visible": bool(names),
         }
     except Exception as exc:
         return {
@@ -83,6 +108,8 @@ def _inspect_zip(path: Path) -> dict[str, Any]:
             "parser_or_reader_used": "zipfile_failed",
             "internal_names_sample": names,
             "notes": f"Zip container not readable with standard library: {exc}",
+            **_base_physical_flags("zip", "NEEDS_EXTERNAL_TOOL"),
+            "has_internal_names_visible": bool(names),
         }
 
 
@@ -100,6 +127,8 @@ def _inspect_sqlite(path: Path) -> dict[str, Any]:
             "parser_or_reader_used": "sqlite3",
             "internal_names_sample": tables,
             "notes": "SQLite container readable with standard library.",
+            **_base_physical_flags("sqlite", "READABLE_WITH_STANDARD_LIBRARY"),
+            "has_internal_names_visible": bool(tables),
         }
     except Exception as exc:
         return {
@@ -107,6 +136,8 @@ def _inspect_sqlite(path: Path) -> dict[str, Any]:
             "parser_or_reader_used": "sqlite3_failed",
             "internal_names_sample": tables,
             "notes": f"SQLite container not readable with standard library: {exc}",
+            **_base_physical_flags("sqlite", "NEEDS_EXTERNAL_TOOL"),
+            "has_internal_names_visible": bool(tables),
         }
 
 
@@ -117,6 +148,7 @@ def _inspect_text(path: Path, raw: bytes) -> dict[str, Any]:
         "parser_or_reader_used": "text_decoder",
         "internal_names_sample": sample_lines,
         "notes": "Plain text-like content readable without vendor tooling.",
+        **_base_physical_flags("text", "DIRECTLY_READABLE"),
     }
 
 
@@ -128,12 +160,14 @@ def _inspect_binary(path: Path, raw: bytes, ext: str) -> dict[str, Any]:
             "parser_or_reader_used": "none",
             "internal_names_sample": [],
             "notes": "Binary/proprietary-like content. Vendor export or specialized tool may be required.",
+            **_base_physical_flags("binary", "NEEDS_VENDOR_EXPORT"),
         }
     return {
         "support_classification": "UNSUPPORTED_OR_UNKNOWN",
         "parser_or_reader_used": "none",
         "internal_names_sample": [],
         "notes": "Not recognized as a Presto/PZH-like target.",
+        **_base_physical_flags("binary", "UNSUPPORTED_OR_UNKNOWN"),
     }
 
 
@@ -182,6 +216,13 @@ def inspect_presto_formats(root: Path) -> dict[str, Any]:
         "needs_external_tool_total": 0,
         "needs_vendor_export_total": 0,
         "unsupported_or_unknown_total": 0,
+        "binary_like_total": 0,
+        "text_like_total": 0,
+        "zip_like_total": 0,
+        "sqlite_like_total": 0,
+        "visible_strings_total": 0,
+        "internal_names_visible_total": 0,
+        "standard_library_readable_total": 0,
     }
 
     for path in all_files:
@@ -241,6 +282,21 @@ def inspect_presto_formats(root: Path) -> dict[str, Any]:
         else:
             counts["unsupported_or_unknown_total"] += 1
 
+        if sample.get("is_binary"):
+            counts["binary_like_total"] += 1
+        if sample.get("is_text"):
+            counts["text_like_total"] += 1
+        if sample.get("is_zip"):
+            counts["zip_like_total"] += 1
+        if sample.get("is_sqlite"):
+            counts["sqlite_like_total"] += 1
+        if sample.get("has_visible_strings"):
+            counts["visible_strings_total"] += 1
+        if sample.get("has_internal_names_visible"):
+            counts["internal_names_visible_total"] += 1
+        if sample.get("can_use_standard_library"):
+            counts["standard_library_readable_total"] += 1
+
         if sample["support_classification"] in {"NEEDS_EXTERNAL_TOOL", "NEEDS_VENDOR_EXPORT"}:
             manual_review.append(f"{rel}:{sample['support_classification']}")
             warnings.append(f"{rel}:{sample['support_classification']}")
@@ -289,6 +345,15 @@ def write_reports(root: Path, payload: dict[str, Any]) -> tuple[Path, Path]:
         lines.append(f"- Support classification: {item.get('support_classification')}")
         lines.append(f"- Reader used: {item.get('parser_or_reader_used')}")
         lines.append(f"- Magic kind: {item.get('magic_kind')}")
+        lines.append(f"- Is binary: {item.get('is_binary')}")
+        lines.append(f"- Is text: {item.get('is_text')}")
+        lines.append(f"- Is zip: {item.get('is_zip')}")
+        lines.append(f"- Is sqlite: {item.get('is_sqlite')}")
+        lines.append(f"- Has visible strings: {item.get('has_visible_strings')}")
+        lines.append(f"- Has internal names visible: {item.get('has_internal_names_visible')}")
+        lines.append(f"- Can use standard library: {item.get('can_use_standard_library')}")
+        lines.append(f"- Requires external tool: {item.get('requires_external_tool')}")
+        lines.append(f"- Requires vendor export: {item.get('requires_vendor_export')}")
         lines.append(f"- Notes: {item.get('notes')}")
         lines.append("")
 

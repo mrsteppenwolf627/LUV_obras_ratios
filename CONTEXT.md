@@ -61,6 +61,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 4.3 - Readiness de validación BC3 | Completado (técnico) | Readiness y manual review cerrados con exclusión controlada |
 | Fase 7.0 - Diseño lector integral Excel | Completado (documental) | Contrato documental del lector integral Excel |
 | Fase 7.1 - Implementación lector integral Excel | Completado (técnico) | Lector integral Excel trazable y no destructivo |
+| Fase 7.2 - Consolidacion multi-formato Excel/Presto y contrato comun de lectura | Completado (tecnico) | Base comun Excel/Presto/PZH e inventario multi-formato |
+| Fase 8 - Estrategia tecnica obligatoria Presto/PZH | En curso | Presto/PZH es obligatorio y requiere via tecnica valida |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -470,6 +472,23 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Presto/PZH: investigacion tecnica realizada; no se ha confirmado lectura nativa directa utilizable.
 - Inventario multi-formato comun implementado.
 - BC3 queda disponible, pero no es la prioridad unica.
+- Restricciones activas:
+  - No master.
+  - No ratios.
+  - No consolidacion final.
+  - No normalizacion final de categorias.
+  - No CATEGORY_MAPPING.
+  - No modificar RAW.
+  - No subir muestras reales ni reports reales.
+
+## Estado Fase 8 (estrategia tecnica obligatoria para soporte Presto/PZH)
+
+- Fase 7.2 cerrada tecnicamente.
+- Fase 8 iniciada.
+- Presto/PZH es obligatorio para el proyecto y no puede omitirse del roadmap sin permiso explicito.
+- Estado tecnico actual: 10 archivos Presto-like detectados, clasificados como `NEEDS_VENDOR_EXPORT`.
+- No existe lectura nativa directa utilizable confirmada.
+- La estrategia debe pasar por exportacion a BC3 o Excel, herramienta externa, libreria especializada si se demuestra viable, o flujo alternativo documentado.
 - Restricciones activas:
   - No master.
   - No ratios.
