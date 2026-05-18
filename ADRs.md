@@ -19,6 +19,7 @@ Registro de decisiones arquitectonicas del proyecto.
 - ADR-013: Extractor diagnostico BC3 antes de parser definitivo (Aprobado fase 3)
 - ADR-014: Diseno preliminar de parser BC3 antes de importacion al master (Aprobado fase 4.0)
 - ADR-015: Normalizacion intermedia BC3 antes de importacion al master (Aprobado fase 5.0)
+- ADR-016: Estrategia multi-formato con prioridad Excel y Presto/PZH (Aprobado fase 5.3)
 
 ## ADR-001: Adaptacion de roles multi-modelo
 
@@ -195,3 +196,19 @@ Tras Fase 3.5 hay readiness positivo para diseno preliminar, pero persiste varia
 **Racional**
 
 Con Fase 4 cerrada tecnicamente (parser y validador estrictos operativos, avance permitido sobre subconjunto valido con exclusiones controladas), el siguiente paso requiere estructurar datos sin mezclar decisiones de negocio final. Esta separacion reduce riesgo de sobreinterpretacion, protege auditabilidad y mantiene control de alcance antes de mapping final y carga al master.
+
+## ADR-016: Estrategia multi-formato con prioridad Excel y Presto/PZH
+
+**Estado:** Aprobado (fase 5.3)
+
+**Decision**
+
+- BC3 se mantiene como modulo avanzado disponible, pero deja de ser prioridad unica del roadmap.
+- Se pausa el endurecimiento adicional de schema BC3 previsto tras Fase 5.2.
+- Excel y Presto/PZH pasan a prioridad alta por frecuencia real de uso en fuentes del negocio.
+- El siguiente bloque de trabajo se centra en diagnostico tecnico por formato (Excel y Presto/PZH) antes de nuevas implementaciones de extraccion/normalizacion.
+- Se mantiene el marco de restricciones: sin importacion al master, sin calculo de ratios, sin consolidacion final de importes, sin normalizacion final de categorias y sin UX en esta etapa.
+
+**Racional**
+
+La evidencia operativa indica que BC3 no sera siempre la fuente principal y que Excel/Presto/PZH tendran mayor presencia. Continuar invirtiendo solo en BC3 incrementa riesgo de desalineacion con la realidad de entrada. La estrategia multi-formato reduce ese riesgo, preserva el trabajo ya consolidado de BC3 y reequilibra esfuerzo hacia las fuentes con mayor impacto esperado.

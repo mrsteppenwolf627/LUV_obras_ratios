@@ -400,3 +400,20 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No CATEGORY_MAPPING todavia.
   - No modificar RAW.
   - No subir samples ni reports reales sensibles.
+
+## Estado Fase 5.3 (replanteamiento multi-formato y prioridad Excel/Presto)
+
+- Fase 5.2 cerrada tecnicamente con validador de contrato de normalizacion intermedia BC3 operativo.
+- Decision humana vigente: no lanzar endurecimiento adicional BC3 en esta etapa.
+- BC3 queda disponible como modulo avanzado (parseo estricto, validacion estricta, normalizacion intermedia y validacion de contrato), pero deja de ser prioridad unica.
+- Estrategia activa: enfoque multi-formato con prioridad alta para Excel y Presto/PZH.
+- Siguiente bloque recomendado: diagnostico tecnico acotado de Excel y Presto/PZH antes de nuevos extractores/normalizadores por formato.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidacion final de importes.
+  - No normalizacion final de categorias.
+  - No UX todavia.
+  - No CATEGORY_MAPPING todavia.
+  - No modificar RAW.
+  - No subir samples ni reports reales sensibles.
