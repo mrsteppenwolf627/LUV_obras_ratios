@@ -283,3 +283,17 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No modificar RAW.
   - No subir muestras reales.
   - No subir outputs reales sensibles.
+
+## Estado Fase 4.4.3 (análisis y regresión sintética del bloqueo estructural BC3_03)
+
+- Fase 4.4.2 cerrada técnicamente con tipificación de aptitud por archivo y avance permitido por subconjunto válido.
+- Fase 4.4.3 iniciada para analizar de forma acotada el bloqueo estructural de `BC3_03` (`ORPHAN_RELATIONS_BLOCKING`).
+- Objetivo: discriminar si el bloqueo proviene de parser preliminar, validador, variante BC3/FIEBDC no cubierta o inconsistencia real de archivo.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+  - No subir muestras reales.
+  - No subir outputs reales sensibles.

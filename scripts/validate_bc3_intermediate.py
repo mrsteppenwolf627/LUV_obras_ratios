@@ -85,6 +85,15 @@ def _classify_item(code: str) -> str:
     return "minor_adjustment_item"
 
 
+def _canonical_concept_code(code: str) -> str:
+    raw = str(code or "").strip()
+    return raw[:-1] if raw.endswith("#") else raw
+
+
+def _code_in_concepts(code: str, canonical_concepts: set[str]) -> bool:
+    return _canonical_concept_code(code) in canonical_concepts
+
+
 def _infer_file_eligibility(
     entry: dict[str, Any],
     file_blockers: list[dict[str, str]],
@@ -251,12 +260,13 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
             for c in concepts
             if isinstance(c, dict) and str(c.get("code", "")).strip()
         }
+        canonical_concept_codes = {_canonical_concept_code(code) for code in concept_codes}
         relations = entry.get("relations", {}).get("links", [])
         orphan_count = 0
         for rel in relations:
             parent = str(rel.get("parent_code", "")).strip()
             child = str(rel.get("child_code", "")).strip()
-            if parent and concept_codes and parent not in concept_codes:
+            if parent and concept_codes and not _code_in_concepts(parent, canonical_concept_codes):
                 file_warnings.append(
                     {
                         "severity": "WARNING",
@@ -265,7 +275,7 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
                     }
                 )
                 orphan_count += 1
-            if child and concept_codes and child not in concept_codes:
+            if child and concept_codes and not _code_in_concepts(child, canonical_concept_codes):
                 file_warnings.append(
                     {
                         "severity": "WARNING",

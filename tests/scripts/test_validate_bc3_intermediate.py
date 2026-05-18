@@ -306,3 +306,32 @@ def test_full_corpus_blocked_when_structural_issue_exists():
     summary = report["global_validation_summary"]
     assert summary["full_corpus_status"] == "BLOCKED"
     assert summary["structurally_blocked_count"] >= 1
+
+
+def test_hash_suffix_code_variant_does_not_count_as_orphan():
+    payload = _valid_intermediate()
+    payload["files"][0]["concepts"] = [
+        {"line_number": 1, "record_type": "~C", "code": "00#"},
+        {"line_number": 2, "record_type": "~C", "code": "01#"},
+    ]
+    payload["files"][0]["relations"]["links"] = [
+        {"line_number": 3, "parent_code": "00", "child_code": "01"},
+    ]
+    report = validate_intermediate(payload, "synthetic.json")
+    assert not any(item["code"] == "RELATION_PARENT_NOT_IN_CONCEPTS" for item in report["warnings"])
+    assert not any(item["code"] == "RELATION_CHILD_NOT_IN_CONCEPTS" for item in report["warnings"])
+    assert not any(item["code"] == "ORPHAN_RELATIONS_BLOCKING" for item in report["blocking_items"])
+
+
+def test_missing_root_relation_still_blocks_after_hash_normalization():
+    payload = _valid_intermediate()
+    payload["files"][0]["concepts"] = [
+        {"line_number": 1, "record_type": "~C", "code": "00#"},
+        {"line_number": 2, "record_type": "~C", "code": "01#"},
+    ]
+    payload["files"][0]["relations"]["links"] = [
+        {"line_number": i + 1, "parent_code": "VIVIENDA_UNIFAMILIAR", "child_code": "00"} for i in range(20)
+    ]
+    report = validate_intermediate(payload, "synthetic.json")
+    assert any(item["code"] == "RELATION_PARENT_NOT_IN_CONCEPTS" for item in report["warnings"])
+    assert any(item["code"] == "ORPHAN_RELATIONS_BLOCKING" for item in report["blocking_items"])
