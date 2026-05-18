@@ -1,103 +1,48 @@
 # LUV Obras Ratios
 
-Sistema interno para importaci?n, validaci?n y c?lculo progresivo de ratios econ?micos de obra a partir de presupuestos hist?ricos.
-
-## Objetivo
-
-Construir una base trazable y auditable para alimentar un master de ratios sin invenci?n de datos, preservando el origen de cada valor (archivo, hash y referencia de origen).
+Sistema interno para importacion, parsing, validacion estructural y futura normalizacion de presupuestos, con trazabilidad completa desde BC3 fuente hasta capas intermedias.
 
 ## Estado actual
 
-Fase de inicializaci?n metodol?gica y t?cnica.
+- Fase 4 completada como bloque BC3 de parsing/validacion estructural.
+- Parser estricto BC3 implementado: `scripts/parse_bc3_strict.py`.
+- Validador estricto BC3 implementado: `scripts/validate_bc3_strict.py`.
+- Estado de cierre Fase 4:
+  - `validation_readiness.global=VALIDATION_READY_WITH_CONTROLLED_EXCLUSIONS`
+  - `full_corpus_status=NOT_BLOCKED`
+  - `valid_subset_status=ADVANCE_ALLOWED`
+  - `eligible_files_count=4`
+  - `excluded_files_count=1`
+- Decision humana vigente: `BC3_02` queda excluido del flujo principal como `NOT_ELIGIBLE_AUXILIARY_OR_CORRUPT` y se mantiene solo como referencia tecnica.
 
-- Estructura base creada.
-- Gobernanza documental inicial creada (`CONTEXT.md`, `ADRs.md`).
-- Scripts iniciales de verificaci?n creados.
-- Sin parsers definitivos.
-- Sin c?lculo consolidado de ratios.
+## Fase actual
 
-**Advertencia:** este repositorio todav?a no produce ratios definitivos y no debe usarse para decisiones econ?micas finales.
+- Fase 5.0 iniciada: diseno documental de normalizacion intermedia BC3.
+- Esta fase no implementa aun el normalizador.
 
-## Estructura
+## Restricciones criticas activas
 
-```text
-/docs
-  /adr
-  /decisions
-/data
-  /raw
-  /processed
-  /master
-  /samples
-  /exports
-/logs
-  /imports
-  /validation
-/reports
-/src
-  /parsers
-  /validators
-  /mappers
-  /exporters
-  /models
-  /utils
-/scripts
-/tests
-  /parsers
-  /validators
-  /mappers
-  /exporters
-  /scripts
-.context-backups
-CONTEXT.md
-ADRs.md
-README.md
-.gitignore
-```
+- No importar al master.
+- No calcular ratios.
+- No consolidar importes finales.
+- No normalizar categorias finales.
+- No modificar RAW.
+- No subir muestras reales ni reports reales sensibles.
 
-## Principios de datos
+## Flujo por capas (resumen)
 
-- No inventar datos.
-- No estimar datos ausentes.
-- No sobrescribir datos brutos.
-- No borrar hist?rico de importaciones.
-- No actualizar ratios con datos no validados.
-- Priorizar Excel y BC3/Presto sobre PDF.
-- Conservar fuente original y hash de archivo.
-- Separar RAW, normalizaci?n, validaci?n, c?lculo y exportaci?n.
-- Mantener trazabilidad extremo a extremo.
+1. Ingesta y preservacion de fuente.
+2. Parseo BC3 preliminar/estricto.
+3. Validacion estructural preliminar/estricta.
+4. Normalizacion intermedia (diseno en Fase 5).
+5. Mapping de categorias y decisiones de negocio (fase posterior).
+6. Importacion al master (fase posterior).
+7. Calculo de ratios (fase posterior).
 
-## Flujo previsto (alto nivel)
-
-1. Ingesta de archivo de origen (Excel, BC3/Presto, otros compatibles).
-2. Registro de metadatos e identidad del archivo (incluyendo hash).
-3. Persistencia de dato bruto sin modificaci?n.
-4. Normalizaci?n y mapeo a esquema interno.
-5. Validaciones matem?ticas y de consistencia.
-6. Aprobaci?n/manual review si procede.
-7. Actualizaci?n controlada del master de ratios.
-8. Exportes y reportes auditables.
-
-## Herramientas usadas
-
-- ChatGPT: coordinaci?n metodol?gica, arquitectura y documentaci?n.
-- Codex / Antigravity: backend, parsers, validaciones, tests y auditor?a t?cnica.
-- Gemini CLI: frontend, UX y prototipado visual.
-
-## Scripts iniciales
-
-Ejecutar desde la ra?z del repositorio:
+## Comandos base
 
 ```bash
 python scripts/validate_context.py
 python scripts/inspect_repo.py
+pytest
 ```
-
-## Qu? no hace todav?a el proyecto
-
-- No parsea Excel de forma definitiva.
-- No parsea BC3/Presto de forma definitiva.
-- No calcula ratios consolidados.
-- No actualiza autom?ticamente el master.
-- No incluye interfaz web.
-- No incluye base de datos.

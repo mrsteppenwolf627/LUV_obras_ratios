@@ -18,6 +18,7 @@ Registro de decisiones arquitectonicas del proyecto.
 - ADR-012: Congelacion parcial metodologica antes del analisis de datos reales (PROPUESTA, ver `docs/adr/ADR-012-freeze-methodology-before-real-data.md`)
 - ADR-013: Extractor diagnostico BC3 antes de parser definitivo (Aprobado fase 3)
 - ADR-014: Diseno preliminar de parser BC3 antes de importacion al master (Aprobado fase 4.0)
+- ADR-015: Normalizacion intermedia BC3 antes de importacion al master (Aprobado fase 5.0)
 
 ## ADR-001: Adaptacion de roles multi-modelo
 
@@ -175,3 +176,22 @@ La evidencia de Fase 2.2 muestra variabilidad real de fuentes y necesidad de ins
 **Racional**
 
 Tras Fase 3.5 hay readiness positivo para diseno preliminar, pero persiste variabilidad de variantes FIEBDC y ambiguedad de senales economicas/unidades. Congelar esta separacion en ADR evita acoplar prematuramente parsing con decisiones de negocio, protege trazabilidad y reduce riesgo de contaminar el master con interpretaciones no consolidadas.
+
+## ADR-015: Normalizacion intermedia BC3 antes de importacion al master
+
+**Estado:** Aprobado (fase 5.0)
+
+**Decision**
+
+- La normalizacion intermedia BC3 se disena e implementa en capa separada y no importa datos al master en esta fase.
+- La normalizacion intermedia no calcula ratios.
+- La normalizacion intermedia no consolida importes finales.
+- La normalizacion intermedia no decide categorias finales.
+- La normalizacion intermedia preserva trazabilidad a BC3 (archivo, registro y contexto de origen cuando aplique).
+- Los datos ambiguos se marcan y quedan para revision humana; no se fuerzan interpretaciones.
+- `CATEGORY_MAPPING` se define en una fase posterior.
+- La importacion al master se define en una fase posterior con contrato y validaciones propias.
+
+**Racional**
+
+Con Fase 4 cerrada tecnicamente (parser y validador estrictos operativos, avance permitido sobre subconjunto valido con exclusiones controladas), el siguiente paso requiere estructurar datos sin mezclar decisiones de negocio final. Esta separacion reduce riesgo de sobreinterpretacion, protege auditabilidad y mantiene control de alcance antes de mapping final y carga al master.

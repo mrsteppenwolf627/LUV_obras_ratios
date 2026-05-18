@@ -355,3 +355,19 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No normalizar categorías finales.
   - No modificar RAW.
   - No subir muestras reales ni reports reales sensibles.
+
+## Estado Fase 5.0 (diseno documental de normalizacion intermedia BC3)
+
+- Fase 4 queda cerrada como bloque BC3 de parsing estricto y validacion estructural.
+- Fase 4.7 cerrada tecnicamente.
+- Decision humana vigente: avanzar a Fase 5 sin seguir bloqueando por `BC3_02`, salvo nueva evidencia estructural.
+- `BC3_02` permanece excluido controladamente del flujo principal como `NOT_ELIGIBLE_AUXILIARY_OR_CORRUPT` y se mantiene como referencia tecnica.
+- Subconjunto valido actual: 4 BC3 elegibles.
+- Fase 5.0 iniciada con objetivo documental: disenar normalizacion intermedia BC3 sobre salida estricta.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes finales.
+  - No normalizar categorias finales.
+  - No modificar RAW.
+  - No subir muestras reales ni reports reales sensibles.
