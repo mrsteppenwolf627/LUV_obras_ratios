@@ -328,3 +328,17 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No modificar RAW.
   - No subir muestras reales ni reports reales sensibles.
 
+
+## Estado Fase 4.6 (implementación parser BC3 estricto sobre subconjunto válido)
+
+- Fase 4.5 cerrada documentalmente.
+- Fase 4.6 iniciada para implementar `scripts/parse_bc3_strict.py` sobre el subconjunto válido.
+- Decisión humana vigente: `BC3_02` permanece excluido del flujo principal como `NOT_ELIGIBLE_AUXILIARY_OR_CORRUPT`.
+- Objetivo: parser BC3 estricto con trazabilidad por archivo/línea/registro y exclusión controlada explícita.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+  - No subir muestras reales ni outputs/reportes reales sensibles.
