@@ -417,3 +417,16 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No CATEGORY_MAPPING todavia.
   - No modificar RAW.
   - No subir samples ni reports reales sensibles.
+
+## Estado Fase 6 (diagnostico real Excel)
+
+- Fase 5.3 cerrada documentalmente con estrategia multi-formato activa.
+- Fase 6 iniciada para diagnostico real Excel previo a extractor definitivo.
+- Objetivo: caracterizar estructura real de workbooks Excel (tipos de hoja, dimensiones, cabeceras, columnas candidatas, tablas, formulas y riesgos) sin integracion a master.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorias finales.
+  - No modificar RAW.
+  - No subir muestras reales ni reports sensibles.
