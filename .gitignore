@@ -110,3 +110,6 @@ reports/bc3_intermediate_normalization/*
 !reports/bc3_intermediate_normalization_validation/
 reports/bc3_intermediate_normalization_validation/*
 !reports/bc3_intermediate_normalization_validation/.gitkeep
+!reports/excel_full_reader/
+reports/excel_full_reader/*
+!reports/excel_full_reader/.gitkeep

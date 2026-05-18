@@ -59,7 +59,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 4.1 - Implementación parser BC3 preliminar | Completado (técnico) | Parser preliminar implementado, validado y ejecutado localmente |
 | Fase 4.2 - Validación estructura intermedia BC3 | Completado (técnico) | Validador implementado, pruebas en verde y ejecución real con estado `MANUAL_REVIEW_REQUIRED` |
 | Fase 4.3 - Readiness de validación BC3 | Completado (técnico) | Readiness y manual review cerrados con exclusión controlada |
-| Fase 7.0 - Diseño lector integral Excel | En curso | Contrato documental del lector integral Excel |
+| Fase 7.0 - Diseño lector integral Excel | Completado (documental) | Contrato documental del lector integral Excel |
+| Fase 7.1 - Implementación lector integral Excel | Completado (técnico) | Lector integral Excel trazable y no destructivo |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -448,9 +449,23 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 ## Estado Fase 7.0 (diseno documental del lector integral Excel)
 
 - Fase 6.1 cerrada tecnicamente.
-- Fase 7.0 iniciada con objetivo documental: definir el contrato del lector integral Excel antes de implementar el lector final.
+- Fase 7.0 cerrada documentalmente con el contrato del lector integral Excel.
 - Excel queda como formato prioritario del sistema.
 - El lector integral Excel debe ser no destructivo, trazable por archivo/hoja/celda y consciente de hojas no tabulares.
+- Restricciones activas:
+  - No master.
+  - No ratios.
+  - No consolidacion final.
+  - No normalizacion final de categorias.
+  - No CATEGORY_MAPPING.
+  - No modificar RAW.
+  - No subir muestras reales ni reports reales.
+
+## Estado Fase 7.1 (implementacion del lector integral Excel)
+
+- Fase 7.0 cerrada documentalmente.
+- Fase 7.1 cerrada técnicamente con `scripts/read_excel_full.py` implementado.
+- Resultado: lector integral Excel no destructivo con trazabilidad por archivo, hoja y celda, y perfilado integral de hojas tabulares y no tabulares.
 - Restricciones activas:
   - No master.
   - No ratios.
