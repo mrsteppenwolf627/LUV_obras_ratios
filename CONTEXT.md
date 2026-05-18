@@ -386,3 +386,17 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No normalizacion final de categorias.
   - No modificar RAW.
   - No subir samples ni reports reales sensibles.
+
+## Estado Fase 5.2 (validador de contrato de normalizacion intermedia BC3)
+
+- Fase 5.1 cerrada tecnicamente.
+- Fase 5.2 iniciada para validar contrato de normalizacion intermedia BC3 antes de mapping o integracion posterior.
+- Objetivo: verificar estructura minima, trazabilidad y coherencia basica de la salida de normalizacion intermedia.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidacion final de importes.
+  - No normalizacion final de categorias.
+  - No CATEGORY_MAPPING todavia.
+  - No modificar RAW.
+  - No subir samples ni reports reales sensibles.
