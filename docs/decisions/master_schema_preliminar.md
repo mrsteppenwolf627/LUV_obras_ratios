@@ -1,5 +1,7 @@
 # Master Schema Preliminar
 
+> Nota fase 9.0: este documento sigue siendo el esquema conceptual preliminar de entidades y capas. La salida operativa principal del sistema pasa a materializarse como un Excel maestro vivo; ver `docs/decisions/phase_9_0_live_excel_master_output_definition.md` y `ADR-019`.
+
 ## 1. Proposito del master
 
 El master de ratios no se define como un unico Excel final. Se define como una estructura de datos trazable y auditable para consolidar presupuestos historicos, normalizar informacion, validar coherencia matematica y calcular ratios de forma progresiva y reproducible.

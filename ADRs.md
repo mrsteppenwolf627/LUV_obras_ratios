@@ -22,6 +22,7 @@ Registro de decisiones arquitectonicas del proyecto.
 - ADR-016: Estrategia multi-formato con prioridad Excel y Presto/PZH (Aprobado fase 5.3)
 - ADR-017: Contrato comun multi-formato para lectura y normalizacion intermedia (Aprobado fase 7.2)
 - ADR-018: Soporte obligatorio Presto/PZH mediante ruta tecnica evidenciada (Aprobado fase 8)
+- ADR-019: Excel maestro vivo como salida principal del sistema (Aprobado fase 9.0)
 
 ## ADR-001: Adaptacion de roles multi-modelo
 
@@ -251,3 +252,26 @@ La realidad operativa mezcla formatos con frecuencias distintas. Un contrato com
 **Racional**
 
 Presto/PZH forma parte del corpus real del proyecto y no debe desaparecer del roadmap por conveniencia tecnica. A la vez, el diagnostico actual muestra ausencia de lectura nativa directa utilizable, por lo que la opcion segura es sostener el soporte por una ruta evidenciada y trazable, no inventar un parser sin base suficiente.
+
+## ADR-019: Excel maestro vivo como salida principal del sistema
+
+**Estado:** Aprobado (fase 9.0)
+
+**Decision**
+
+- La salida principal del sistema sera un Excel maestro vivo.
+- El Excel maestro vivo sera un archivo iterativo y actualizable.
+- El mismo archivo podra sobrescribirse de forma controlada en cada iteracion.
+- El Excel maestro podra incorporar nuevas hojas internas segun evolucione el corpus procesado.
+- El Excel maestro acumulera presupuestos procesados, validaciones, exclusiones, trazabilidad y ratios progresivos.
+- El Excel maestro sera el producto operativo final del sistema.
+- No se sustituye por una base de datos externa salvo decision humana futura documentada.
+- No se sustituye por un informe estatico.
+- Cualquier base de datos futura, si aparece, sera auxiliar salvo nueva ADR.
+- El calculo de ratios debera estar documentado y trazado.
+- El Excel maestro no debe alimentarse con datos no validados.
+- El Excel maestro debe distinguir datos usados, excluidos y pendientes de revision.
+
+**Racional**
+
+El proyecto no necesita solo una capa de calculo o un report puntual, sino un artefacto operativo vivo que acumule conocimiento y mejore con el volumen procesado. Fijar el master como Excel vivo mantiene la trazabilidad, encaja con la realidad de trabajo del dominio y evita separar el producto final en una base de datos abstracta que no sea el objeto operativo principal de la organizacion.

@@ -63,6 +63,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 | Fase 7.1 - Implementación lector integral Excel | Completado (técnico) | Lector integral Excel trazable y no destructivo |
 | Fase 7.2 - Consolidacion multi-formato Excel/Presto y contrato comun de lectura | Completado (tecnico) | Base comun Excel/Presto/PZH e inventario multi-formato |
 | Fase 8 - Estrategia tecnica obligatoria Presto/PZH | En curso | Presto/PZH es obligatorio y requiere via tecnica valida |
+| Fase 9.0 - Definicion del Excel maestro vivo como salida principal | En curso | La salida principal pasa a ser un Excel maestro vivo e iterativo |
 | Fase 1.1 - Inicialización base | Completado | Repositorio, validaciones, commit inicial y push cerrados |
 | Fase 1.2 - Diseño preliminar del master | Completado | Documento preliminar creado y ADR-009 propuesta |
 | Fase 1.3 - Política de duplicados y versionado | Completado (documental) | Política preliminar creada y ADR-010 propuesta |
@@ -495,6 +496,25 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No consolidacion final.
   - No normalizacion final de categorias.
   - No CATEGORY_MAPPING.
+  - No modificar RAW.
+  - No subir muestras reales ni reports reales.
+
+## Estado Fase 9.0 (definicion del Excel maestro vivo como salida principal)
+
+- Fase 8 cerrada tecnicamente.
+- Fase 9.0 iniciada.
+- Decision humana: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable.
+- El Excel maestro podra sobrescribirse de forma controlada y agregar nuevas hojas internas segun evolucione el corpus procesado.
+- El Excel maestro acumulara presupuestos procesados, validaciones, trazabilidad, exclusiones y ratios progresivos.
+- Los ratios mejoraran conforme crezca el volumen de informacion procesada y validada.
+- BC3 y Excel ya estan parcialmente operativos como fuentes.
+- Presto/PZH sigue siendo obligatorio mediante via de exportacion/herramienta especializada.
+- Restricciones activas:
+  - No crear todavia el Excel maestro real con datos.
+  - No calcular ratios finales todavia.
+  - No importar al master todavia.
+  - No consolidar importes finales todavia.
+  - No normalizar categorias finales todavia.
   - No modificar RAW.
   - No subir muestras reales ni reports reales.
 

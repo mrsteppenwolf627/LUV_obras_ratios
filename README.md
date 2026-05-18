@@ -18,15 +18,25 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
   - `excluded_files_count=1`
 - Decision humana vigente: `BC3_02` queda excluido del flujo principal como `NOT_ELIGIBLE_AUXILIARY_OR_CORRUPT` y se mantiene solo como referencia tecnica.
 - Reorientacion vigente: estrategia multi-formato con prioridad alta en Excel y Presto/PZH; Presto/PZH es obligatorio y no puede omitirse del roadmap sin permiso explicito; BC3 queda como modulo disponible, no como unica prioridad.
+- Salida principal planificada: Excel maestro vivo, iterativo y actualizable.
 
 ## Fase actual
 
 - Fase 7.2 cerrada tecnicamente: consolidacion multi-formato Excel/Presto y contrato comun de lectura.
 - Fase 8 iniciada: estrategia tecnica obligatoria para soporte Presto/PZH.
+- Fase 9.0 iniciada: definicion del Excel maestro vivo como salida principal del sistema.
 - BC3 permanece como modulo avanzado ya operativo.
 - Excel cuenta con lector integral, validacion de contrato y normalizacion intermedia inicial.
 - Presto/PZH ha sido investigado tecnicamente; no ha mostrado lectura nativa directa utilizable y sigue requiriendo una via tecnica valida.
 - Inventario multi-formato comun disponible.
+
+## Salida principal
+
+- La salida operativa del sistema sera un Excel maestro vivo.
+- Ese Excel se actualizara/sobrescribira de forma controlada por iteracion.
+- Podra incorporar nuevas hojas internas a medida que crezca el corpus procesado.
+- Acumulara presupuestos, validaciones, trazabilidad, exclusiones y ratios progresivos.
+- No sustituye a la trazabilidad de origen ni elimina las capas intermedias.
 
 ## Restricciones criticas activas
 
