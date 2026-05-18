@@ -238,3 +238,19 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No normalizar categorías finales.
   - No modificar RAW.
   - No subir outputs reales sensibles.
+
+## Estado Fase 4.4 (validación ampliada con corpus BC3 real)
+
+- Fase 4.3.2 cerrada técnicamente.
+- Fase 4.4 iniciada para validar robustez y estabilidad sobre corpus BC3 real ampliado.
+- Objetivo: evaluar parser preliminar + validador intermedio con mayor variabilidad FIEBDC antes de diseñar parser más estricto.
+- Restricciones activas:
+  - Solo analizar BC3 en esta fase.
+  - Ignorar Excel, PDF, Presto, PrestoBackup, PrestoRecord, PZH y otros formatos no BC3.
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+  - No subir muestras reales.
+  - No subir outputs reales sensibles.

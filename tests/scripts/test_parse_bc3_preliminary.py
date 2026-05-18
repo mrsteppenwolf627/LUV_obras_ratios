@@ -193,3 +193,23 @@ def test_warnings_add_manual_review_reasons():
         assert "UNKNOWN_RECORD_TYPES_REVIEW" in reasons
     finally:
         _cleanup(root)
+
+
+def test_recursive_bc3_discovery_ignores_non_bc3_formats():
+    root = _make_root()
+    try:
+        samples = root / "data" / "samples"
+        nested = samples / "project_a" / "subfolder"
+        nested.mkdir(parents=True)
+        (samples / ".gitkeep").write_text("", encoding="utf-8")
+        (samples / "budget.xlsx").write_text("not bc3", encoding="utf-8")
+        (samples / "memo.pdf").write_text("not bc3", encoding="utf-8")
+        (samples / "presto.pzh").write_text("not bc3", encoding="utf-8")
+        (nested / "valid.bc3").write_text("~V|FIEBDC-3/2020\n~C|CAP01#\\Cap\n", encoding="utf-8")
+
+        report = parse_bc3_samples(root)
+        assert report["global_summary"]["bc3_files_count"] == 1
+        assert len(report["files"]) == 1
+        assert report["files"][0]["file_ref"]["relative_path"].endswith("valid.bc3")
+    finally:
+        _cleanup(root)
