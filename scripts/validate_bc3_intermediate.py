@@ -31,6 +31,7 @@ REQUIRED_FILE_KEYS = [
 
 READINESS_READY_STRICT = "VALIDATION_READY_FOR_STRICTER_PARSER_DESIGN"
 READINESS_READY_NON_BLOCKING = "VALIDATION_READY_WITH_NON_BLOCKING_MANUAL_REVIEW"
+READINESS_READY_CONTROLLED_EXCLUSIONS = "VALIDATION_READY_WITH_CONTROLLED_EXCLUSIONS"
 READINESS_NEEDS_MINOR = "VALIDATION_NEEDS_MINOR_ADJUSTMENTS"
 READINESS_BLOCKED = "VALIDATION_BLOCKED"
 
@@ -156,6 +157,8 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
     eligible_files_count = 0
     excluded_or_not_eligible_count = 0
     structurally_blocked_count = 0
+    excluded_files_count = 0
+    excluded_files_reason: list[dict[str, str]] = []
 
     missing_root = [k for k in REQUIRED_ROOT_KEYS if k not in report]
     if missing_root:
@@ -443,6 +446,14 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
             eligible_files_count += 1
         else:
             excluded_or_not_eligible_count += 1
+        if eligibility["file_eligibility_status"] == NOT_ELIGIBLE_AUX_CORRUPT:
+            excluded_files_count += 1
+            excluded_files_reason.append(
+                {
+                    "sanitized_id": sid,
+                    "reason": eligibility["file_eligibility_reason"],
+                }
+            )
         if eligibility["file_eligibility_status"] == BLOCKED_STRUCTURAL:
             structurally_blocked_count += 1
         blocking_errors.extend({"file": sid, **item} for item in file_errors)
@@ -453,8 +464,16 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
         blocking_items.extend({"file": sid, **item} for item in file_manual_blockers)
         non_blocking_manual_review_items.extend({"file": sid, **item} for item in file_manual_non_blocking)
 
-    if blocking_items:
+    has_global_blockers = bool([item for item in blocking_errors if item.get("scope") == "global"])
+    controlled_exclusions = excluded_files_count > 0
+    can_advance_with_valid_subset = eligible_files_count > 0 and structurally_blocked_count == 0
+    full_corpus_status = "BLOCKED" if structurally_blocked_count > 0 or has_global_blockers else "NOT_BLOCKED"
+    valid_subset_status = "ADVANCE_ALLOWED" if eligible_files_count > 0 else "NO_ELIGIBLE_FILES"
+
+    if structurally_blocked_count > 0 or has_global_blockers:
         global_readiness = READINESS_BLOCKED
+    elif can_advance_with_valid_subset and controlled_exclusions:
+        global_readiness = READINESS_READY_CONTROLLED_EXCLUSIONS
     elif minor_adjustment_items:
         global_readiness = READINESS_NEEDS_MINOR
     elif non_blocking_manual_review_items:
@@ -467,20 +486,19 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
         global_status = "ERROR"
     elif global_readiness == READINESS_NEEDS_MINOR:
         global_status = "WARNING"
-    elif global_readiness == READINESS_READY_NON_BLOCKING:
+    elif global_readiness in {READINESS_READY_NON_BLOCKING, READINESS_READY_CONTROLLED_EXCLUSIONS}:
         global_status = "MANUAL_REVIEW_REQUIRED"
 
     if global_readiness == READINESS_BLOCKED:
         phase_4_next_recommendation = "Do not advance: resolve validation blockers first."
+    elif global_readiness == READINESS_READY_CONTROLLED_EXCLUSIONS:
+        phase_4_next_recommendation = "Advance with controlled exclusions and tracked non-eligible files."
     elif global_readiness == READINESS_NEEDS_MINOR:
         phase_4_next_recommendation = "Apply minor readiness adjustments before stricter parser design."
     elif global_readiness == READINESS_READY_NON_BLOCKING:
         phase_4_next_recommendation = "Advance with non-blocking manual review tracked."
     else:
         phase_4_next_recommendation = "Ready to advance to stricter parser design."
-
-    full_corpus_status = "BLOCKED" if structurally_blocked_count > 0 else "NOT_BLOCKED"
-    valid_subset_status = "ADVANCE_ALLOWED" if eligible_files_count > 0 else "NO_ELIGIBLE_FILES"
 
     return {
         "validation_metadata": {
@@ -502,6 +520,10 @@ def validate_intermediate(report: dict[str, Any], source_path: str, unknown_thre
             "eligible_files_count": eligible_files_count,
             "excluded_or_not_eligible_count": excluded_or_not_eligible_count,
             "structurally_blocked_count": structurally_blocked_count,
+            "excluded_files_count": excluded_files_count,
+            "excluded_files_reason": excluded_files_reason,
+            "can_advance_with_valid_subset": can_advance_with_valid_subset,
+            "controlled_exclusions": controlled_exclusions,
         },
         "blocking_errors": blocking_errors,
         "blocking_items": blocking_items,

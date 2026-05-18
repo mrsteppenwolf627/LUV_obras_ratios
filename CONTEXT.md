@@ -297,3 +297,19 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No modificar RAW.
   - No subir muestras reales.
   - No subir outputs reales sensibles.
+
+## Estado Fase 4.4.4 (alineación de readiness global con exclusión controlada)
+
+- Fase 4.4.3 cerrada técnicamente.
+- BC3_03 desbloqueado tras cubrir equivalencia code/code# en validación.
+- Fase 4.4.4 iniciada para alinear readiness global con exclusión controlada de archivos no aptos.
+- Objetivo: permitir avance del corpus cuando solo existan exclusiones explícitas NOT_ELIGIBLE_AUXILIARY_OR_CORRUPT y haya subconjunto válido suficiente.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+  - No subir muestras reales.
+  - No subir outputs reales sensibles.
+

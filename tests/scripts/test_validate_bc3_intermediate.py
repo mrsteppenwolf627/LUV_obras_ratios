@@ -292,6 +292,7 @@ def test_valid_subset_can_advance_with_excluded_file():
     assert summary["valid_subset_status"] == "ADVANCE_ALLOWED"
     assert summary["eligible_files_count"] >= 1
     assert summary["excluded_or_not_eligible_count"] >= 1
+    assert report["validation_readiness"]["global"] == "VALIDATION_READY_WITH_CONTROLLED_EXCLUSIONS"
 
 
 def test_full_corpus_blocked_when_structural_issue_exists():
@@ -306,6 +307,7 @@ def test_full_corpus_blocked_when_structural_issue_exists():
     summary = report["global_validation_summary"]
     assert summary["full_corpus_status"] == "BLOCKED"
     assert summary["structurally_blocked_count"] >= 1
+    assert report["validation_readiness"]["global"] == "VALIDATION_BLOCKED"
 
 
 def test_hash_suffix_code_variant_does_not_count_as_orphan():
@@ -335,3 +337,31 @@ def test_missing_root_relation_still_blocks_after_hash_normalization():
     report = validate_intermediate(payload, "synthetic.json")
     assert any(item["code"] == "RELATION_PARENT_NOT_IN_CONCEPTS" for item in report["warnings"])
     assert any(item["code"] == "ORPHAN_RELATIONS_BLOCKING" for item in report["blocking_items"])
+
+
+def test_excluded_file_is_explicitly_reported():
+    payload = _valid_intermediate()
+    payload["files"].append(_base_file_entry())
+    payload["files"][1]["file_ref"]["sanitized_id"] = "BC3_02"
+    payload["files"][1]["header"]["has_v"] = False
+    payload["files"][1]["concepts"] = []
+    payload["files"][1]["relations"]["links"] = []
+    payload["files"][1]["risk_flags"] = ["DECODE_FAILED"]
+    report = validate_intermediate(payload, "synthetic.json")
+    summary = report["global_validation_summary"]
+    assert summary["excluded_files_count"] == 1
+    assert summary["controlled_exclusions"] is True
+    assert summary["excluded_files_reason"][0]["sanitized_id"] == "BC3_02"
+
+
+def test_global_status_not_error_when_only_controlled_exclusions():
+    payload = _valid_intermediate()
+    payload["files"].append(_base_file_entry())
+    payload["files"][1]["file_ref"]["sanitized_id"] = "BC3_02"
+    payload["files"][1]["header"]["has_v"] = False
+    payload["files"][1]["concepts"] = []
+    payload["files"][1]["relations"]["links"] = []
+    payload["files"][1]["risk_flags"] = ["DECODE_FAILED"]
+    report = validate_intermediate(payload, "synthetic.json")
+    assert report["validation_metadata"]["status"] == "MANUAL_REVIEW_REQUIRED"
+    assert report["validation_readiness"]["global"] == "VALIDATION_READY_WITH_CONTROLLED_EXCLUSIONS"
