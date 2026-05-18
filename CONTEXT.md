@@ -342,3 +342,16 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
   - No normalizar categorías finales.
   - No modificar RAW.
   - No subir muestras reales ni outputs/reportes reales sensibles.
+
+## Estado Fase 4.7 (validación cruzada estricta de coherencia ~C/~D)
+
+- Fase 4.6 cerrada técnicamente.
+- Fase 4.7 iniciada para implementar validación cruzada estricta mínima sobre salida de parser BC3 estricto.
+- Objetivo: validar coherencia entre conceptos `~C` y relaciones `~D` en subconjunto válido, preservando exclusiones controladas.
+- Restricciones activas:
+  - No importar al master.
+  - No calcular ratios.
+  - No consolidar importes.
+  - No normalizar categorías finales.
+  - No modificar RAW.
+  - No subir muestras reales ni reports reales sensibles.

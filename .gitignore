@@ -98,3 +98,7 @@ reports/bc3_intermediate_validation/*
 !reports/bc3_strict_parse/
 reports/bc3_strict_parse/*
 !reports/bc3_strict_parse/.gitkeep
+# strict validation reports
+!reports/bc3_strict_validation/
+reports/bc3_strict_validation/*
+!reports/bc3_strict_validation/.gitkeep
