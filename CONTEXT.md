@@ -53,7 +53,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.4: cerrada tecnicamente.
 - Fase 9.5: cerrada tecnicamente.
 - Fase 9.6-preview: ejecutada (segura metodologicamente, insuficiente como salida operativa).
-- Fase 9.6-preview-fix: iniciada (salida operativa equivalente al input cuando sea posible).
+- Fase 9.6-preview-fix: ejecutada (hoja operativa `IMPORTED_BUDGET_VIEW` integrada en preview).
+- Fase 9.6 formal: iniciada (contrato de ingesta real controlada PREVIEW_ONLY -> OPERATIVE).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
@@ -61,30 +62,30 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Fase vigente
 
-- Fase vigente: 9.6-preview-fix - output operativo equivalente al input en modo PREVIEW_ONLY.
+- Fase vigente: 9.6 formal - contrato de ingesta real controlada al Excel maestro vivo.
 - Estado: iniciada y activa.
-- Objetivo: mejorar la preview real para que el Excel incluya una capa operativa legible (capitulos/partidas/unidades/mediciones/precios/importes) con trazabilidad por hoja y fila origen.
-- Restriccion metodologica: sigue siendo preview local sin promocion al master operativo ni ingesta formal.
+- Objetivo: definir reglas formales de promocion, bloqueo y revision humana para pasar de `PREVIEW_ONLY` a `OPERATIVE` sin romper trazabilidad ni controles de integridad.
+- Restriccion metodologica: fase contractual; sin ingesta masiva real ni promocion automatica.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.6 formal - contrato de ingesta real controlada al master con reglas de promocion y bloqueos operativos.
-- Condicion: cerrar primero evidencia de preview local aislada sin desbordes metodologicos ni exposicion sensible.
+- Proxima fase: 9.7 - implementacion incremental del evaluador de promocion controlada.
+- Condicion: usar contrato 9.6 como puerta obligatoria previa a cualquier promocion real.
 
-## Restricciones activas (fase 9.6-preview-fix)
+## Restricciones activas (fase 9.6 formal)
 
-- Prueba local controlada con un unico archivo real aislado y salida operativa de lectura humana.
-- No promocion a master operativo.
-- No ingesta formal al Excel maestro vivo.
+- No ingesta masiva real.
+- No promocion automatica sin criterios formales de contrato.
+- Promocion solo explicita, trazada y bloqueable.
 - No calculo de ratios finales.
 - No normalizacion final de categorias.
 - No consolidacion definitiva de importes.
 - No modificar RAW.
-- No subir archivo real ni muestras reales.
-- No subir Excel generado de preview.
+- No subir archivos reales ni muestras reales.
+- No subir Excels generados.
 - No subir reports/outputs sensibles.
 - No disenar interfaz, dashboard ni flujo UX en esta fase.
-- Mantener compatibilidad con contrato documental 9.1/9.2/9.3/9.4/9.5.
+- Mantener compatibilidad con contrato documental 9.1/9.2/9.3/9.4/9.5/9.6-preview-fix.
 
 ## Resumen de fases cerradas (alto nivel)
 
@@ -101,15 +102,14 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Implementar hoja operativa `IMPORTED_BUDGET_VIEW` para preview legible.
-- Separar importes/unidades/cantidades de descripciones cuando sea detectable.
-- Regenerar preview local real aislada y verificar utilidad visual minima.
+- Documentar contrato formal PREVIEW_ONLY -> OPERATIVE.
+- Definir criterios de promocion, bloqueo y revision humana.
+- Definir umbrales preliminares de completitud y calidad de separacion.
 
 ### P1
 
-- Definir contrato de 9.6 formal para ingesta real controlada al master.
-- Delimitar criterios de promocion desde preview a carga formal.
-- Definir reglas de completitud minima para la capa operativa antes de promocion.
+- Implementar evaluador de contrato de promocion en modo dry-run con tests sinteticos.
+- Integrar estados `OPERATIVE_CANDIDATE`, `PROMOTION_BLOCKED`, `MANUAL_REVIEW_REQUIRED`.
 
 ### P2
 
@@ -144,6 +144,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.4: refactor controlado de validaciones de integridad en modulo dedicado.
 - Fase 9.5: idempotencia por run_id, checksum SHA-256 y rollback negativo.
 - Fase 9.6-preview: salida local con archivo real aislado (segura, no operativa suficiente).
+- Fase 9.6-preview-fix: salida preview con capa operativa legible (`IMPORTED_BUDGET_VIEW`).
 
 ## Fuentes canonicas de estado actual
 
