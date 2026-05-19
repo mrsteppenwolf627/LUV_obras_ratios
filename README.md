@@ -6,12 +6,13 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 
 - Fase 8 cerrada tecnicamente.
 - Fase 9.0 iniciada y vigente.
-- Fase 9.1 iniciada: diseno tecnico del generador del Excel maestro vivo (documentacion antes de codigo).
+- Fase 9.1 cerrada documentalmente.
+- Fase 9.2 iniciada: implementacion controlada del generador del Excel maestro vivo.
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.2 (implementacion controlada del generador, tras cierre documental de 9.1).
+- Proxima fase recomendada: Fase 9.3 (hardening y carga sintetica incremental tras cierre de 9.2).
 
 ## Restricciones criticas activas
 
@@ -22,6 +23,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - No normalizar categorias finales.
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
+- Respetar contrato documental de Fase 9.1 durante la implementacion.
 
 ## Referencias de estado
 

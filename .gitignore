@@ -40,6 +40,8 @@ secrets.*
 *.log
 tmp/
 temp/
+outputs/live_excel_master/*
+!outputs/live_excel_master/.gitkeep
 
 # Context backups local data
 .context-backups/*
