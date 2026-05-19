@@ -51,7 +51,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.2: cerrada tecnicamente.
 - Fase 9.3: cerrada tecnicamente.
 - Fase 9.4: cerrada tecnicamente.
-- Fase 9.5: iniciada (idempotencia por run_id, checksum SHA-256 y rollback negativo).
+- Fase 9.5: cerrada tecnicamente.
+- Fase 9.6-preview: iniciada (vista previa local con archivo real aislado, sin promocion a master).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
@@ -59,32 +60,30 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Fase vigente
 
-- Fase vigente: 9.5 - idempotencia, checksum fuerte y rollback negativo del Excel maestro vivo.
+- Fase vigente: 9.6-preview - vista previa local de salida Excel con archivo real aislado.
 - Estado: iniciada y activa.
-- Objetivo: endurecer cargas sinteticas multi-lote con idempotencia explicita por run_id, registrar checksum fuerte SHA-256 en snapshots y bloquear rollback negativo ante snapshots inexistentes/corruptos/fuera de ruta/esquema invalido.
-- Restriccion metodologica: solo datos sinteticos y sin rediseño funcional fuera del contrato 9.1/9.2/9.3/9.4.
+- Objetivo: generar una salida Excel local de inspeccion visual con un unico archivo real aislado, sin promocion al master operativo.
+- Restriccion metodologica: prueba local controlada, sin importacion formal al master y sin cambios de contrato funcional vigente.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.6 - preparacion de contrato pre-real y controles de entrada sintetica ampliados.
-- Condicion: mantener restricciones activas y no habilitar datos reales hasta validacion explicita.
+- Proxima fase: 9.6 formal - contrato de ingesta real controlada al master con reglas de promocion.
+- Condicion: cerrar primero evidencia de preview local aislada sin desbordes metodologicos ni exposicion sensible.
 
-## Restricciones activas (fase 9.5)
+## Restricciones activas (fase 9.6-preview)
 
-- Endurecimiento controlado: idempotencia run_id, checksum SHA-256 y rollback negativo sin rediseño amplio.
-- Mantener compatibilidad con contrato 9.1/9.2/9.3/9.4.
-- Solo datos sinteticos y pruebas de integridad/resiliencia.
-- No usar datos reales.
-- No importar presupuestos reales al master.
-- No calcular ratios finales.
-- No consolidar importes reales.
-- No normalizar categorias finales.
-- No romper trazabilidad ni validaciones previas ya consolidadas.
-- No subir Excels generados.
-- No diseñar interfaz, dashboard ni flujo UX en esta fase.
-- Respetar contrato documental definido en Fase 9.1, Fase 9.2, Fase 9.3 y Fase 9.4.
+- Prueba local controlada con un unico archivo real aislado solo para inspeccion visual.
+- No promocion a master operativo.
+- No importacion formal al Excel maestro vivo.
+- No calculo de ratios finales.
+- No normalizacion final de categorias.
+- No consolidacion definitiva de importes.
 - No modificar RAW.
-- No subir muestras reales ni reports/outputs sensibles.
+- No subir archivo real ni muestras reales.
+- No subir Excel generado de preview.
+- No subir reports/outputs sensibles.
+- No disenar interfaz, dashboard ni flujo UX en esta fase.
+- Mantener compatibilidad con contrato documental 9.1/9.2/9.3/9.4/9.5.
 
 ## Resumen de fases cerradas (alto nivel)
 
@@ -101,14 +100,14 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Implementar idempotencia explicita por run_id en carga sintetica incremental.
-- Sustituir checksum de snapshots por SHA-256.
-- Endurecer rollback negativo y asegurar restauracion segura ante fallo.
+- Ejecutar preview local con un archivo real aislado y salida Excel no operativa.
+- Verificar trazabilidad minima en salida preview con IDs sanitizados.
+- Registrar limitaciones observadas antes de abrir 9.6 formal.
 
 ### P1
 
-- Cerrar Fase 9.5 con evidencia de resiliencia y no-regresion.
-- Preparar Fase 9.6 para contrato pre-real sin habilitar datos reales.
+- Definir contrato de 9.6 formal para ingesta real controlada al master.
+- Delimitar criterios de promocion desde preview a carga formal.
 
 ### P2
 
@@ -141,6 +140,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.2: implementacion controlada del generador del Excel maestro vivo.
 - Fase 9.3: hardening con carga sintetica incremental, validaciones referenciales y snapshots/rollback/retencion iniciales.
 - Fase 9.4: refactor controlado de validaciones de integridad en modulo dedicado.
+- Fase 9.5: idempotencia por run_id, checksum SHA-256 y rollback negativo.
 
 ## Fuentes canonicas de estado actual
 

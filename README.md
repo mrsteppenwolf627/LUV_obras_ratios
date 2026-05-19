@@ -10,17 +10,18 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.2 cerrada tecnicamente: implementacion controlada del generador del Excel maestro vivo.
 - Fase 9.3 cerrada tecnicamente: hardening con carga sintetica incremental, integridad referencial, snapshots, rollback y retencion.
 - Fase 9.4 cerrada tecnicamente: validaciones de integridad extraidas a modulo dedicado.
-- Fase 9.5 iniciada: idempotencia por run_id, checksum SHA-256 y rollback negativo.
+- Fase 9.5 cerrada tecnicamente: idempotencia por run_id, checksum SHA-256 y rollback negativo.
+- Fase 9.6-preview iniciada: vista previa local con archivo real aislado sin promocion a master operativo.
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.6 (preparacion de contrato pre-real sin habilitar datos reales).
+- Proxima fase recomendada: Fase 9.6 formal (contrato de ingesta real controlada al master).
 
 ## Restricciones criticas activas
 
-- No crear todavia el Excel maestro real con datos.
-- No importar datos reales al master.
+- No promocionar preview local a master operativo.
+- No importar formalmente datos reales al master en esta fase preview.
 - No calcular ratios finales.
 - No consolidar importes finales.
 - No normalizar categorias finales.
