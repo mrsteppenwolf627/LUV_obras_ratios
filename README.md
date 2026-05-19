@@ -16,16 +16,18 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.6 formal cerrada documentalmente: contrato de ingesta real controlada `PREVIEW_ONLY -> OPERATIVE`.
 - Fase 9.7 cerrada documentalmente: contrato de preservacion del presupuesto original y enlace con ratios progresivos.
 - Fase 9.8 cerrada tecnicamente: scaffolding de preservacion y mapeo base implementados.
-- Fase 9.9 iniciada: evaluador dry-run combinado de promocion y preservacion.
+- Fase 9.9 cerrada tecnicamente: evaluador dry-run combinado implementado.
+- Fase 9.10 iniciada: piloto dry-run con varios presupuestos reales aislados.
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.10 (piloto controlado de candidaturas operativas y cierre de brechas detectadas por dry-run).
+- Proxima fase recomendada: Fase 9.11 (ajustes post-piloto y recalibracion de umbrales).
 
 ## Restricciones criticas activas
 
 - No realizar ingesta masiva real.
+- No actualizar master operativo en esta fase.
 - No promocionar automaticamente preview a master operativo sin criterios de contrato.
 - No calcular ratios finales.
 - No consolidar importes finales.
@@ -33,7 +35,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
 - No subir Excels generados.
-- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8 durante Fase 9.9.
+- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9 durante Fase 9.10.
 
 ## Referencias de estado
 
