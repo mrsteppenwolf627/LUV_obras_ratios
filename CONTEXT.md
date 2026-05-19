@@ -48,7 +48,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 8: cerrada tecnicamente.
 - Fase 9.0: iniciada y vigente.
 - Fase 9.1: cerrada documentalmente.
-- Fase 9.2: iniciada (implementacion controlada del generador del Excel maestro vivo).
+- Fase 9.2: cerrada tecnicamente.
+- Fase 9.3: iniciada (hardening del generador con carga sintetica incremental).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
@@ -56,26 +57,27 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Fase vigente
 
-- Fase vigente: 9.2 - implementacion controlada del generador del Excel maestro vivo.
+- Fase vigente: 9.3 - hardening del generador del Excel maestro vivo con carga sintetica incremental.
 - Estado: iniciada y activa.
-- Objetivo: implementar la primera version controlada del generador del maestro vivo segun contrato 9.1 (estructura minima de hojas, validacion de esquema y snapshots pre/post), sin datos reales ni calculo final de ratios.
-- Restriccion metodologica: implementacion controlada y trazable, respetando contrato documental de Fase 9.1.
+- Objetivo: endurecer el generador para soportar carga sintetica incremental con validaciones referenciales, snapshots, rollback inicial y politica de retencion simple, sin datos reales ni calculo final de ratios.
+- Restriccion metodologica: hardening con datos sinteticos y compatibilidad con contrato documental de Fase 9.1 y Fase 9.2.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.3 - carga sintetica controlada y hardening del pipeline del maestro vivo.
+- Proxima fase: 9.4 - consolidacion de reglas de integridad operativa y preparacion de integracion de cargas no reales ampliadas.
 - Condicion: mantener restricciones activas y no habilitar datos reales hasta validacion explicita.
 
-## Restricciones activas (fase 9.2)
+## Restricciones activas (fase 9.3)
 
-- Implementacion controlada: solo estructura tecnica del generador y pruebas sinteticas.
+- Hardening controlado: solo datos sinteticos y pruebas de integridad.
 - No usar datos reales.
 - No importar presupuestos reales al master.
 - No calcular ratios finales.
-- No consolidar importes finales.
+- No consolidar importes reales.
 - No normalizar categorias finales.
 - No romper trazabilidad ni validaciones previas ya consolidadas.
-- Respetar contrato documental definido en Fase 9.1.
+- No subir Excels generados.
+- Respetar contrato documental definido en Fase 9.1 y Fase 9.2.
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
 
@@ -94,15 +96,15 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Implementar generador controlado del Excel maestro vivo conforme a contrato 9.1.
-- Implementar validacion automatica de hojas/columnas minimas.
-- Implementar snapshots pre/post y bloqueo de sobrescritura no controlada.
-- Cubrir contrato con tests sinteticos repetibles.
+- Implementar carga sintetica incremental controlada.
+- Endurecer validaciones referenciales entre hojas clave.
+- Definir y aplicar retencion inicial de snapshots.
+- Definir/validar politica inicial de rollback seguro.
 
 ### P1
 
-- Cerrar Fase 9.2 con evidencia de pruebas y validaciones.
-- Definir Fase 9.3 para carga sintetica incremental y hardening de flujo.
+- Cerrar Fase 9.3 con evidencia de hardening y pruebas.
+- Preparar Fase 9.4 para integridad operativa ampliada sin datos reales.
 
 ### P2
 
@@ -132,6 +134,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 8: estrategia obligatoria Presto/PZH basada en evidencia.
 - Fase 9.0: definicion del Excel maestro vivo como salida principal.
 - Fase 9.1: diseno tecnico del generador del Excel maestro vivo.
+- Fase 9.2: implementacion controlada del generador del Excel maestro vivo.
 
 ## Fuentes canonicas de estado actual
 

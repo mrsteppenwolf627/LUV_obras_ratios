@@ -4,9 +4,9 @@ Registro de decisiones arquitectonicas del proyecto.
 
 ## Estado operativo de referencia (consistencia documental)
 
-- Referencia vigente: Fase 8 cerrada tecnicamente, Fase 9.0 iniciada, Fase 9.1 cerrada documentalmente, Fase 9.2 iniciada.
+- Referencia vigente: Fase 8 cerrada tecnicamente, Fase 9.0 iniciada, Fase 9.1 cerrada documentalmente, Fase 9.2 cerrada tecnicamente, Fase 9.3 iniciada.
 - Decision vigente principal: ADR-019 (Excel maestro vivo como salida principal).
-- Proxima fase recomendada: Fase 9.3 (hardening y carga sintetica incremental tras cierre de 9.2).
+- Proxima fase recomendada: Fase 9.4 (integridad operativa ampliada sin datos reales tras cierre de 9.3).
 - Esta seccion es solo de consistencia de estado; no introduce nuevas ADR.
 
 ## Indice ADR
