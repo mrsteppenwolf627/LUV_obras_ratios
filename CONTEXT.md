@@ -52,7 +52,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.3: cerrada tecnicamente.
 - Fase 9.4: cerrada tecnicamente.
 - Fase 9.5: cerrada tecnicamente.
-- Fase 9.6-preview: iniciada (vista previa local con archivo real aislado, sin promocion a master).
+- Fase 9.6-preview: ejecutada (segura metodologicamente, insuficiente como salida operativa).
+- Fase 9.6-preview-fix: iniciada (salida operativa equivalente al input cuando sea posible).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
@@ -60,21 +61,21 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Fase vigente
 
-- Fase vigente: 9.6-preview - vista previa local de salida Excel con archivo real aislado.
+- Fase vigente: 9.6-preview-fix - output operativo equivalente al input en modo PREVIEW_ONLY.
 - Estado: iniciada y activa.
-- Objetivo: generar una salida Excel local de inspeccion visual con un unico archivo real aislado, sin promocion al master operativo.
-- Restriccion metodologica: prueba local controlada, sin importacion formal al master y sin cambios de contrato funcional vigente.
+- Objetivo: mejorar la preview real para que el Excel incluya una capa operativa legible (capitulos/partidas/unidades/mediciones/precios/importes) con trazabilidad por hoja y fila origen.
+- Restriccion metodologica: sigue siendo preview local sin promocion al master operativo ni ingesta formal.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.6 formal - contrato de ingesta real controlada al master con reglas de promocion.
+- Proxima fase: 9.6 formal - contrato de ingesta real controlada al master con reglas de promocion y bloqueos operativos.
 - Condicion: cerrar primero evidencia de preview local aislada sin desbordes metodologicos ni exposicion sensible.
 
-## Restricciones activas (fase 9.6-preview)
+## Restricciones activas (fase 9.6-preview-fix)
 
-- Prueba local controlada con un unico archivo real aislado solo para inspeccion visual.
+- Prueba local controlada con un unico archivo real aislado y salida operativa de lectura humana.
 - No promocion a master operativo.
-- No importacion formal al Excel maestro vivo.
+- No ingesta formal al Excel maestro vivo.
 - No calculo de ratios finales.
 - No normalizacion final de categorias.
 - No consolidacion definitiva de importes.
@@ -100,14 +101,15 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Ejecutar preview local con un archivo real aislado y salida Excel no operativa.
-- Verificar trazabilidad minima en salida preview con IDs sanitizados.
-- Registrar limitaciones observadas antes de abrir 9.6 formal.
+- Implementar hoja operativa `IMPORTED_BUDGET_VIEW` para preview legible.
+- Separar importes/unidades/cantidades de descripciones cuando sea detectable.
+- Regenerar preview local real aislada y verificar utilidad visual minima.
 
 ### P1
 
 - Definir contrato de 9.6 formal para ingesta real controlada al master.
 - Delimitar criterios de promocion desde preview a carga formal.
+- Definir reglas de completitud minima para la capa operativa antes de promocion.
 
 ### P2
 
@@ -141,6 +143,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.3: hardening con carga sintetica incremental, validaciones referenciales y snapshots/rollback/retencion iniciales.
 - Fase 9.4: refactor controlado de validaciones de integridad en modulo dedicado.
 - Fase 9.5: idempotencia por run_id, checksum SHA-256 y rollback negativo.
+- Fase 9.6-preview: salida local con archivo real aislado (segura, no operativa suficiente).
 
 ## Fuentes canonicas de estado actual
 

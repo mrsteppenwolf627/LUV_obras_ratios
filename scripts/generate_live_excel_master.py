@@ -7,6 +7,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
+import re
 import shutil
 import sys
 from typing import Iterable
@@ -41,6 +42,38 @@ DEFAULT_OUTPUT = Path("outputs/live_excel_master/live_excel_master.xlsx")
 ALLOWED_OUTPUT_ROOT = Path("outputs/live_excel_master")
 SNAPSHOTS_DIRNAME = "snapshots"
 DEFAULT_RETENTION_MAX = 5
+OPERATIONAL_PREVIEW_SHEET = "IMPORTED_BUDGET_VIEW"
+OPERATIONAL_PREVIEW_COLUMNS = [
+    "preview_row_id",
+    "source_file_id",
+    "import_batch_id",
+    "budget_version_id",
+    "source_sheet_name",
+    "source_row_number",
+    "chapter_code",
+    "chapter_name",
+    "item_code",
+    "item_description",
+    "unit",
+    "quantity",
+    "unit_price",
+    "amount",
+    "currency",
+    "validation_status",
+    "preview_only",
+    "notes",
+]
+_NUMERIC_RE = re.compile(r"^-?\d+(?:[.,]\d+)?$")
+_HEADER_MAP = {
+    "chapter_code": ["capitulo codigo", "codigo capitulo", "chapter code", "cap code"],
+    "chapter_name": ["capitulo", "capitulo nombre", "chapter", "chapter name"],
+    "item_code": ["codigo", "codigo partida", "item code", "partida codigo", "referencia"],
+    "item_description": ["descripcion", "concepto", "texto", "description"],
+    "unit": ["unidad", "ud", "unit"],
+    "quantity": ["cantidad", "medicion", "qty", "quantity"],
+    "unit_price": ["precio unitario", "precio", "unit price", "p unit"],
+    "amount": ["importe", "total", "amount", "coste"],
+}
 
 
 def utc_now_iso() -> str:
@@ -63,6 +96,126 @@ def _create_workbook_template(phase_value: str = "9.5") -> Workbook:
             ws.append(["real_data_allowed", "false", utc_now_iso(), "system"])
 
     return workbook
+
+
+def _normalize_header(text: str) -> str:
+    return " ".join(str(text or "").strip().lower().replace("_", " ").replace("-", " ").split())
+
+
+def _to_number_text(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return ""
+    raw = str(value).strip()
+    if not raw:
+        return ""
+    if _NUMERIC_RE.match(raw.replace(" ", "").replace(".", "").replace(",", ".", 1)):
+        return raw.replace(",", ".")
+    return ""
+
+
+def _safe_text(value: object) -> str:
+    return "" if value is None else str(value).strip()
+
+
+def _detect_header_row_and_mapping(ws: object, max_scan_rows: int = 25) -> tuple[int, dict[str, int]]:
+    best_row = 1
+    best_map: dict[str, int] = {}
+    best_score = -1
+    scan_to = min(getattr(ws, "max_row", 1), max_scan_rows)
+    max_col = min(getattr(ws, "max_column", 1), 50)
+
+    for row_idx in range(1, scan_to + 1):
+        row_map: dict[str, int] = {}
+        score = 0
+        for col_idx in range(1, max_col + 1):
+            header = _normalize_header(ws.cell(row=row_idx, column=col_idx).value)
+            if not header:
+                continue
+            for field, aliases in _HEADER_MAP.items():
+                if field in row_map:
+                    continue
+                if header == field or header in aliases:
+                    row_map[field] = col_idx
+                    score += 2
+                    break
+                if any(alias in header for alias in aliases):
+                    row_map[field] = col_idx
+                    score += 1
+                    break
+        if score > best_score:
+            best_score = score
+            best_row = row_idx
+            best_map = row_map
+    return best_row, best_map
+
+
+def _append_operational_preview_sheet(workbook: Workbook) -> None:
+    if OPERATIONAL_PREVIEW_SHEET not in workbook.sheetnames:
+        ws = workbook.create_sheet(OPERATIONAL_PREVIEW_SHEET)
+        ws.append(OPERATIONAL_PREVIEW_COLUMNS)
+
+
+def _iter_operational_rows_from_xlsx(input_path: Path, source_file_id: str) -> list[list[str]]:
+    source_wb = load_workbook(input_path, data_only=False)
+    out_rows: list[list[str]] = []
+    try:
+        for ws in source_wb.worksheets:
+            header_row, mapping = _detect_header_row_and_mapping(ws)
+            max_col = min(getattr(ws, "max_column", 1), 50)
+            for row_idx in range(header_row + 1, getattr(ws, "max_row", 0) + 1):
+                values = [ws.cell(row=row_idx, column=i).value for i in range(1, max_col + 1)]
+                if all(v in (None, "") for v in values):
+                    continue
+                chapter_code = _safe_text(values[mapping["chapter_code"] - 1]) if "chapter_code" in mapping else ""
+                chapter_name = _safe_text(values[mapping["chapter_name"] - 1]) if "chapter_name" in mapping else ""
+                item_code = _safe_text(values[mapping["item_code"] - 1]) if "item_code" in mapping else ""
+                item_description = _safe_text(values[mapping["item_description"] - 1]) if "item_description" in mapping else ""
+                unit = _safe_text(values[mapping["unit"] - 1]) if "unit" in mapping else ""
+                quantity = _to_number_text(values[mapping["quantity"] - 1]) if "quantity" in mapping else ""
+                unit_price = _to_number_text(values[mapping["unit_price"] - 1]) if "unit_price" in mapping else ""
+                amount = _to_number_text(values[mapping["amount"] - 1]) if "amount" in mapping else ""
+
+                if not item_description:
+                    first_text = next((_safe_text(v) for v in values if _safe_text(v)), "")
+                    item_description = first_text
+
+                notes = []
+                if not mapping:
+                    notes.append("NO_HEADER_DETECTION")
+                if "amount" not in mapping:
+                    notes.append("AMOUNT_NOT_DETECTED")
+                if "quantity" not in mapping:
+                    notes.append("QUANTITY_NOT_DETECTED")
+                if "unit_price" not in mapping:
+                    notes.append("UNIT_PRICE_NOT_DETECTED")
+
+                out_rows.append(
+                    [
+                        f"pvr_{uuid4().hex[:10]}",
+                        source_file_id,
+                        "",
+                        "",
+                        ws.title,
+                        str(row_idx),
+                        chapter_code,
+                        chapter_name,
+                        item_code,
+                        item_description,
+                        unit,
+                        quantity,
+                        unit_price,
+                        amount,
+                        "EUR",
+                        "PENDING",
+                        "TRUE",
+                        "|".join(notes),
+                    ]
+                )
+    finally:
+        source_wb.close()
+    return out_rows
 
 
 def _checksum_sha256(path: Path) -> str:
@@ -525,6 +678,99 @@ def rollback_master_from_snapshot(
     }
 
 
+def generate_preview_from_real_xlsx(
+    input_xlsx_path: Path,
+    output_path: Path,
+    source_file_id: str = "sf_preview_real_001",
+    retention_max: int = DEFAULT_RETENTION_MAX,
+) -> dict[str, str]:
+    if input_xlsx_path.suffix.lower() != ".xlsx":
+        raise ValueError("Preview input must be an .xlsx file.")
+    if not input_xlsx_path.exists():
+        raise RuntimeError("Preview input file does not exist.")
+    if not contains_allowed_anchor(output_path):
+        raise ValueError("Output path must be inside an 'outputs/live_excel_master' directory.")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_path.exists():
+        result = generate_master(output_path=output_path, update=True, retention_max=retention_max)
+    else:
+        result = generate_master(output_path=output_path, update=False, retention_max=retention_max)
+
+    wb = load_workbook(output_path)
+    try:
+        _append_operational_preview_sheet(wb)
+        operational_rows = _iter_operational_rows_from_xlsx(input_xlsx_path, source_file_id=source_file_id)
+        ts = utc_now_iso()
+        run_id = f"preview_run_{uuid4().hex[:8]}"
+        import_batch_id = f"imp_preview_{uuid4().hex[:8]}"
+        budget_version_id = f"bv_preview_{uuid4().hex[:8]}"
+        project_id = f"prj_preview_{uuid4().hex[:8]}"
+
+        wb["README_MASTER"].append(["preview_mode", "PREVIEW_ONLY", ts, "system"])
+        wb["README_MASTER"].append(["preview_master_promotion", "false", ts, "system"])
+        wb["IMPORT_LOG"].append([import_batch_id, run_id, ts, ts, "PREVIEW_ONLY", str(len(operational_rows)), "0", "", ""])
+        wb["SOURCE_FILES"].append(
+            [source_file_id, "REAL_SAMPLE_SANITIZED.xlsx", "preview_only_hash", "XLSX", "MEDIUM", ts, import_batch_id, "SENSITIVE_LOCAL_ONLY"]
+        )
+        wb["PROJECTS"].append([project_id, "PREVIEW-001", "PREVIEW_ONLY_PROJECT", "", "m2", "PENDING", ts, ts])
+        wb["BUDGET_VERSIONS"].append([budget_version_id, project_id, source_file_id, "preview_v1", ts[:10], "true", "PENDING", import_batch_id])
+        wb["RAW_IMPORTS"].append(["raw_preview_001", source_file_id, "preview://local/sanitized.xlsx", "preview_raw_hash", ts, import_batch_id, "DENY"])
+        wb["VALIDATION_RESULTS"].append(
+            [
+                f"vr_preview_{uuid4().hex[:8]}",
+                "WORKBOOK",
+                source_file_id,
+                "PREVIEW_RULE_001",
+                "INFO",
+                "PASS",
+                "Operational preview generated from isolated local XLSX",
+                ts,
+                import_batch_id,
+            ]
+        )
+        wb["CHANGELOG"].append(
+            [
+                f"chg_preview_{uuid4().hex[:8]}",
+                ts,
+                "preview_real_file_operational_output",
+                OPERATIONAL_PREVIEW_SHEET,
+                "Operational preview view populated from isolated XLSX (PREVIEW_ONLY)",
+                "phase_9_6_preview_fix_operational_output",
+                "system",
+            ]
+        )
+
+        view_ws = wb[OPERATIONAL_PREVIEW_SHEET]
+        for row in operational_rows:
+            row[2] = import_batch_id
+            row[3] = budget_version_id
+            view_ws.append(row)
+            wb["COST_ITEMS"].append(
+                [
+                    f"ci_preview_{uuid4().hex[:8]}",
+                    budget_version_id,
+                    source_file_id,
+                    f"{row[4]}!{row[5]}",
+                    row[9],
+                    row[10],
+                    row[11],
+                    row[12],
+                    row[13],
+                    f"preview_row_hash_{uuid4().hex[:8]}",
+                    "PENDING",
+                ]
+            )
+        wb.save(output_path)
+    finally:
+        wb.close()
+
+    validate_workbook_file(output_path)
+    result["preview_rows"] = str(len(operational_rows))
+    result["preview_sheet"] = OPERATIONAL_PREVIEW_SHEET
+    return result
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Generate and harden a controlled live Excel master template (phase 9.5)."
@@ -563,6 +809,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional synthetic run_id for idempotent incremental loads.",
     )
+    parser.add_argument(
+        "--preview-real-file",
+        type=Path,
+        default=None,
+        help="Generate PREVIEW_ONLY operational sheet from one isolated local XLSX file.",
+    )
+    parser.add_argument(
+        "--preview-source-id",
+        type=str,
+        default="sf_preview_real_001",
+        help="Sanitized source_file_id used for preview mode.",
+    )
     return parser
 
 
@@ -578,7 +836,16 @@ def main() -> int:
     allowed_root = (root / ALLOWED_OUTPUT_ROOT).resolve()
     ensure_allowed_output_path(output_path, allowed_root)
 
-    if args.rollback_from is not None:
+    if args.preview_real_file is not None:
+        input_path = (root / args.preview_real_file).resolve() if not args.preview_real_file.is_absolute() else args.preview_real_file
+        result = generate_preview_from_real_xlsx(
+            input_xlsx_path=input_path,
+            output_path=output_path,
+            source_file_id=args.preview_source_id,
+            retention_max=args.snapshot_retention_max,
+        )
+        print("Live Excel PREVIEW_ONLY operational output completed.")
+    elif args.rollback_from is not None:
         snapshot_path = (root / args.rollback_from).resolve() if not args.rollback_from.is_absolute() else args.rollback_from
         result = rollback_master_from_snapshot(
             output_path=output_path,

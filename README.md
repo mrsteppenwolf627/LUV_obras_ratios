@@ -11,12 +11,13 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.3 cerrada tecnicamente: hardening con carga sintetica incremental, integridad referencial, snapshots, rollback y retencion.
 - Fase 9.4 cerrada tecnicamente: validaciones de integridad extraidas a modulo dedicado.
 - Fase 9.5 cerrada tecnicamente: idempotencia por run_id, checksum SHA-256 y rollback negativo.
-- Fase 9.6-preview iniciada: vista previa local con archivo real aislado sin promocion a master operativo.
+- Fase 9.6-preview ejecutada: preview local segura con archivo real aislado.
+- Fase 9.6-preview-fix iniciada: salida operativa legible equivalente al input cuando sea posible.
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.6 formal (contrato de ingesta real controlada al master).
+- Proxima fase recomendada: Fase 9.6 formal (contrato de ingesta real controlada al master, tras cerrar preview-fix).
 
 ## Restricciones criticas activas
 
