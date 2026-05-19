@@ -54,27 +54,31 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.5: cerrada tecnicamente.
 - Fase 9.6-preview: ejecutada (segura metodologicamente, insuficiente como salida operativa).
 - Fase 9.6-preview-fix: ejecutada (hoja operativa `IMPORTED_BUDGET_VIEW` integrada en preview).
-- Fase 9.6 formal: iniciada (contrato de ingesta real controlada PREVIEW_ONLY -> OPERATIVE).
+- Fase 9.6 formal: cerrada documentalmente (contrato PREVIEW_ONLY -> OPERATIVE definido).
+- Fase 9.7: iniciada (contrato de preservacion del presupuesto original y enlace con ratios progresivos).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
+- Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
+- Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
+- Decision de direccion 9.7: la capa preservada/operativa y la capa tecnica/normalizada deben coexistir.
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
 - Presto/PZH: obligatorio en roadmap mediante ruta tecnica evidenciada (export/herramienta equivalente), sin lectura nativa directa confirmada.
 
 ## Fase vigente
 
-- Fase vigente: 9.6 formal - contrato de ingesta real controlada al Excel maestro vivo.
+- Fase vigente: 9.7 - contrato de preservacion del presupuesto original y enlace con ratios progresivos.
 - Estado: iniciada y activa.
-- Objetivo: definir reglas formales de promocion, bloqueo y revision humana para pasar de `PREVIEW_ONLY` a `OPERATIVE` sin romper trazabilidad ni controles de integridad.
-- Restriccion metodologica: fase contractual; sin ingesta masiva real ni promocion automatica.
+- Objetivo: definir reglas para conservar el presupuesto importado dentro del master en formato/logica equivalente al input cuando sea posible, coexistiendo con la capa tecnica.
+- Restriccion metodologica: fase contractual; sin ingesta real operativa masiva ni calculo final de ratios.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.7 - implementacion incremental del evaluador de promocion controlada.
-- Condicion: usar contrato 9.6 como puerta obligatoria previa a cualquier promocion real.
+- Proxima fase: 9.8 - implementacion incremental del contrato de preservacion (capas preservadas + mapeo tecnico de trazabilidad).
+- Condicion: mantener contrato 9.6 de promocion y nuevo contrato 9.7 de preservacion en ejecucion dry-run antes de ingesta operativa real.
 
-## Restricciones activas (fase 9.6 formal)
+## Restricciones activas (fase 9.7)
 
-- No ingesta masiva real.
+- No ingesta real operativa masiva.
 - No promocion automatica sin criterios formales de contrato.
 - Promocion solo explicita, trazada y bloqueable.
 - No calculo de ratios finales.
@@ -85,7 +89,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No subir Excels generados.
 - No subir reports/outputs sensibles.
 - No disenar interfaz, dashboard ni flujo UX en esta fase.
-- Mantener compatibilidad con contrato documental 9.1/9.2/9.3/9.4/9.5/9.6-preview-fix.
+- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6 y direccion de producto 9.7.
 
 ## Resumen de fases cerradas (alto nivel)
 
@@ -102,14 +106,14 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Documentar contrato formal PREVIEW_ONLY -> OPERATIVE.
-- Definir criterios de promocion, bloqueo y revision humana.
-- Definir umbrales preliminares de completitud y calidad de separacion.
+- Documentar contrato de preservacion del presupuesto original en capa operativa visible.
+- Definir coexistencia obligatoria capa preservada + capa tecnica normalizada.
+- Definir trazabilidad desde hojas preservadas hacia `COST_ITEMS` y puentes hacia ratios progresivos.
 
 ### P1
 
-- Implementar evaluador de contrato de promocion en modo dry-run con tests sinteticos.
-- Integrar estados `OPERATIVE_CANDIDATE`, `PROMOTION_BLOCKED`, `MANUAL_REVIEW_REQUIRED`.
+- Implementar estrategia de nombres de hojas preservadas y mapeo tecnico asociado en modo dry-run.
+- Integrar evaluador de promocion 9.6 con contrato de preservacion 9.7 sin habilitar promocion automatica.
 
 ### P2
 
@@ -145,6 +149,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.5: idempotencia por run_id, checksum SHA-256 y rollback negativo.
 - Fase 9.6-preview: salida local con archivo real aislado (segura, no operativa suficiente).
 - Fase 9.6-preview-fix: salida preview con capa operativa legible (`IMPORTED_BUDGET_VIEW`).
+- Fase 9.6 formal: contrato PREVIEW_ONLY -> OPERATIVE con criterios de promocion/bloqueo/revision.
 
 ## Fuentes canonicas de estado actual
 
