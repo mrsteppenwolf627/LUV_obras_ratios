@@ -47,6 +47,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fecha de consolidacion documental: 2026-05-19.
 - Fase 8: cerrada tecnicamente.
 - Fase 9.0: iniciada y vigente.
+- Fase 9.1: iniciada (diseno tecnico del generador del Excel maestro vivo, documentacion antes de codigo).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
@@ -54,22 +55,25 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Fase vigente
 
-- Fase vigente: 9.0 - definicion del Excel maestro vivo como salida principal.
-- Estado: iniciada y activa en plano documental, sin implementacion del generador de Excel maestro todavia.
-- Alcance vigente: consolidar marco metodologico y preparar apertura de diseno tecnico de la siguiente fase.
+- Fase vigente: 9.1 - diseno tecnico del generador del Excel maestro vivo.
+- Estado: iniciada y activa en plano documental.
+- Objetivo: definir contrato tecnico del maestro vivo (estructura de hojas, reglas de actualizacion, trazabilidad minima, snapshots/versionado y validaciones previas), sin implementacion del generador.
+- Restriccion metodologica: documentacion antes de codigo.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.1 - diseno tecnico del generador del Excel maestro vivo.
-- Condicion: mantener restricciones activas, sin carga real al master y sin calculo de ratios finales en esta etapa.
+- Proxima fase: 9.2 - implementacion controlada del generador del Excel maestro vivo (solo tras cierre documental de 9.1).
+- Condicion: mantener restricciones activas y respetar el contrato tecnico definido en 9.1.
 
-## Restricciones activas (fase 9.0)
+## Restricciones activas (fase 9.1)
 
 - No crear todavia el Excel maestro real con datos.
 - No importar datos reales al master.
 - No calcular ratios finales.
 - No consolidar importes finales.
 - No normalizar categorias finales.
+- No abrir implementacion del generador durante 9.1.
+- No romper trazabilidad ni validaciones previas ya consolidadas.
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
 
@@ -88,14 +92,14 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Abrir Fase 9.1: diseno tecnico del generador del Excel maestro vivo.
-- Definir versionado/snapshots del maestro vivo.
-- Definir reglas operativas de sobrescritura controlada.
-- Asegurar integracion trazable de Excel/BC3 y ruta valida para Presto/PZH exportado.
+- Cerrar Fase 9.1: contrato tecnico del generador del Excel maestro vivo.
+- Congelar reglas de versionado/snapshots del maestro vivo.
+- Congelar reglas operativas de sobrescritura controlada y bloqueos de actualizacion.
+- Definir validaciones minimas previas de escritura en maestro vivo.
 
 ### P1
 
-- Implementacion del generador del Excel maestro vivo (tras cierre documental de 9.1).
+- Abrir Fase 9.2: implementacion del generador del Excel maestro vivo (tras cierre documental de 9.1).
 - Contratos de validacion de carga al maestro vivo (sin romper restricciones de datos no validados).
 
 ### P2
@@ -125,12 +129,14 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 7.0 a 7.2: lector integral Excel y contrato comun multi-formato.
 - Fase 8: estrategia obligatoria Presto/PZH basada en evidencia.
 - Fase 9.0: definicion del Excel maestro vivo como salida principal.
+- Fase 9.1: diseno tecnico del generador del Excel maestro vivo.
 
 ## Fuentes canonicas de estado actual
 
 - `ADRs.md` (ADR-019).
 - `docs/decisions/phase_8_presto_pzh_support_strategy.md`.
 - `docs/decisions/phase_9_0_live_excel_master_output_definition.md`.
+- `docs/decisions/phase_9_1_live_excel_master_generator_design.md`.
 - `README.md` (resumen operativo).
 
 ## Reglas de actualización
