@@ -49,7 +49,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.0: iniciada y vigente.
 - Fase 9.1: cerrada documentalmente.
 - Fase 9.2: cerrada tecnicamente.
-- Fase 9.3: iniciada (hardening del generador con carga sintetica incremental).
+- Fase 9.3: cerrada tecnicamente.
+- Fase 9.4: iniciada (refactor controlado de validaciones de integridad y resiliencia).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
@@ -57,19 +58,21 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Fase vigente
 
-- Fase vigente: 9.3 - hardening del generador del Excel maestro vivo con carga sintetica incremental.
+- Fase vigente: 9.4 - refactor controlado de validaciones de integridad y resiliencia del Excel maestro vivo.
 - Estado: iniciada y activa.
-- Objetivo: endurecer el generador para soportar carga sintetica incremental con validaciones referenciales, snapshots, rollback inicial y politica de retencion simple, sin datos reales ni calculo final de ratios.
-- Restriccion metodologica: hardening con datos sinteticos y compatibilidad con contrato documental de Fase 9.1 y Fase 9.2.
+- Objetivo: separar validaciones de integridad en modulo dedicado, reforzar resiliencia de snapshots/rollback/rutas y ampliar pruebas sinteticas de fallo sin cambiar el contrato funcional 9.1/9.2/9.3.
+- Restriccion metodologica: refactor controlado (sin rediseño amplio), datos sinteticos y compatibilidad contractual 9.1/9.2/9.3.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.4 - consolidacion de reglas de integridad operativa y preparacion de integracion de cargas no reales ampliadas.
+- Proxima fase: 9.5 - consolidacion de entrada sintetica ampliada y preparacion de integracion controlada pre-real.
 - Condicion: mantener restricciones activas y no habilitar datos reales hasta validacion explicita.
 
-## Restricciones activas (fase 9.3)
+## Restricciones activas (fase 9.4)
 
-- Hardening controlado: solo datos sinteticos y pruebas de integridad.
+- Refactor controlado: sin rediseño amplio, mantener CLI principal `generate_live_excel_master.py`.
+- Mantener compatibilidad con contrato 9.1/9.2/9.3.
+- Solo datos sinteticos y pruebas de integridad/resiliencia.
 - No usar datos reales.
 - No importar presupuestos reales al master.
 - No calcular ratios finales.
@@ -77,7 +80,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No normalizar categorias finales.
 - No romper trazabilidad ni validaciones previas ya consolidadas.
 - No subir Excels generados.
-- Respetar contrato documental definido en Fase 9.1 y Fase 9.2.
+- No diseñar interfaz, dashboard ni flujo UX en esta fase.
+- Respetar contrato documental definido en Fase 9.1, Fase 9.2 y Fase 9.3.
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
 
@@ -96,15 +100,14 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Implementar carga sintetica incremental controlada.
-- Endurecer validaciones referenciales entre hojas clave.
-- Definir y aplicar retencion inicial de snapshots.
-- Definir/validar politica inicial de rollback seguro.
+- Extraer validaciones de integridad a modulo dedicado y testeable.
+- Endurecer validaciones de estados, rutas permitidas y referencias entre hojas.
+- Reforzar rollback/snapshots/retencion con pruebas de resiliencia.
 
 ### P1
 
-- Cerrar Fase 9.3 con evidencia de hardening y pruebas.
-- Preparar Fase 9.4 para integridad operativa ampliada sin datos reales.
+- Cerrar Fase 9.4 con evidencia de compatibilidad y resiliencia.
+- Preparar Fase 9.5 para ampliacion controlada pre-real sin romper restricciones activas.
 
 ### P2
 
@@ -135,6 +138,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.0: definicion del Excel maestro vivo como salida principal.
 - Fase 9.1: diseno tecnico del generador del Excel maestro vivo.
 - Fase 9.2: implementacion controlada del generador del Excel maestro vivo.
+- Fase 9.3: hardening con carga sintetica incremental, validaciones referenciales y snapshots/rollback/retencion iniciales.
 
 ## Fuentes canonicas de estado actual
 
@@ -142,6 +146,8 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - `docs/decisions/phase_8_presto_pzh_support_strategy.md`.
 - `docs/decisions/phase_9_0_live_excel_master_output_definition.md`.
 - `docs/decisions/phase_9_1_live_excel_master_generator_design.md`.
+- `docs/decisions/phase_9_2_live_excel_master_generator_implementation.md`.
+- `docs/decisions/phase_9_3_live_excel_master_hardening.md`.
 - `README.md` (resumen operativo).
 
 ## Reglas de actualización
