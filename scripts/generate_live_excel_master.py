@@ -34,6 +34,7 @@ try:
         next_preserved_budget_sequence,
         utc_now_iso as preservation_utc_now_iso,
     )
+    from scripts.live_excel_dry_run_evaluator import evaluate_dry_run_workbook
 except ModuleNotFoundError:
     from live_excel_integrity import (  # type: ignore
         REQUIRED_SHEETS_COLUMNS,
@@ -53,6 +54,7 @@ except ModuleNotFoundError:
         next_preserved_budget_sequence,
         utc_now_iso as preservation_utc_now_iso,
     )
+    from live_excel_dry_run_evaluator import evaluate_dry_run_workbook  # type: ignore
 
 DEFAULT_OUTPUT = Path("outputs/live_excel_master/live_excel_master.xlsx")
 ALLOWED_OUTPUT_ROOT = Path("outputs/live_excel_master")
@@ -99,7 +101,7 @@ def utc_now_iso() -> str:
 
 
 
-def _create_workbook_template(phase_value: str = "9.8") -> Workbook:
+def _create_workbook_template(phase_value: str = "9.9") -> Workbook:
     workbook = Workbook()
     default = workbook.active
     workbook.remove(default)
@@ -604,7 +606,7 @@ def generate_master(output_path: Path, update: bool, retention_max: int = DEFAUL
     if output_path.exists():
         pre_snapshot_ref = _create_pre_snapshot_if_needed(output_path, snapshots_dir, run_id)
 
-    workbook = _create_workbook_template("9.8")
+    workbook = _create_workbook_template("9.9")
     if pre_snapshot_ref:
         _write_snapshot_log(
             workbook,
@@ -683,7 +685,7 @@ def load_synthetic_incremental(
         pre_snapshot = _create_pre_snapshot_if_needed(output_path, snapshots_dir, run_id)
     else:
         pre_snapshot = ""
-        wb_seed = _create_workbook_template("9.8")
+        wb_seed = _create_workbook_template("9.9")
         wb_seed.save(output_path)
         wb_seed.close()
 
@@ -907,7 +909,7 @@ def generate_preview_from_real_xlsx(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate and harden a controlled live Excel master template (phase 9.8)."
+        description="Generate and harden a controlled live Excel master template (phase 9.9)."
     )
     parser.add_argument(
         "--output",
@@ -955,6 +957,17 @@ def build_parser() -> argparse.ArgumentParser:
         default="sf_preview_real_001",
         help="Sanitized source_file_id used for preview mode.",
     )
+    parser.add_argument(
+        "--evaluate-dry-run",
+        action="store_true",
+        help="Evaluate PREVIEW_ONLY workbook as dry-run candidate without promoting.",
+    )
+    parser.add_argument(
+        "--evaluate-run-id",
+        type=str,
+        default="dry_run_eval",
+        help="run_id label used for dry-run evaluation reporting.",
+    )
     return parser
 
 
@@ -970,7 +983,25 @@ def main() -> int:
     allowed_root = (root / ALLOWED_OUTPUT_ROOT).resolve()
     ensure_allowed_output_path(output_path, allowed_root)
 
-    if args.preview_real_file is not None:
+    if args.evaluate_dry_run:
+        evaluation = evaluate_dry_run_workbook(output_path, run_id=args.evaluate_run_id)
+        result = {
+            "run_id": evaluation.run_id,
+            "state": evaluation.state,
+            "reasons": ",".join(evaluation.reasons) if evaluation.reasons else "none",
+            "auto_promotion_enabled": str(evaluation.auto_promotion_enabled).lower(),
+            "total_preview_rows": str(evaluation.metrics["total_preview_rows"]),
+            "total_preserved_rows": str(evaluation.metrics["total_preserved_rows"]),
+            "mapping_rate": str(evaluation.metrics["mapping_rate"]),
+            "traceability_rate": str(evaluation.metrics["traceability_rate"]),
+            "manual_review_rate": str(evaluation.metrics["manual_review_rate"]),
+            "blocked_rate": str(evaluation.metrics["blocked_rate"]),
+            "amount_separation_rate": str(evaluation.metrics["amount_separation_rate"]),
+            "ratio_input_rows": str(evaluation.metrics["ratio_input_rows"]),
+            "ratio_calculated_rows": str(evaluation.metrics["ratio_calculated_rows"]),
+        }
+        print("Live Excel dry-run evaluation completed.")
+    elif args.preview_real_file is not None:
         input_path = (root / args.preview_real_file).resolve() if not args.preview_real_file.is_absolute() else args.preview_real_file
         result = generate_preview_from_real_xlsx(
             input_xlsx_path=input_path,
