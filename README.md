@@ -1,63 +1,33 @@
-# LUV Obras Ratios
+﻿# LUV Obras Ratios
 
-Sistema interno para importacion, parsing, validacion estructural y futura normalizacion de presupuestos, con trazabilidad completa desde BC3 fuente hasta capas intermedias.
+Sistema interno para importacion, parsing, validacion estructural y futura normalizacion de presupuestos, con trazabilidad completa desde las fuentes hasta capas intermedias y salida operativa final.
 
-## Estado actual
+## Estado operativo actual (2026-05-19)
 
-- Fase 4 completada como bloque BC3 de parsing/validacion estructural.
-- Parser estricto BC3 implementado: `scripts/parse_bc3_strict.py`.
-- Validador estricto BC3 implementado: `scripts/validate_bc3_strict.py`.
-- Normalizador intermedio BC3 implementado: `scripts/normalize_bc3_intermediate.py`.
-- Validador de contrato de normalizacion intermedia implementado: `scripts/validate_bc3_intermediate_normalization.py`.
-- Lector integral Excel implementado: `scripts/read_excel_full.py`.
-- Estado consolidado BC3:
-  - `validation_readiness.global=VALIDATION_READY_WITH_CONTROLLED_EXCLUSIONS`
-  - `full_corpus_status=NOT_BLOCKED`
-  - `valid_subset_status=ADVANCE_ALLOWED`
-  - `eligible_files_count=4`
-  - `excluded_files_count=1`
-- Decision humana vigente: `BC3_02` queda excluido del flujo principal como `NOT_ELIGIBLE_AUXILIARY_OR_CORRUPT` y se mantiene solo como referencia tecnica.
-- Reorientacion vigente: estrategia multi-formato con prioridad alta en Excel y Presto/PZH; Presto/PZH es obligatorio y no puede omitirse del roadmap sin permiso explicito; BC3 queda como modulo disponible, no como unica prioridad.
-- Salida principal planificada: Excel maestro vivo, iterativo y actualizable.
-
-## Fase actual
-
-- Fase 7.2 cerrada tecnicamente: consolidacion multi-formato Excel/Presto y contrato comun de lectura.
-- Fase 8 iniciada: estrategia tecnica obligatoria para soporte Presto/PZH.
-- Fase 9.0 iniciada: definicion del Excel maestro vivo como salida principal del sistema.
-- BC3 permanece como modulo avanzado ya operativo.
-- Excel cuenta con lector integral, validacion de contrato y normalizacion intermedia inicial.
-- Presto/PZH ha sido investigado tecnicamente; no ha mostrado lectura nativa directa utilizable y sigue requiriendo una via tecnica valida.
-- Inventario multi-formato comun disponible.
-
-## Salida principal
-
-- La salida operativa del sistema sera un Excel maestro vivo.
-- Ese Excel se actualizara/sobrescribira de forma controlada por iteracion.
-- Podra incorporar nuevas hojas internas a medida que crezca el corpus procesado.
-- Acumulara presupuestos, validaciones, trazabilidad, exclusiones y ratios progresivos.
-- No sustituye a la trazabilidad de origen ni elimina las capas intermedias.
+- Fase 8 cerrada tecnicamente.
+- Fase 9.0 iniciada y vigente.
+- Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
+- BC3: modulo avanzado ya operativo, no prioridad unica.
+- Excel: lector integral y flujo multi-formato operativo.
+- Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
+- Proxima fase recomendada: Fase 9.1 (diseno tecnico del generador del Excel maestro vivo).
 
 ## Restricciones criticas activas
 
-- No importar al master.
-- No calcular ratios.
+- No crear todavia el Excel maestro real con datos.
+- No importar datos reales al master.
+- No calcular ratios finales.
 - No consolidar importes finales.
 - No normalizar categorias finales.
-- No UX todavia.
 - No modificar RAW.
-- No subir muestras reales ni reports reales sensibles.
+- No subir muestras reales ni reports/outputs sensibles.
 
-## Flujo por capas (resumen)
+## Referencias de estado
 
-1. Ingesta y preservacion de fuente.
-2. Diagnostico y lectura por formato (Excel, Presto/PZH, BC3 segun aplique).
-3. Parseo/validacion por formato con contratos trazables.
-4. Normalizacion intermedia por formato.
-5. Modelo intermedio comun multi-formato.
-6. Mapping de categorias y decisiones de negocio (fase posterior).
-7. Importacion al master (fase posterior).
-8. Calculo de ratios (fase posterior).
+- `CONTEXT.md`
+- `ADRs.md` (ADR-019)
+- `docs/decisions/phase_8_presto_pzh_support_strategy.md`
+- `docs/decisions/phase_9_0_live_excel_master_output_definition.md`
 
 ## Comandos base
 

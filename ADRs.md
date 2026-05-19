@@ -2,6 +2,13 @@
 
 Registro de decisiones arquitectonicas del proyecto.
 
+## Estado operativo de referencia (consistencia documental)
+
+- Referencia vigente: Fase 8 cerrada tecnicamente, Fase 9.0 iniciada.
+- Decision vigente principal: ADR-019 (Excel maestro vivo como salida principal).
+- Proxima fase recomendada: Fase 9.1 (diseno tecnico del generador del Excel maestro vivo).
+- Esta seccion es solo de consistencia de estado; no introduce nuevas ADR.
+
 ## Indice ADR
 
 - ADR-001: Adaptacion de roles multi-modelo (Aprobado inicial)
