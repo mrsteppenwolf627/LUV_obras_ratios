@@ -26,6 +26,14 @@ try:
         validate_workbook_file,
         validate_workbook_schema,
     )
+    from scripts.live_excel_preservation import (
+        PRESERVED_BUDGETS_INDEX,
+        PRESERVED_BUDGET_SHEETS,
+        PRESERVED_TO_COST_ITEMS_MAP,
+        build_preserved_visible_sheet_name,
+        next_preserved_budget_sequence,
+        utc_now_iso as preservation_utc_now_iso,
+    )
 except ModuleNotFoundError:
     from live_excel_integrity import (  # type: ignore
         REQUIRED_SHEETS_COLUMNS,
@@ -36,6 +44,14 @@ except ModuleNotFoundError:
         ensure_allowed_snapshot_path,
         validate_workbook_file,
         validate_workbook_schema,
+    )
+    from live_excel_preservation import (  # type: ignore
+        PRESERVED_BUDGETS_INDEX,
+        PRESERVED_BUDGET_SHEETS,
+        PRESERVED_TO_COST_ITEMS_MAP,
+        build_preserved_visible_sheet_name,
+        next_preserved_budget_sequence,
+        utc_now_iso as preservation_utc_now_iso,
     )
 
 DEFAULT_OUTPUT = Path("outputs/live_excel_master/live_excel_master.xlsx")
@@ -74,6 +90,7 @@ _HEADER_MAP = {
     "unit_price": ["precio unitario", "precio", "unit price", "p unit"],
     "amount": ["importe", "total", "amount", "coste"],
 }
+PRESERVED_TRACE_COLUMNS = ["__source_sheet_name", "__source_row_number", "__source_column_number"]
 
 
 def utc_now_iso() -> str:
@@ -82,7 +99,7 @@ def utc_now_iso() -> str:
 
 
 
-def _create_workbook_template(phase_value: str = "9.5") -> Workbook:
+def _create_workbook_template(phase_value: str = "9.8") -> Workbook:
     workbook = Workbook()
     default = workbook.active
     workbook.remove(default)
@@ -155,6 +172,101 @@ def _append_operational_preview_sheet(workbook: Workbook) -> None:
     if OPERATIONAL_PREVIEW_SHEET not in workbook.sheetnames:
         ws = workbook.create_sheet(OPERATIONAL_PREVIEW_SHEET)
         ws.append(OPERATIONAL_PREVIEW_COLUMNS)
+
+
+def _append_preserved_budget_scaffolding(
+    workbook: Workbook,
+    source_workbook: Workbook,
+    source_file_id: str,
+    import_batch_id: str,
+    budget_version_id: str,
+    cost_item_by_origin: dict[tuple[str, str], str],
+) -> dict[str, str]:
+    preserved_budget_seq = next_preserved_budget_sequence(workbook)
+    preserved_budget_id = f"pb_{preserved_budget_seq:03d}"
+    created_at = preservation_utc_now_iso()
+    workbook[PRESERVED_BUDGETS_INDEX].append(
+        [
+            preserved_budget_id,
+            source_file_id,
+            import_batch_id,
+            budget_version_id,
+            f"{preserved_budget_seq:03d}",
+            f"PRESERVED_{preserved_budget_seq:03d}",
+            created_at,
+            "PREVIEW_ONLY",
+        ]
+    )
+
+    created_sheets = 0
+    map_rows = 0
+    for ws_idx, source_ws in enumerate(source_workbook.worksheets, start=1):
+        preserved_sheet_id = f"pbs_{preserved_budget_seq:03d}_{ws_idx:03d}"
+        preserved_sheet_name = build_preserved_visible_sheet_name(
+            budget_sequence=preserved_budget_seq,
+            sheet_sequence=ws_idx,
+            source_sheet_name=source_ws.title,
+            existing_names=workbook.sheetnames,
+        )
+        preserved_ws = workbook.create_sheet(title=preserved_sheet_name)
+        workbook[PRESERVED_BUDGET_SHEETS].append(
+            [
+                preserved_sheet_id,
+                preserved_budget_id,
+                source_ws.title,
+                preserved_sheet_name,
+                f"{ws_idx:03d}",
+                "TRUE",
+                str(source_ws.max_row),
+                str(source_ws.max_column),
+                created_at,
+                "",
+            ]
+        )
+
+        # Keep source tabular shape, append traceability columns at the end.
+        for row_idx in range(1, source_ws.max_row + 1):
+            row_values = [
+                source_ws.cell(row=row_idx, column=col_idx).value
+                for col_idx in range(1, source_ws.max_column + 1)
+            ]
+            if row_idx == 1:
+                header_values = ["" if value is None else str(value) for value in row_values]
+                preserved_ws.append(header_values + PRESERVED_TRACE_COLUMNS)
+                continue
+
+            text_values = ["" if value is None else str(value) for value in row_values]
+            preserved_ws.append(text_values + [source_ws.title, str(row_idx), ""])
+
+            preserved_row_id = f"pr_{preserved_budget_seq:03d}_{ws_idx:03d}_{row_idx:05d}"
+            map_key = (source_ws.title, str(row_idx))
+            cost_item_id = cost_item_by_origin.get(map_key, "")
+            mapping_status = "MAPPED" if cost_item_id else "UNMAPPED"
+            workbook[PRESERVED_TO_COST_ITEMS_MAP].append(
+                [
+                    f"pm_{uuid4().hex[:12]}",
+                    source_file_id,
+                    import_batch_id,
+                    budget_version_id,
+                    preserved_sheet_id,
+                    preserved_row_id,
+                    source_ws.title,
+                    str(row_idx),
+                    cost_item_id,
+                    mapping_status,
+                    "1.0" if cost_item_id else "0.0",
+                    "PENDING",
+                    "" if cost_item_id else "NO_COST_ITEM_MATCH",
+                ]
+            )
+            map_rows += 1
+        created_sheets += 1
+
+    return {
+        "preserved_budget_id": preserved_budget_id,
+        "preserved_sheets": str(created_sheets),
+        "preserved_map_rows": str(map_rows),
+    }
 
 
 def _iter_operational_rows_from_xlsx(input_path: Path, source_file_id: str) -> list[list[str]]:
@@ -492,7 +604,7 @@ def generate_master(output_path: Path, update: bool, retention_max: int = DEFAUL
     if output_path.exists():
         pre_snapshot_ref = _create_pre_snapshot_if_needed(output_path, snapshots_dir, run_id)
 
-    workbook = _create_workbook_template("9.5")
+    workbook = _create_workbook_template("9.8")
     if pre_snapshot_ref:
         _write_snapshot_log(
             workbook,
@@ -571,7 +683,7 @@ def load_synthetic_incremental(
         pre_snapshot = _create_pre_snapshot_if_needed(output_path, snapshots_dir, run_id)
     else:
         pre_snapshot = ""
-        wb_seed = _create_workbook_template("9.5")
+        wb_seed = _create_workbook_template("9.8")
         wb_seed.save(output_path)
         wb_seed.close()
 
@@ -692,11 +804,18 @@ def generate_preview_from_real_xlsx(
         raise ValueError("Output path must be inside an 'outputs/live_excel_master' directory.")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    if output_path.exists():
-        result = generate_master(output_path=output_path, update=True, retention_max=retention_max)
-    else:
+    if not output_path.exists():
         result = generate_master(output_path=output_path, update=False, retention_max=retention_max)
+    else:
+        validate_workbook_file(output_path)
+        result = {
+            "output": output_path.as_posix(),
+            "updated": "true",
+            "pre_snapshot": "",
+            "post_snapshot": "",
+        }
 
+    source_wb = load_workbook(input_xlsx_path, data_only=False)
     wb = load_workbook(output_path)
     try:
         _append_operational_preview_sheet(wb)
@@ -706,6 +825,7 @@ def generate_preview_from_real_xlsx(
         import_batch_id = f"imp_preview_{uuid4().hex[:8]}"
         budget_version_id = f"bv_preview_{uuid4().hex[:8]}"
         project_id = f"prj_preview_{uuid4().hex[:8]}"
+        raw_import_id = f"raw_preview_{uuid4().hex[:8]}"
 
         wb["README_MASTER"].append(["preview_mode", "PREVIEW_ONLY", ts, "system"])
         wb["README_MASTER"].append(["preview_master_promotion", "false", ts, "system"])
@@ -715,7 +835,7 @@ def generate_preview_from_real_xlsx(
         )
         wb["PROJECTS"].append([project_id, "PREVIEW-001", "PREVIEW_ONLY_PROJECT", "", "m2", "PENDING", ts, ts])
         wb["BUDGET_VERSIONS"].append([budget_version_id, project_id, source_file_id, "preview_v1", ts[:10], "true", "PENDING", import_batch_id])
-        wb["RAW_IMPORTS"].append(["raw_preview_001", source_file_id, "preview://local/sanitized.xlsx", "preview_raw_hash", ts, import_batch_id, "DENY"])
+        wb["RAW_IMPORTS"].append([raw_import_id, source_file_id, "preview://local/sanitized.xlsx", "preview_raw_hash", ts, import_batch_id, "DENY"])
         wb["VALIDATION_RESULTS"].append(
             [
                 f"vr_preview_{uuid4().hex[:8]}",
@@ -742,13 +862,15 @@ def generate_preview_from_real_xlsx(
         )
 
         view_ws = wb[OPERATIONAL_PREVIEW_SHEET]
+        cost_item_by_origin: dict[tuple[str, str], str] = {}
         for row in operational_rows:
             row[2] = import_batch_id
             row[3] = budget_version_id
             view_ws.append(row)
+            cost_item_id = f"ci_preview_{uuid4().hex[:8]}"
             wb["COST_ITEMS"].append(
                 [
-                    f"ci_preview_{uuid4().hex[:8]}",
+                    cost_item_id,
                     budget_version_id,
                     source_file_id,
                     f"{row[4]}!{row[5]}",
@@ -761,19 +883,31 @@ def generate_preview_from_real_xlsx(
                     "PENDING",
                 ]
             )
+            cost_item_by_origin[(row[4], str(row[5]))] = cost_item_id
+
+        preserved_result = _append_preserved_budget_scaffolding(
+            workbook=wb,
+            source_workbook=source_wb,
+            source_file_id=source_file_id,
+            import_batch_id=import_batch_id,
+            budget_version_id=budget_version_id,
+            cost_item_by_origin=cost_item_by_origin,
+        )
         wb.save(output_path)
     finally:
         wb.close()
+        source_wb.close()
 
     validate_workbook_file(output_path)
     result["preview_rows"] = str(len(operational_rows))
     result["preview_sheet"] = OPERATIONAL_PREVIEW_SHEET
+    result.update(preserved_result)
     return result
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate and harden a controlled live Excel master template (phase 9.5)."
+        description="Generate and harden a controlled live Excel master template (phase 9.8)."
     )
     parser.add_argument(
         "--output",

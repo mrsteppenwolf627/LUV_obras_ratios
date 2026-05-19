@@ -14,12 +14,13 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.6-preview ejecutada: preview local segura con archivo real aislado.
 - Fase 9.6-preview-fix ejecutada: salida operativa legible con `IMPORTED_BUDGET_VIEW`.
 - Fase 9.6 formal cerrada documentalmente: contrato de ingesta real controlada `PREVIEW_ONLY -> OPERATIVE`.
-- Fase 9.7 iniciada: contrato de preservacion del presupuesto original y enlace con ratios progresivos.
+- Fase 9.7 cerrada documentalmente: contrato de preservacion del presupuesto original y enlace con ratios progresivos.
+- Fase 9.8 iniciada: implementacion incremental de preservacion y mapeo hacia `COST_ITEMS`.
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.8 (implementacion incremental del contrato de preservacion y trazabilidad operativa).
+- Proxima fase recomendada: Fase 9.9 (endurecimiento del evaluador dry-run combinado y reglas avanzadas de mapeo).
 
 ## Restricciones criticas activas
 
@@ -31,7 +32,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
 - No subir Excels generados.
-- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6 durante Fase 9.7.
+- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7 durante Fase 9.8.
 
 ## Referencias de estado
 

@@ -55,29 +55,32 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.6-preview: ejecutada (segura metodologicamente, insuficiente como salida operativa).
 - Fase 9.6-preview-fix: ejecutada (hoja operativa `IMPORTED_BUDGET_VIEW` integrada en preview).
 - Fase 9.6 formal: cerrada documentalmente (contrato PREVIEW_ONLY -> OPERATIVE definido).
-- Fase 9.7: iniciada (contrato de preservacion del presupuesto original y enlace con ratios progresivos).
+- Fase 9.7: cerrada documentalmente (contrato de preservacion del presupuesto original y enlace con ratios progresivos).
+- Fase 9.8: iniciada (implementacion incremental de preservacion del presupuesto original y mapeo hacia COST_ITEMS).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
 - Decision de direccion 9.7: la capa preservada/operativa y la capa tecnica/normalizada deben coexistir.
+- Decision vigente 9.8: se permite crear tantas hojas nuevas como sean necesarias para trazabilidad, claridad y utilidad operativa.
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
 - Presto/PZH: obligatorio en roadmap mediante ruta tecnica evidenciada (export/herramienta equivalente), sin lectura nativa directa confirmada.
 
 ## Fase vigente
 
-- Fase vigente: 9.7 - contrato de preservacion del presupuesto original y enlace con ratios progresivos.
+- Fase vigente: 9.8 - implementacion incremental de preservacion del presupuesto original y mapeo hacia COST_ITEMS.
 - Estado: iniciada y activa.
-- Objetivo: definir reglas para conservar el presupuesto importado dentro del master en formato/logica equivalente al input cuando sea posible, coexistiendo con la capa tecnica.
-- Restriccion metodologica: fase contractual; sin ingesta real operativa masiva ni calculo final de ratios.
+- Objetivo: implementar scaffolding para conservar presupuesto importado dentro del master en formato/logica equivalente al input cuando sea posible, coexistiendo con la capa tecnica.
+- Restriccion metodologica: fase controlada; sin promocion automatica ni ingesta real operativa masiva.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.8 - implementacion incremental del contrato de preservacion (capas preservadas + mapeo tecnico de trazabilidad).
-- Condicion: mantener contrato 9.6 de promocion y nuevo contrato 9.7 de preservacion en ejecucion dry-run antes de ingesta operativa real.
+- Proxima fase: 9.9 - endurecimiento del evaluador dry-run combinado (promocion + preservacion) y cobertura avanzada de mapeo.
+- Condicion: mantener contrato 9.6/9.7 y evidencias de integridad sin habilitar promocion automatica.
 
-## Restricciones activas (fase 9.7)
+## Restricciones activas (fase 9.8)
 
+- No promocion automatica a master operativo.
 - No ingesta real operativa masiva.
 - No promocion automatica sin criterios formales de contrato.
 - Promocion solo explicita, trazada y bloqueable.
@@ -89,7 +92,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No subir Excels generados.
 - No subir reports/outputs sensibles.
 - No disenar interfaz, dashboard ni flujo UX en esta fase.
-- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6 y direccion de producto 9.7.
+- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7.
 
 ## Resumen de fases cerradas (alto nivel)
 
@@ -106,14 +109,14 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Documentar contrato de preservacion del presupuesto original en capa operativa visible.
-- Definir coexistencia obligatoria capa preservada + capa tecnica normalizada.
-- Definir trazabilidad desde hojas preservadas hacia `COST_ITEMS` y puentes hacia ratios progresivos.
+- Implementar scaffolding de preservacion (`PRESERVED_BUDGETS_INDEX`, `PRESERVED_BUDGET_SHEETS`, `PRESERVED_TO_COST_ITEMS_MAP`).
+- Implementar estrategia de nombres sanitizados y no colision de hojas preservadas visibles.
+- Implementar trazabilidad `preserved_row -> COST_ITEMS` sin afectar reglas de elegibilidad de ratios.
 
 ### P1
 
-- Implementar estrategia de nombres de hojas preservadas y mapeo tecnico asociado en modo dry-run.
-- Integrar evaluador de promocion 9.6 con contrato de preservacion 9.7 sin habilitar promocion automatica.
+- Integrar evaluador dry-run combinado (9.6 + 9.7) con motivos explicitos.
+- Endurecer cobertura de mapping ambiguo/no tabular y estados `PRESERVATION_INCOMPLETE`.
 
 ### P2
 
@@ -150,6 +153,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.6-preview: salida local con archivo real aislado (segura, no operativa suficiente).
 - Fase 9.6-preview-fix: salida preview con capa operativa legible (`IMPORTED_BUDGET_VIEW`).
 - Fase 9.6 formal: contrato PREVIEW_ONLY -> OPERATIVE con criterios de promocion/bloqueo/revision.
+- Fase 9.7: contrato de preservacion del presupuesto original (Opcion C: hojas visibles + indice/mapa tecnico).
 
 ## Fuentes canonicas de estado actual
 
