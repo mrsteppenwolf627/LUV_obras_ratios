@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import hashlib
 from pathlib import Path
 import shutil
 import sys
@@ -48,7 +49,7 @@ def utc_now_iso() -> str:
 
 
 
-def _create_workbook_template(phase_value: str = "9.4") -> Workbook:
+def _create_workbook_template(phase_value: str = "9.5") -> Workbook:
     workbook = Workbook()
     default = workbook.active
     workbook.remove(default)
@@ -64,9 +65,12 @@ def _create_workbook_template(phase_value: str = "9.4") -> Workbook:
     return workbook
 
 
-def _checksum_hint(path: Path) -> str:
-    size = path.stat().st_size if path.exists() else 0
-    return f"size:{size}"
+def _checksum_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(8192), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _snapshot_path(base_dir: Path, label: str) -> Path:
@@ -85,7 +89,13 @@ def _append_row(ws: object, row: Iterable[str]) -> None:
     ws.append(list(row))
 
 
-def _write_snapshot_log(workbook: Workbook, trigger: str, run_id: str, storage_ref: str) -> None:
+def _write_snapshot_log(
+    workbook: Workbook,
+    trigger: str,
+    run_id: str,
+    storage_ref: str,
+    checksum: str,
+) -> None:
     snapshots_ws = workbook["SNAPSHOTS"]
     _append_row(
         snapshots_ws,
@@ -96,7 +106,7 @@ def _write_snapshot_log(workbook: Workbook, trigger: str, run_id: str, storage_r
             trigger,
             run_id,
             storage_ref,
-            _checksum_hint(Path(storage_ref)),
+            checksum,
             "system",
         ],
     )
@@ -250,6 +260,21 @@ def _safe_relative_path(path: Path, root: Path) -> str:
         return path.as_posix()
 
 
+def _collect_sheet_values(workbook: Workbook, sheet_name: str, column_name: str) -> set[str]:
+    ws = workbook[sheet_name]
+    headers = REQUIRED_SHEETS_COLUMNS[sheet_name]
+    col_idx = headers.index(column_name) + 1
+    values: set[str] = set()
+    for row_idx in range(2, ws.max_row + 1):
+        value = ws.cell(row=row_idx, column=col_idx).value
+        if value is None:
+            continue
+        parsed = str(value).strip()
+        if parsed:
+            values.add(parsed)
+    return values
+
+
 def _create_pre_snapshot_if_needed(output_path: Path, snapshots_dir: Path, run_id: str) -> str:
     if not output_path.exists():
         return ""
@@ -271,7 +296,13 @@ def _finalize_post_snapshot(
 
     wb = load_workbook(output_path)
     try:
-        _write_snapshot_log(wb, "post_update", run_id, _safe_relative_path(post_snapshot, workbook_root))
+        _write_snapshot_log(
+            wb,
+            "post_update",
+            run_id,
+            _safe_relative_path(post_snapshot, workbook_root),
+            _checksum_sha256(post_snapshot),
+        )
         for deleted_ref in deleted:
             _append_row(
                 wb["CHANGELOG"],
@@ -308,9 +339,15 @@ def generate_master(output_path: Path, update: bool, retention_max: int = DEFAUL
     if output_path.exists():
         pre_snapshot_ref = _create_pre_snapshot_if_needed(output_path, snapshots_dir, run_id)
 
-    workbook = _create_workbook_template("9.4")
+    workbook = _create_workbook_template("9.5")
     if pre_snapshot_ref:
-        _write_snapshot_log(workbook, "pre_update", run_id, pre_snapshot_ref)
+        _write_snapshot_log(
+            workbook,
+            "pre_update",
+            run_id,
+            pre_snapshot_ref,
+            _checksum_sha256(Path(pre_snapshot_ref)),
+        )
     workbook.save(output_path)
     workbook.close()
 
@@ -353,19 +390,35 @@ def generate_master(output_path: Path, update: bool, retention_max: int = DEFAUL
 def load_synthetic_incremental(
     output_path: Path,
     retention_max: int = DEFAULT_RETENTION_MAX,
+    run_id: str | None = None,
 ) -> dict[str, str]:
     if not contains_allowed_anchor(output_path):
         raise ValueError("Output path must be inside an 'outputs/live_excel_master' directory.")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     snapshots_dir = output_path.parent / SNAPSHOTS_DIRNAME
-    run_id = f"run_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:6]}"
+    run_id = run_id or f"run_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:6]}"
 
     if output_path.exists():
+        wb_existing = load_workbook(output_path)
+        try:
+            validate_workbook_schema(wb_existing)
+            existing_run_ids = _collect_sheet_values(wb_existing, "IMPORT_LOG", "run_id")
+            if run_id in existing_run_ids:
+                return {
+                    "output": output_path.as_posix(),
+                    "run_id": run_id,
+                    "pre_snapshot": "",
+                    "post_snapshot": "",
+                    "deleted_snapshots": "0",
+                    "idempotent_skip": "true",
+                }
+        finally:
+            wb_existing.close()
         pre_snapshot = _create_pre_snapshot_if_needed(output_path, snapshots_dir, run_id)
     else:
         pre_snapshot = ""
-        wb_seed = _create_workbook_template("9.4")
+        wb_seed = _create_workbook_template("9.5")
         wb_seed.save(output_path)
         wb_seed.close()
 
@@ -374,7 +427,13 @@ def load_synthetic_incremental(
         validate_workbook_schema(wb)
         _add_synthetic_incremental_rows(wb, run_id)
         if pre_snapshot:
-            _write_snapshot_log(wb, "pre_update", run_id, pre_snapshot)
+            _write_snapshot_log(
+                wb,
+                "pre_update",
+                run_id,
+                pre_snapshot,
+                _checksum_sha256(Path(pre_snapshot)),
+            )
         wb.save(output_path)
     finally:
         wb.close()
@@ -395,6 +454,7 @@ def load_synthetic_incremental(
         "pre_snapshot": pre_snapshot,
         "post_snapshot": post_snapshot_ref,
         "deleted_snapshots": str(len(deleted)),
+        "idempotent_skip": "false",
     }
 
 
@@ -415,12 +475,23 @@ def rollback_master_from_snapshot(
     run_id = f"run_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{uuid4().hex[:6]}"
     pre_snapshot = _create_pre_snapshot_if_needed(output_path, snapshots_dir, run_id)
 
-    shutil.copy2(snapshot_path, output_path)
-    validate_workbook_file(output_path)
+    try:
+        shutil.copy2(snapshot_path, output_path)
+        validate_workbook_file(output_path)
+    except Exception as exc:
+        if pre_snapshot:
+            shutil.copy2(Path(pre_snapshot), output_path)
+        raise RuntimeError(f"Rollback failed due to invalid snapshot content: {snapshot_path.name}") from exc
 
     wb = load_workbook(output_path)
     try:
-        _write_snapshot_log(wb, "rollback", run_id, snapshot_path.as_posix())
+        _write_snapshot_log(
+            wb,
+            "rollback",
+            run_id,
+            snapshot_path.as_posix(),
+            _checksum_sha256(snapshot_path),
+        )
         _append_row(
             wb["CHANGELOG"],
             [
@@ -456,7 +527,7 @@ def rollback_master_from_snapshot(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate and harden a controlled live Excel master template (phase 9.4)."
+        description="Generate and harden a controlled live Excel master template (phase 9.5)."
     )
     parser.add_argument(
         "--output",
@@ -486,6 +557,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_RETENTION_MAX,
         help="Keep at most N snapshot files in outputs/live_excel_master/snapshots.",
     )
+    parser.add_argument(
+        "--run-id",
+        type=str,
+        default=None,
+        help="Optional synthetic run_id for idempotent incremental loads.",
+    )
     return parser
 
 
@@ -513,6 +590,7 @@ def main() -> int:
         result = load_synthetic_incremental(
             output_path=output_path,
             retention_max=args.snapshot_retention_max,
+            run_id=args.run_id,
         )
         print("Live Excel synthetic incremental load completed.")
     else:
