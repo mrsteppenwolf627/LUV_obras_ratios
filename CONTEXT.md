@@ -58,7 +58,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.7: cerrada documentalmente (contrato de preservacion del presupuesto original y enlace con ratios progresivos).
 - Fase 9.8: cerrada tecnicamente.
 - Fase 9.9: cerrada tecnicamente.
-- Fase 9.10: iniciada y ejecutada en lote piloto local controlado (sin promocion operativa).
+- Fase 9.10: cerrada tecnicamente (piloto real dry-run ejecutado, sin promocion operativa).
+- Fase 9.11: iniciada (cierre post-piloto real dry-run y plan de endurecimiento).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
@@ -70,23 +71,25 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Fase vigente
 
-- Fase vigente: 9.10 - piloto dry-run con varios presupuestos reales aislados.
+- Fase vigente: 9.11 - cierre post-piloto real dry-run y plan de endurecimiento.
 - Estado: iniciada y activa.
-- Objetivo: ejecutar previews preservadas y evaluaciones dry-run sobre varios archivos reales aislados, sin promocion operativa.
-- Restriccion metodologica: prueba real controlada local, trazable y reversible, sin promocion automatica ni ingesta real operativa masiva.
+- Objetivo: cerrar formalmente hallazgos de Fase 9.10, documentar bloqueos y definir plan tecnico previo a cualquier promocion operativa.
+- Resultado clave heredado: primer XLSX candidato operativo detectado (`REAL_DRY_RUN_001`) sin promocion.
+- Resultado clave heredado: BC3 bloqueado en flujo 9.x por falta de ruta de preview preservada (`REAL_DRY_RUN_002`).
+- Resultado clave heredado: un XLSX bloqueado por separacion importe-descripcion insuficiente (`REAL_DRY_RUN_003`).
+- Restriccion metodologica: trabajo prioritariamente documental, trazable y reversible, sin promocion automatica ni ingesta real operativa masiva.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.11 - endurecimiento post-piloto real (recalibracion de umbrales y mejoras de parsing/mapeo).
-- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10 y sin habilitar promocion automatica.
+- Proxima fase: 9.12 - ejecucion del endurecimiento tecnico priorizado post-piloto.
+- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11 y sin habilitar promocion automatica.
 
-## Restricciones activas (fase 9.10)
+## Restricciones activas (fase 9.11)
 
 - No promocion automatica a master operativo.
-- No ingesta real operativa masiva.
 - No actualizacion del master operativo.
-- No promocion automatica sin criterios formales de contrato.
 - Promocion solo explicita, trazada y bloqueable.
+- No ingesta real operativa masiva.
 - No calculo de ratios finales.
 - No normalizacion final de categorias.
 - No consolidacion definitiva de importes.
@@ -95,7 +98,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No subir Excels generados.
 - No subir reports/outputs sensibles.
 - No disenar interfaz, dashboard ni flujo UX en esta fase.
-- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9.
+- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10.
 
 ## Resumen de fases cerradas (alto nivel)
 
@@ -159,6 +162,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.7: contrato de preservacion del presupuesto original (Opcion C: hojas visibles + indice/mapa tecnico).
 - Fase 9.8: scaffolding de preservacion implementado (`PRESERVED_BUDGETS_INDEX`, `PRESERVED_BUDGET_SHEETS`, `PRESERVED_TO_COST_ITEMS_MAP` y hojas `PRES_*` visibles).
 - Fase 9.9: evaluador dry-run combinado implementado (`OPERATIVE_CANDIDATE`, `PROMOTION_BLOCKED`, `MANUAL_REVIEW_REQUIRED`, `PRESERVATION_INCOMPLETE`).
+- Fase 9.10: piloto real dry-run multi-archivo ejecutado y cerrado tecnicamente (1 candidato operativo XLSX, 2 bloqueos controlados).
 
 ## Fuentes canonicas de estado actual
 

@@ -17,12 +17,13 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.7 cerrada documentalmente: contrato de preservacion del presupuesto original y enlace con ratios progresivos.
 - Fase 9.8 cerrada tecnicamente: scaffolding de preservacion y mapeo base implementados.
 - Fase 9.9 cerrada tecnicamente: evaluador dry-run combinado implementado.
-- Fase 9.10 iniciada y ejecutada localmente en primer lote: piloto dry-run con varios presupuestos reales aislados (sin promocion operativa).
+- Fase 9.10 cerrada tecnicamente: piloto dry-run con varios presupuestos reales aislados (sin promocion operativa).
+- Fase 9.11 iniciada: cierre post-piloto real dry-run y plan de endurecimiento previo a cualquier promocion.
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.11 (ajustes post-piloto y recalibracion de umbrales).
+- Proxima fase recomendada: Fase 9.12 (ejecucion tecnica del endurecimiento priorizado).
 
 ## Restricciones criticas activas
 
@@ -35,7 +36,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
 - No subir Excels generados.
-- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9 durante Fase 9.10.
+- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10 durante Fase 9.11.
 
 ## Referencias de estado
 
@@ -44,6 +45,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - `docs/decisions/phase_8_presto_pzh_support_strategy.md`
 - `docs/decisions/phase_9_0_live_excel_master_output_definition.md`
 - `docs/decisions/phase_9_10_real_dry_run_pilot.md`
+- `docs/decisions/phase_9_11_post_pilot_hardening_plan.md`
 
 ## Comandos base
 
