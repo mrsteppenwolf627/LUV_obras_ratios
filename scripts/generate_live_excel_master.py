@@ -35,6 +35,7 @@ try:
     )
     from scripts.live_excel_dry_run_evaluator import evaluate_dry_run_workbook
     from scripts.live_excel_professional_output import append_professional_budget_review
+    from scripts.live_excel_workbook_formatting import apply_workbook_professional_formatting
     from scripts.xlsx_budget_detection import (
         MAPPING_AMBIGUOUS,
         MAPPING_MANUAL_REVIEW,
@@ -70,6 +71,7 @@ except ModuleNotFoundError:
     )
     from live_excel_dry_run_evaluator import evaluate_dry_run_workbook  # type: ignore
     from live_excel_professional_output import append_professional_budget_review  # type: ignore
+    from live_excel_workbook_formatting import apply_workbook_professional_formatting  # type: ignore
     from xlsx_budget_detection import (  # type: ignore
         MAPPING_AMBIGUOUS,
         MAPPING_MANUAL_REVIEW,
@@ -891,6 +893,21 @@ def generate_preview_from_real_xlsx(
                 "system",
             ]
         )
+        formatting_result = apply_workbook_professional_formatting(
+            workbook=wb,
+            mode_label="PREVIEW_ONLY",
+        )
+        wb["CHANGELOG"].append(
+            [
+                f"chg_preview_{uuid4().hex[:8]}",
+                ts,
+                "workbook_professional_formatting",
+                formatting_result["index_sheet"],
+                "Workbook-wide formatting applied across human/preserved/trace/technical sheets.",
+                "phase_9_15_workbook_wide_professional_formatting",
+                "system",
+            ]
+        )
         wb.save(output_path)
     finally:
         wb.close()
@@ -901,6 +918,7 @@ def generate_preview_from_real_xlsx(
     result["preview_sheet"] = OPERATIONAL_PREVIEW_SHEET
     result.update(preserved_result)
     result.update(professional_result)
+    result.update(formatting_result)
     return result
 
 

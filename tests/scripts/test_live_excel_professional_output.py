@@ -54,8 +54,9 @@ def test_professional_review_sheet_structure_and_order():
         wb = load_workbook(out)
         try:
             review_name, trace_name = _first_review_and_trace(wb)
-            assert wb.sheetnames[0] == review_name
-            assert wb.sheetnames[1] == trace_name
+            assert wb.sheetnames[0] == "INDEX"
+            assert wb.sheetnames[1] == review_name
+            assert wb.sheetnames[2] == trace_name
 
             review_ws = wb[review_name]
             visible_headers = [review_ws.cell(row=4, column=idx).value for idx in range(1, 7)]

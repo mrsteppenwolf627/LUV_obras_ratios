@@ -62,7 +62,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.11: cerrada documentalmente (cierre post-piloto real dry-run y plan de endurecimiento).
 - Fase 9.12: cerrada tecnicamente (endurecimiento de extraccion economica XLSX heterogenea y mapping preserved -> COST_ITEMS).
 - Fase 9.13: cerrada tecnicamente (prueba real ampliada XLSX post-hardening y validacion de generalizacion).
-- Fase 9.14: iniciada (output profesional de presupuesto preservado equivalente al input para revision humana).
+- Fase 9.14: cerrada tecnicamente (hoja profesional inicial + trazabilidad separada).
+- Fase 9.15: iniciada (profesionalizacion global del workbook y formato completo del Excel maestro).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
@@ -71,26 +72,29 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Decision de producto 9.14: la salida visual profesional es obligatoria.
 - Decision de producto 9.14: la capa tecnica no sustituye a la hoja profesional de presupuesto.
 - Decision de producto 9.14: las columnas tecnicas deben quedar ocultas o separadas en hojas de trazabilidad.
+- Decision de producto 9.15: no basta con profesionalizar solo `BUDGET_REVIEW_*`.
+- Decision de producto 9.15: todas las hojas visibles deben tener presentacion cuidada y navegable.
+- Decision de producto 9.15: hojas internas demasiado tecnicas pueden moverse al final y/o ocultarse manteniendo auditoria.
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
 - Presto/PZH: obligatorio en roadmap mediante ruta tecnica evidenciada (export/herramienta equivalente), sin lectura nativa directa confirmada.
 
 ## Fase vigente
 
-- Fase vigente: 9.14 - output profesional de presupuesto preservado equivalente al input.
+- Fase vigente: 9.15 - profesionalizacion global del workbook y formato completo del Excel maestro.
 - Estado: iniciada y activa.
-- Objetivo: generar una hoja profesional de revision de presupuesto equivalente al input real, sin sustituir la trazabilidad tecnica.
-- Alcance: salida profesional `BUDGET_REVIEW_*` y trazabilidad separada `BUDGET_REVIEW_TRACE_*` sobre previews locales PREVIEW_ONLY.
-- Resultado esperado: presupuesto legible para el estudio desde la primera hoja del workbook.
+- Objetivo: aplicar formato profesional coherente a todas las hojas del workbook (humanas, preservadas, trazabilidad y tecnicas), no solo a la primera hoja.
+- Alcance: indice de navegacion, orden global de hojas, estilos por categoria, formateo tabular tecnico y mejora visual de hojas preservadas.
+- Resultado esperado: workbook completo revisable sin sensacion de volcado tecnico crudo.
 - Fuera de alcance: ruta BC3 preservada, promocion operativa y calculo final de ratios.
 - Restriccion metodologica: trabajo en modo `PREVIEW_ONLY`/dry-run, trazable y reversible, sin promocion automatica ni ingesta real operativa.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.15 - cierre de aceptacion humana de salida profesional y decision de apertura BC3 preservado.
-- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14 y sin habilitar promocion automatica.
+- Proxima fase: 9.16 - cierre de aceptacion humana final y preparacion de decision BC3 preservado.
+- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14/9.15 y sin habilitar promocion automatica.
 
-## Restricciones activas (fase 9.14)
+## Restricciones activas (fase 9.15)
 
 - No promocion automatica a master operativo.
 - No actualizacion del master operativo.
@@ -105,7 +109,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No subir reports/outputs sensibles.
 - No disenar interfaz, dashboard ni flujo UX en esta fase.
 - BC3 preservado queda fuera de alcance de esta fase salvo no-regresion documental.
-- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13.
+- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14.
 
 ## Resumen de fases cerradas (alto nivel)
 
@@ -122,9 +126,9 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Endurecer la hoja profesional `BUDGET_REVIEW_*` para que sea util como documento de revision del estudio.
-- Mantener formulas auditables de importes/subtotales/totales sin contaminar la vista humana con columnas tecnicas.
-- Mantener trazabilidad separada y conectada mediante `BUDGET_REVIEW_TRACE_*`.
+- Profesionalizar visualmente todo el workbook, no solo `BUDGET_REVIEW_*`.
+- Consolidar indice de navegacion y orden de hojas para revision humana integral.
+- Asegurar que hojas tecnicas y vacias pendientes se perciban como controladas, no rotas.
 
 ### P1
 
@@ -173,7 +177,8 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.11: cierre documental post-piloto y plan de endurecimiento (Linea A XLSX y Linea B mapping priorizadas).
 - Fase 9.12: endurecimiento tecnico de extraccion economica XLSX heterogenea y mapping preserved -> COST_ITEMS.
 - Fase 9.13: prueba real ampliada XLSX post-hardening y validacion de generalizacion (cerrada tecnicamente).
-- Fase 9.14: inicio de salida profesional de presupuesto preservado para revision humana.
+- Fase 9.14: salida profesional inicial de presupuesto preservado (cerrada tecnicamente).
+- Fase 9.15: inicio de profesionalizacion global de todo el workbook.
 
 ## Fuentes canonicas de estado actual
 
@@ -189,6 +194,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - `docs/decisions/phase_9_12_xlsx_economic_extraction_and_mapping_hardening.md`.
 - `docs/decisions/phase_9_13_xlsx_real_dry_run_generalization.md`.
 - `docs/decisions/phase_9_14_professional_budget_review_output.md`.
+- `docs/decisions/phase_9_15_workbook_wide_professional_formatting.md`.
 - `README.md` (resumen operativo).
 
 ## Reglas de actualización
