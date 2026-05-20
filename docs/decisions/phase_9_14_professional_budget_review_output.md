@@ -124,6 +124,22 @@ En esta fase significa:
   - preservacion de importe original cuando falta cantidad/precio;
   - enlace de `review_row_id` con hoja de traza.
 
+## Prueba local con XLSX reales (sanitizada)
+
+Se ejecuto dry-run local sobre la misma secuencia sanitizada usada en el piloto:
+
+- `REAL_DRY_RUN_001` (XLSX): `OPERATIVE_CANDIDATE`.
+- `REAL_DRY_RUN_002` (BC3): `PROMOTION_BLOCKED` por `format_not_supported_for_preview_phase_9_10` (fuera de alcance).
+- `REAL_DRY_RUN_003` (XLSX): `PROMOTION_BLOCKED` por mezcla residual descripcion/importe y baja confianza de cabecera economica.
+
+En ambos XLSX (`REAL_DRY_RUN_001` y `REAL_DRY_RUN_003`) se verifico:
+
+- hoja `BUDGET_REVIEW_001` en primera posicion;
+- hoja `BUDGET_REVIEW_TRACE_001` en segunda posicion;
+- columnas visibles limpias sin campos tecnicos;
+- panel congelado bajo cabecera y formulas presentes;
+- trazabilidad separada activa.
+
 ## Limitaciones
 
 - No replica pixel-perfect de estilos del archivo original.
