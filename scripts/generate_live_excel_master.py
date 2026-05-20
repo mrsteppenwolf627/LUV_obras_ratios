@@ -34,6 +34,7 @@ try:
         utc_now_iso as preservation_utc_now_iso,
     )
     from scripts.live_excel_dry_run_evaluator import evaluate_dry_run_workbook
+    from scripts.live_excel_professional_output import append_professional_budget_review
     from scripts.xlsx_budget_detection import (
         MAPPING_AMBIGUOUS,
         MAPPING_MANUAL_REVIEW,
@@ -68,6 +69,7 @@ except ModuleNotFoundError:
         utc_now_iso as preservation_utc_now_iso,
     )
     from live_excel_dry_run_evaluator import evaluate_dry_run_workbook  # type: ignore
+    from live_excel_professional_output import append_professional_budget_review  # type: ignore
     from xlsx_budget_detection import (  # type: ignore
         MAPPING_AMBIGUOUS,
         MAPPING_MANUAL_REVIEW,
@@ -870,6 +872,25 @@ def generate_preview_from_real_xlsx(
             budget_version_id=budget_version_id,
             cost_item_by_origin=cost_item_by_origin,
         )
+        professional_result = append_professional_budget_review(
+            workbook=wb,
+            extractions=operational_extractions,
+            source_file_id=source_file_id,
+            import_batch_id=import_batch_id,
+            budget_version_id=budget_version_id,
+            mode_label="PREVIEW_ONLY",
+        )
+        wb["CHANGELOG"].append(
+            [
+                f"chg_preview_{uuid4().hex[:8]}",
+                ts,
+                "professional_budget_review_output",
+                professional_result["review_sheet_name"],
+                "Professional human-review budget sheet generated with separated traceability.",
+                "phase_9_14_professional_budget_review_output",
+                "system",
+            ]
+        )
         wb.save(output_path)
     finally:
         wb.close()
@@ -879,6 +900,7 @@ def generate_preview_from_real_xlsx(
     result["preview_rows"] = str(len(operational_rows))
     result["preview_sheet"] = OPERATIONAL_PREVIEW_SHEET
     result.update(preserved_result)
+    result.update(professional_result)
     return result
 
 

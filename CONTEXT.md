@@ -61,32 +61,36 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.10: cerrada tecnicamente (piloto real dry-run ejecutado, sin promocion operativa).
 - Fase 9.11: cerrada documentalmente (cierre post-piloto real dry-run y plan de endurecimiento).
 - Fase 9.12: cerrada tecnicamente (endurecimiento de extraccion economica XLSX heterogenea y mapping preserved -> COST_ITEMS).
-- Fase 9.13: iniciada (prueba real ampliada XLSX post-hardening y validacion de generalizacion).
+- Fase 9.13: cerrada tecnicamente (prueba real ampliada XLSX post-hardening y validacion de generalizacion).
+- Fase 9.14: iniciada (output profesional de presupuesto preservado equivalente al input para revision humana).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
 - Decision de direccion 9.7: la capa preservada/operativa y la capa tecnica/normalizada deben coexistir.
 - Decision vigente 9.8: se permite crear tantas hojas nuevas como sean necesarias para trazabilidad, claridad y utilidad operativa.
+- Decision de producto 9.14: la salida visual profesional es obligatoria.
+- Decision de producto 9.14: la capa tecnica no sustituye a la hoja profesional de presupuesto.
+- Decision de producto 9.14: las columnas tecnicas deben quedar ocultas o separadas en hojas de trazabilidad.
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
 - Presto/PZH: obligatorio en roadmap mediante ruta tecnica evidenciada (export/herramienta equivalente), sin lectura nativa directa confirmada.
 
 ## Fase vigente
 
-- Fase vigente: 9.13 - prueba real ampliada XLSX post-hardening y validacion de generalizacion.
+- Fase vigente: 9.14 - output profesional de presupuesto preservado equivalente al input.
 - Estado: iniciada y activa.
-- Objetivo: validar con evidencia real ampliada si las mejoras de extraccion economica y mapping XLSX de Fase 9.12 generalizan a varios layouts reales.
-- Alcance: evaluacion local/dry-run sobre XLSX reales aislados con IDs sanitizados antes de abrir ruta BC3 preservada.
-- Resultado esperado: confirmar patrones resueltos, detectar bloqueos remanentes y decidir siguiente prioridad tecnica con metricas comparables.
-- Fuera de alcance: implementacion de ruta BC3 preservada (solo seguimiento documental de no-regresion).
+- Objetivo: generar una hoja profesional de revision de presupuesto equivalente al input real, sin sustituir la trazabilidad tecnica.
+- Alcance: salida profesional `BUDGET_REVIEW_*` y trazabilidad separada `BUDGET_REVIEW_TRACE_*` sobre previews locales PREVIEW_ONLY.
+- Resultado esperado: presupuesto legible para el estudio desde la primera hoja del workbook.
+- Fuera de alcance: ruta BC3 preservada, promocion operativa y calculo final de ratios.
 - Restriccion metodologica: trabajo en modo `PREVIEW_ONLY`/dry-run, trazable y reversible, sin promocion automatica ni ingesta real operativa.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.14 - decision de cierre de generalizacion XLSX y apertura secuenciada de BC3 preservado.
-- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13 y sin habilitar promocion automatica.
+- Proxima fase: 9.15 - cierre de aceptacion humana de salida profesional y decision de apertura BC3 preservado.
+- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14 y sin habilitar promocion automatica.
 
-## Restricciones activas (fase 9.13)
+## Restricciones activas (fase 9.14)
 
 - No promocion automatica a master operativo.
 - No actualizacion del master operativo.
@@ -101,7 +105,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No subir reports/outputs sensibles.
 - No disenar interfaz, dashboard ni flujo UX en esta fase.
 - BC3 preservado queda fuera de alcance de esta fase salvo no-regresion documental.
-- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12.
+- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13.
 
 ## Resumen de fases cerradas (alto nivel)
 
@@ -118,10 +122,9 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Endurecer extraccion economica XLSX heterogenea y separacion descripcion/unidad/cantidad/precio/importe.
-- Evitar importes mezclados en `item_description` cuando exista evidencia separable.
-- Diferenciar filas `COST_ITEM` de `HEADER`, `EMPTY`, `TOTAL`, `SUBTOTAL`, `CHAPTER`, `NON_BUDGET_ROW` y `UNKNOWN`.
-- Mejorar mapping `preserved -> COST_ITEMS` con estados `MAPPED`, `UNMAPPED`, `NOT_COST_ITEM`, `AMBIGUOUS`, `MANUAL_REVIEW_REQUIRED`.
+- Endurecer la hoja profesional `BUDGET_REVIEW_*` para que sea util como documento de revision del estudio.
+- Mantener formulas auditables de importes/subtotales/totales sin contaminar la vista humana con columnas tecnicas.
+- Mantener trazabilidad separada y conectada mediante `BUDGET_REVIEW_TRACE_*`.
 
 ### P1
 
@@ -169,6 +172,8 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.10: piloto real dry-run multi-archivo ejecutado y cerrado tecnicamente (1 candidato operativo XLSX, 2 bloqueos controlados).
 - Fase 9.11: cierre documental post-piloto y plan de endurecimiento (Linea A XLSX y Linea B mapping priorizadas).
 - Fase 9.12: endurecimiento tecnico de extraccion economica XLSX heterogenea y mapping preserved -> COST_ITEMS.
+- Fase 9.13: prueba real ampliada XLSX post-hardening y validacion de generalizacion (cerrada tecnicamente).
+- Fase 9.14: inicio de salida profesional de presupuesto preservado para revision humana.
 
 ## Fuentes canonicas de estado actual
 
@@ -183,6 +188,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - `docs/decisions/phase_9_11_post_pilot_hardening_plan.md`.
 - `docs/decisions/phase_9_12_xlsx_economic_extraction_and_mapping_hardening.md`.
 - `docs/decisions/phase_9_13_xlsx_real_dry_run_generalization.md`.
+- `docs/decisions/phase_9_14_professional_budget_review_output.md`.
 - `README.md` (resumen operativo).
 
 ## Reglas de actualización

@@ -20,12 +20,13 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.10 cerrada tecnicamente: piloto dry-run con varios presupuestos reales aislados (sin promocion operativa).
 - Fase 9.11 cerrada documentalmente: cierre post-piloto real dry-run y plan de endurecimiento previo a cualquier promocion.
 - Fase 9.12 cerrada tecnicamente: endurecimiento de extraccion economica XLSX heterogenea y mapping `preserved -> COST_ITEMS`.
-- Fase 9.13 iniciada: prueba real ampliada XLSX post-hardening para validar generalizacion.
+- Fase 9.13 cerrada tecnicamente: prueba real ampliada XLSX post-hardening.
+- Fase 9.14 iniciada: salida profesional de presupuesto preservado para revision humana.
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.14 (decision de cierre de generalizacion XLSX y apertura secuenciada de BC3 preservado).
+- Proxima fase recomendada: Fase 9.15 (cierre de aceptacion humana de salida profesional y decision de apertura BC3 preservado).
 
 ## Restricciones criticas activas
 
@@ -38,8 +39,8 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
 - No subir Excels generados.
-- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12 durante Fase 9.13.
-- BC3 preservado queda fuera del alcance tecnico de Fase 9.13 salvo no-regresion documental.
+- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13 durante Fase 9.14.
+- BC3 preservado queda fuera del alcance tecnico de Fase 9.14 salvo no-regresion documental.
 
 ## Referencias de estado
 
@@ -51,6 +52,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - `docs/decisions/phase_9_11_post_pilot_hardening_plan.md`
 - `docs/decisions/phase_9_12_xlsx_economic_extraction_and_mapping_hardening.md`
 - `docs/decisions/phase_9_13_xlsx_real_dry_run_generalization.md`
+- `docs/decisions/phase_9_14_professional_budget_review_output.md`
 
 ## Comandos base
 
