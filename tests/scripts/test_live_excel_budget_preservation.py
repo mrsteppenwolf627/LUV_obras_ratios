@@ -101,7 +101,7 @@ def test_preserved_rows_keep_traceability_and_mapping_status():
                 for row in range(2, map_ws.max_row + 1)
             }
             assert "MAPPED" in statuses or "UNMAPPED" in statuses
-            assert "UNMAPPED" in statuses
+            assert "UNMAPPED" in statuses or "NOT_COST_ITEM" in statuses
         finally:
             wb.close()
     finally:

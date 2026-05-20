@@ -7,7 +7,6 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
-import re
 import shutil
 import sys
 from typing import Iterable
@@ -35,6 +34,20 @@ try:
         utc_now_iso as preservation_utc_now_iso,
     )
     from scripts.live_excel_dry_run_evaluator import evaluate_dry_run_workbook
+    from scripts.xlsx_budget_detection import (
+        MAPPING_AMBIGUOUS,
+        MAPPING_MANUAL_REVIEW,
+        MAPPING_MAPPED,
+        MAPPING_NOT_COST_ITEM,
+        MAPPING_UNMAPPED,
+        BudgetRowExtraction,
+        classify_rows_in_worksheet,
+        detect_header_row_and_mapping,
+        extract_budget_rows_from_worksheet,
+        mapping_status_for_row_class,
+        normalize_label,
+        parse_budget_number,
+    )
 except ModuleNotFoundError:
     from live_excel_integrity import (  # type: ignore
         REQUIRED_SHEETS_COLUMNS,
@@ -55,6 +68,20 @@ except ModuleNotFoundError:
         utc_now_iso as preservation_utc_now_iso,
     )
     from live_excel_dry_run_evaluator import evaluate_dry_run_workbook  # type: ignore
+    from xlsx_budget_detection import (  # type: ignore
+        MAPPING_AMBIGUOUS,
+        MAPPING_MANUAL_REVIEW,
+        MAPPING_MAPPED,
+        MAPPING_NOT_COST_ITEM,
+        MAPPING_UNMAPPED,
+        BudgetRowExtraction,
+        classify_rows_in_worksheet,
+        detect_header_row_and_mapping,
+        extract_budget_rows_from_worksheet,
+        mapping_status_for_row_class,
+        normalize_label,
+        parse_budget_number,
+    )
 
 DEFAULT_OUTPUT = Path("outputs/live_excel_master/live_excel_master.xlsx")
 ALLOWED_OUTPUT_ROOT = Path("outputs/live_excel_master")
@@ -81,17 +108,6 @@ OPERATIONAL_PREVIEW_COLUMNS = [
     "preview_only",
     "notes",
 ]
-_NUMERIC_RE = re.compile(r"^-?\d+(?:[.,]\d+)?$")
-_HEADER_MAP = {
-    "chapter_code": ["capitulo codigo", "codigo capitulo", "chapter code", "cap code"],
-    "chapter_name": ["capitulo", "capitulo nombre", "chapter", "chapter name"],
-    "item_code": ["codigo", "codigo partida", "item code", "partida codigo", "referencia"],
-    "item_description": ["descripcion", "concepto", "texto", "description"],
-    "unit": ["unidad", "ud", "unit"],
-    "quantity": ["cantidad", "medicion", "qty", "quantity"],
-    "unit_price": ["precio unitario", "precio", "unit price", "p unit"],
-    "amount": ["importe", "total", "amount", "coste"],
-}
 PRESERVED_TRACE_COLUMNS = ["__source_sheet_name", "__source_row_number", "__source_column_number"]
 
 
@@ -118,20 +134,11 @@ def _create_workbook_template(phase_value: str = "9.9") -> Workbook:
 
 
 def _normalize_header(text: str) -> str:
-    return " ".join(str(text or "").strip().lower().replace("_", " ").replace("-", " ").split())
+    return normalize_label(text)
 
 
 def _to_number_text(value: object) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, bool):
-        return ""
-    raw = str(value).strip()
-    if not raw:
-        return ""
-    if _NUMERIC_RE.match(raw.replace(" ", "").replace(".", "").replace(",", ".", 1)):
-        return raw.replace(",", ".")
-    return ""
+    return parse_budget_number(value, field_context="amount").normalized
 
 
 def _safe_text(value: object) -> str:
@@ -139,35 +146,8 @@ def _safe_text(value: object) -> str:
 
 
 def _detect_header_row_and_mapping(ws: object, max_scan_rows: int = 25) -> tuple[int, dict[str, int]]:
-    best_row = 1
-    best_map: dict[str, int] = {}
-    best_score = -1
-    scan_to = min(getattr(ws, "max_row", 1), max_scan_rows)
-    max_col = min(getattr(ws, "max_column", 1), 50)
-
-    for row_idx in range(1, scan_to + 1):
-        row_map: dict[str, int] = {}
-        score = 0
-        for col_idx in range(1, max_col + 1):
-            header = _normalize_header(ws.cell(row=row_idx, column=col_idx).value)
-            if not header:
-                continue
-            for field, aliases in _HEADER_MAP.items():
-                if field in row_map:
-                    continue
-                if header == field or header in aliases:
-                    row_map[field] = col_idx
-                    score += 2
-                    break
-                if any(alias in header for alias in aliases):
-                    row_map[field] = col_idx
-                    score += 1
-                    break
-        if score > best_score:
-            best_score = score
-            best_row = row_idx
-            best_map = row_map
-    return best_row, best_map
+    detection = detect_header_row_and_mapping(ws, max_scan_rows=max_scan_rows)
+    return detection.header_row, detection.mapping
 
 
 def _append_operational_preview_sheet(workbook: Workbook) -> None:
@@ -203,6 +183,7 @@ def _append_preserved_budget_scaffolding(
     created_sheets = 0
     map_rows = 0
     for ws_idx, source_ws in enumerate(source_workbook.worksheets, start=1):
+        row_classes = classify_rows_in_worksheet(source_ws)
         preserved_sheet_id = f"pbs_{preserved_budget_seq:03d}_{ws_idx:03d}"
         preserved_sheet_name = build_preserved_visible_sheet_name(
             budget_sequence=preserved_budget_seq,
@@ -243,7 +224,13 @@ def _append_preserved_budget_scaffolding(
             preserved_row_id = f"pr_{preserved_budget_seq:03d}_{ws_idx:03d}_{row_idx:05d}"
             map_key = (source_ws.title, str(row_idx))
             cost_item_id = cost_item_by_origin.get(map_key, "")
-            mapping_status = "MAPPED" if cost_item_id else "UNMAPPED"
+            row_class = row_classes.get(row_idx, "")
+            mapping_status = MAPPING_MAPPED if cost_item_id else mapping_status_for_row_class(row_class)
+            mapping_confidence = "1.0" if cost_item_id else ("1.0" if mapping_status == MAPPING_NOT_COST_ITEM else "0.0")
+            validation_status = "MANUAL_REVIEW_REQUIRED" if mapping_status in {MAPPING_AMBIGUOUS, MAPPING_MANUAL_REVIEW} else "PENDING"
+            note = row_class or "NO_COST_ITEM_MATCH"
+            if mapping_status == MAPPING_UNMAPPED:
+                note = "NO_COST_ITEM_MATCH"
             workbook[PRESERVED_TO_COST_ITEMS_MAP].append(
                 [
                     f"pm_{uuid4().hex[:12]}",
@@ -256,9 +243,9 @@ def _append_preserved_budget_scaffolding(
                     str(row_idx),
                     cost_item_id,
                     mapping_status,
-                    "1.0" if cost_item_id else "0.0",
-                    "PENDING",
-                    "" if cost_item_id else "NO_COST_ITEM_MATCH",
+                    mapping_confidence,
+                    validation_status,
+                    "" if cost_item_id else note,
                 ]
             )
             map_rows += 1
@@ -271,65 +258,45 @@ def _append_preserved_budget_scaffolding(
     }
 
 
-def _iter_operational_rows_from_xlsx(input_path: Path, source_file_id: str) -> list[list[str]]:
+def _preview_row_from_extraction(extraction: BudgetRowExtraction, source_file_id: str) -> list[str]:
+    return [
+        f"pvr_{uuid4().hex[:10]}",
+        source_file_id,
+        "",
+        "",
+        extraction.source_sheet_name,
+        str(extraction.source_row_number),
+        extraction.chapter_code,
+        extraction.chapter_name,
+        extraction.item_code,
+        extraction.item_description,
+        extraction.unit,
+        extraction.quantity,
+        extraction.unit_price,
+        extraction.amount,
+        "EUR",
+        extraction.validation_status,
+        "TRUE",
+        extraction.notes,
+    ]
+
+
+def _iter_operational_extractions_from_xlsx(input_path: Path, source_file_id: str) -> list[BudgetRowExtraction]:
     source_wb = load_workbook(input_path, data_only=False)
-    out_rows: list[list[str]] = []
+    out_rows: list[BudgetRowExtraction] = []
     try:
         for ws in source_wb.worksheets:
-            header_row, mapping = _detect_header_row_and_mapping(ws)
-            max_col = min(getattr(ws, "max_column", 1), 50)
-            for row_idx in range(header_row + 1, getattr(ws, "max_row", 0) + 1):
-                values = [ws.cell(row=row_idx, column=i).value for i in range(1, max_col + 1)]
-                if all(v in (None, "") for v in values):
-                    continue
-                chapter_code = _safe_text(values[mapping["chapter_code"] - 1]) if "chapter_code" in mapping else ""
-                chapter_name = _safe_text(values[mapping["chapter_name"] - 1]) if "chapter_name" in mapping else ""
-                item_code = _safe_text(values[mapping["item_code"] - 1]) if "item_code" in mapping else ""
-                item_description = _safe_text(values[mapping["item_description"] - 1]) if "item_description" in mapping else ""
-                unit = _safe_text(values[mapping["unit"] - 1]) if "unit" in mapping else ""
-                quantity = _to_number_text(values[mapping["quantity"] - 1]) if "quantity" in mapping else ""
-                unit_price = _to_number_text(values[mapping["unit_price"] - 1]) if "unit_price" in mapping else ""
-                amount = _to_number_text(values[mapping["amount"] - 1]) if "amount" in mapping else ""
-
-                if not item_description:
-                    first_text = next((_safe_text(v) for v in values if _safe_text(v)), "")
-                    item_description = first_text
-
-                notes = []
-                if not mapping:
-                    notes.append("NO_HEADER_DETECTION")
-                if "amount" not in mapping:
-                    notes.append("AMOUNT_NOT_DETECTED")
-                if "quantity" not in mapping:
-                    notes.append("QUANTITY_NOT_DETECTED")
-                if "unit_price" not in mapping:
-                    notes.append("UNIT_PRICE_NOT_DETECTED")
-
-                out_rows.append(
-                    [
-                        f"pvr_{uuid4().hex[:10]}",
-                        source_file_id,
-                        "",
-                        "",
-                        ws.title,
-                        str(row_idx),
-                        chapter_code,
-                        chapter_name,
-                        item_code,
-                        item_description,
-                        unit,
-                        quantity,
-                        unit_price,
-                        amount,
-                        "EUR",
-                        "PENDING",
-                        "TRUE",
-                        "|".join(notes),
-                    ]
-                )
+            out_rows.extend(extract_budget_rows_from_worksheet(ws, source_file_id=source_file_id))
     finally:
         source_wb.close()
     return out_rows
+
+
+def _iter_operational_rows_from_xlsx(input_path: Path, source_file_id: str) -> list[list[str]]:
+    return [
+        _preview_row_from_extraction(extraction, source_file_id)
+        for extraction in _iter_operational_extractions_from_xlsx(input_path, source_file_id)
+    ]
 
 
 def _checksum_sha256(path: Path) -> str:
@@ -821,7 +788,14 @@ def generate_preview_from_real_xlsx(
     wb = load_workbook(output_path)
     try:
         _append_operational_preview_sheet(wb)
-        operational_rows = _iter_operational_rows_from_xlsx(input_xlsx_path, source_file_id=source_file_id)
+        operational_extractions = _iter_operational_extractions_from_xlsx(
+            input_xlsx_path,
+            source_file_id=source_file_id,
+        )
+        operational_rows = [
+            _preview_row_from_extraction(extraction, source_file_id)
+            for extraction in operational_extractions
+        ]
         ts = utc_now_iso()
         run_id = f"preview_run_{uuid4().hex[:8]}"
         import_batch_id = f"imp_preview_{uuid4().hex[:8]}"
@@ -865,27 +839,28 @@ def generate_preview_from_real_xlsx(
 
         view_ws = wb[OPERATIONAL_PREVIEW_SHEET]
         cost_item_by_origin: dict[tuple[str, str], str] = {}
-        for row in operational_rows:
+        for extraction, row in zip(operational_extractions, operational_rows, strict=True):
             row[2] = import_batch_id
             row[3] = budget_version_id
             view_ws.append(row)
-            cost_item_id = f"ci_preview_{uuid4().hex[:8]}"
-            wb["COST_ITEMS"].append(
-                [
-                    cost_item_id,
-                    budget_version_id,
-                    source_file_id,
-                    f"{row[4]}!{row[5]}",
-                    row[9],
-                    row[10],
-                    row[11],
-                    row[12],
-                    row[13],
-                    f"preview_row_hash_{uuid4().hex[:8]}",
-                    "PENDING",
-                ]
-            )
-            cost_item_by_origin[(row[4], str(row[5]))] = cost_item_id
+            if extraction.should_create_cost_item:
+                cost_item_id = f"ci_preview_{uuid4().hex[:8]}"
+                wb["COST_ITEMS"].append(
+                    [
+                        cost_item_id,
+                        budget_version_id,
+                        source_file_id,
+                        f"{row[4]}!{row[5]}",
+                        row[9],
+                        row[10],
+                        row[11],
+                        row[12],
+                        row[13],
+                        f"preview_row_hash_{uuid4().hex[:8]}",
+                        "PENDING",
+                    ]
+                )
+                cost_item_by_origin[(row[4], str(row[5]))] = cost_item_id
 
         preserved_result = _append_preserved_budget_scaffolding(
             workbook=wb,
@@ -993,6 +968,9 @@ def main() -> int:
             "total_preview_rows": str(evaluation.metrics["total_preview_rows"]),
             "total_preserved_rows": str(evaluation.metrics["total_preserved_rows"]),
             "mapping_rate": str(evaluation.metrics["mapping_rate"]),
+            "mapping_rate_on_candidate_cost_items": str(
+                evaluation.metrics["mapping_rate_on_candidate_cost_items"]
+            ),
             "traceability_rate": str(evaluation.metrics["traceability_rate"]),
             "manual_review_rate": str(evaluation.metrics["manual_review_rate"]),
             "blocked_rate": str(evaluation.metrics["blocked_rate"]),

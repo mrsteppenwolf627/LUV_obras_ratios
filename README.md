@@ -18,12 +18,13 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.8 cerrada tecnicamente: scaffolding de preservacion y mapeo base implementados.
 - Fase 9.9 cerrada tecnicamente: evaluador dry-run combinado implementado.
 - Fase 9.10 cerrada tecnicamente: piloto dry-run con varios presupuestos reales aislados (sin promocion operativa).
-- Fase 9.11 iniciada: cierre post-piloto real dry-run y plan de endurecimiento previo a cualquier promocion.
+- Fase 9.11 cerrada documentalmente: cierre post-piloto real dry-run y plan de endurecimiento previo a cualquier promocion.
+- Fase 9.12 iniciada: endurecimiento quirurgico de XLSX heterogeneo y mapping `preserved -> COST_ITEMS`.
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.12 (ejecucion tecnica del endurecimiento priorizado).
+- Proxima fase recomendada: Fase 9.13 (recalibracion post-endurecimiento y siguiente frente tecnico).
 
 ## Restricciones criticas activas
 
@@ -36,7 +37,8 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
 - No subir Excels generados.
-- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10 durante Fase 9.11.
+- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11 durante Fase 9.12.
+- BC3 preservado queda fuera del alcance tecnico de Fase 9.12 salvo no-regresion documental.
 
 ## Referencias de estado
 
@@ -46,6 +48,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - `docs/decisions/phase_9_0_live_excel_master_output_definition.md`
 - `docs/decisions/phase_9_10_real_dry_run_pilot.md`
 - `docs/decisions/phase_9_11_post_pilot_hardening_plan.md`
+- `docs/decisions/phase_9_12_xlsx_economic_extraction_and_mapping_hardening.md`
 
 ## Comandos base
 

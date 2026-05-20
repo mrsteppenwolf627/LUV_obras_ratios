@@ -16,6 +16,14 @@ try:
         validate_referential_integrity,
         validate_workbook_schema,
     )
+    from scripts.xlsx_budget_detection import (
+        MAPPING_AMBIGUOUS,
+        MAPPING_MANUAL_REVIEW,
+        MAPPING_MAPPED,
+        MAPPING_NOT_COST_ITEM,
+        MAPPING_UNMAPPED,
+        contains_budget_number,
+    )
 except ModuleNotFoundError:
     from live_excel_integrity import (  # type: ignore
         ALLOWED_VALIDATION_STATUSES,
@@ -23,6 +31,14 @@ except ModuleNotFoundError:
         SchemaValidationError,
         validate_referential_integrity,
         validate_workbook_schema,
+    )
+    from xlsx_budget_detection import (  # type: ignore
+        MAPPING_AMBIGUOUS,
+        MAPPING_MANUAL_REVIEW,
+        MAPPING_MAPPED,
+        MAPPING_NOT_COST_ITEM,
+        MAPPING_UNMAPPED,
+        contains_budget_number,
     )
 
 
@@ -53,6 +69,11 @@ _KNOWN_REASONS = {
     "manual_review_ratio_exceeded",
     "ratio_inputs_not_allowed",
     "ratios_calculated_not_allowed",
+    "economic_header_low_confidence",
+    "numeric_parse_ambiguous",
+    "description_amount_split_failed",
+    "cost_item_mapping_ambiguous",
+    "cost_item_mapping_low_confidence",
 }
 
 
@@ -108,7 +129,11 @@ def evaluate_dry_run_workbook(path: Path, run_id: str = "dry_run_eval") -> DryRu
         "total_preserved_rows": 0.0,
         "mapped_rows": 0.0,
         "unmapped_rows": 0.0,
+        "not_cost_item_rows": 0.0,
+        "ambiguous_rows": 0.0,
+        "candidate_cost_item_rows": 0.0,
         "mapping_rate": 0.0,
+        "mapping_rate_on_candidate_cost_items": 0.0,
         "traceability_complete_rows": 0.0,
         "traceability_rate": 0.0,
         "manual_review_rows": 0.0,
@@ -199,11 +224,18 @@ def evaluate_dry_run_workbook(path: Path, run_id: str = "dry_run_eval") -> DryRu
                 blocked_reasons.append("unknown_validation_status")
             if not status:
                 manual_count += 1
+            notes = row.get("notes", "")
+            if status == "MANUAL_REVIEW_REQUIRED" and "ECONOMIC_HEADER_LOW_CONFIDENCE" in notes:
+                manual_reasons.append("economic_header_low_confidence")
+            if "NUMERIC_PARSE_AMBIGUOUS" in notes:
+                manual_reasons.append("numeric_parse_ambiguous")
+            if "DESCRIPTION_AMOUNT_SPLIT_FAILED" in notes:
+                blocked_reasons.append("description_amount_split_failed")
             desc = row.get("item_description", "")
             amount = row.get("amount", "")
             if amount:
                 amount_applicable += 1
-                if any(char.isdigit() for char in desc):
+                if contains_budget_number(desc):
                     blocked_reasons.append("amount_mixed_in_description")
                 else:
                     amount_ok += 1
@@ -239,17 +271,37 @@ def evaluate_dry_run_workbook(path: Path, run_id: str = "dry_run_eval") -> DryRu
         metrics["total_preserved_rows"] = float(len(map_rows))
         mapped = 0
         unmapped = 0
+        not_cost_item = 0
+        ambiguous = 0
+        candidate_rows = 0
         for row in map_rows:
             status = row.get("mapping_status", "").upper()
-            if status == "MAPPED":
+            if status == MAPPING_MAPPED:
                 mapped += 1
-            elif status == "UNMAPPED":
+                candidate_rows += 1
+            elif status == MAPPING_UNMAPPED:
                 unmapped += 1
+                candidate_rows += 1
+            elif status == MAPPING_NOT_COST_ITEM:
+                not_cost_item += 1
+            elif status == MAPPING_AMBIGUOUS:
+                ambiguous += 1
+                candidate_rows += 1
+                manual_reasons.append("ambiguous_mapping")
+                manual_reasons.append("cost_item_mapping_ambiguous")
+            elif status == MAPPING_MANUAL_REVIEW:
+                ambiguous += 1
+                candidate_rows += 1
+                manual_reasons.append("cost_item_mapping_low_confidence")
             else:
                 manual_reasons.append("ambiguous_mapping")
         metrics["mapped_rows"] = float(mapped)
         metrics["unmapped_rows"] = float(unmapped)
-        metrics["mapping_rate"] = (mapped / len(map_rows)) if map_rows else 0.0
+        metrics["not_cost_item_rows"] = float(not_cost_item)
+        metrics["ambiguous_rows"] = float(ambiguous)
+        metrics["candidate_cost_item_rows"] = float(candidate_rows)
+        metrics["mapping_rate"] = ((mapped + not_cost_item) / len(map_rows)) if map_rows else 0.0
+        metrics["mapping_rate_on_candidate_cost_items"] = (mapped / candidate_rows) if candidate_rows else 0.0
         if not map_rows:
             preserve_reasons.append("missing_preserved_to_cost_item_mapping")
     else:
@@ -278,4 +330,3 @@ def evaluate_dry_run_workbook(path: Path, run_id: str = "dry_run_eval") -> DryRu
         thresholds=thresholds,
         auto_promotion_enabled=False,
     )
-

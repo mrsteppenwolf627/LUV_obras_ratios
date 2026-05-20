@@ -4,9 +4,9 @@ Registro de decisiones arquitectonicas del proyecto.
 
 ## Estado operativo de referencia (consistencia documental)
 
-- Referencia vigente: Fase 8 cerrada tecnicamente, Fase 9.0 iniciada, Fase 9.1 cerrada documentalmente, Fase 9.2 cerrada tecnicamente, Fase 9.3 cerrada tecnicamente, Fase 9.4 cerrada tecnicamente, Fase 9.5 cerrada tecnicamente, Fase 9.6-preview ejecutada, Fase 9.6-preview-fix ejecutada, Fase 9.6 formal cerrada documentalmente, Fase 9.7 cerrada documentalmente, Fase 9.8 cerrada tecnicamente, Fase 9.9 cerrada tecnicamente, Fase 9.10 cerrada tecnicamente y Fase 9.11 iniciada en modo documental de cierre post-piloto.
+- Referencia vigente: Fase 8 cerrada tecnicamente, Fase 9.0 iniciada, Fase 9.1 cerrada documentalmente, Fase 9.2 cerrada tecnicamente, Fase 9.3 cerrada tecnicamente, Fase 9.4 cerrada tecnicamente, Fase 9.5 cerrada tecnicamente, Fase 9.6-preview ejecutada, Fase 9.6-preview-fix ejecutada, Fase 9.6 formal cerrada documentalmente, Fase 9.7 cerrada documentalmente, Fase 9.8 cerrada tecnicamente, Fase 9.9 cerrada tecnicamente, Fase 9.10 cerrada tecnicamente, Fase 9.11 cerrada documentalmente y Fase 9.12 iniciada como endurecimiento quirurgico de XLSX heterogeneo y mapping preserved -> COST_ITEMS.
 - Decision vigente principal: ADR-019 (Excel maestro vivo como salida principal).
-- Proxima fase recomendada: Fase 9.12 (ejecucion tecnica del endurecimiento priorizado post-piloto).
+- Proxima fase recomendada: Fase 9.13 (recalibracion post-endurecimiento y siguiente frente tecnico).
 - Esta seccion es solo de consistencia de estado; no introduce nuevas ADR.
 
 ## Indice ADR

@@ -59,7 +59,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.8: cerrada tecnicamente.
 - Fase 9.9: cerrada tecnicamente.
 - Fase 9.10: cerrada tecnicamente (piloto real dry-run ejecutado, sin promocion operativa).
-- Fase 9.11: iniciada (cierre post-piloto real dry-run y plan de endurecimiento).
+- Fase 9.11: cerrada documentalmente (cierre post-piloto real dry-run y plan de endurecimiento).
+- Fase 9.12: iniciada (endurecimiento quirurgico de XLSX heterogeneo y mapping preserved -> COST_ITEMS).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
@@ -71,20 +72,20 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Fase vigente
 
-- Fase vigente: 9.11 - cierre post-piloto real dry-run y plan de endurecimiento.
+- Fase vigente: 9.12 - endurecimiento quirurgico de XLSX heterogeneo y mapping preserved -> COST_ITEMS.
 - Estado: iniciada y activa.
-- Objetivo: cerrar formalmente hallazgos de Fase 9.10, documentar bloqueos y definir plan tecnico previo a cualquier promocion operativa.
-- Resultado clave heredado: primer XLSX candidato operativo detectado (`REAL_DRY_RUN_001`) sin promocion.
-- Resultado clave heredado: BC3 bloqueado en flujo 9.x por falta de ruta de preview preservada (`REAL_DRY_RUN_002`).
-- Resultado clave heredado: un XLSX bloqueado por separacion importe-descripcion insuficiente (`REAL_DRY_RUN_003`).
-- Restriccion metodologica: trabajo prioritariamente documental, trazable y reversible, sin promocion automatica ni ingesta real operativa masiva.
+- Objetivo: endurecer la extraccion economica de `XLSX` heterogeneo y el mapping `preserved -> COST_ITEMS`.
+- Alcance: atacar Linea A y Linea B del plan post-piloto 9.11.
+- Resultado esperado: separar mejor descripcion/unidad/cantidad/precio/importe y evitar importes dentro de `item_description`.
+- Fuera de alcance: ruta BC3 preservada salvo no-regresion documental.
+- Restriccion metodologica: trabajo funcional medible en modo `PREVIEW_ONLY`/dry-run, trazable y reversible, sin promocion automatica ni ingesta real operativa.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.12 - ejecucion del endurecimiento tecnico priorizado post-piloto.
-- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11 y sin habilitar promocion automatica.
+- Proxima fase: 9.13 - recalibracion post-endurecimiento y decision de siguiente frente tecnico.
+- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11/9.12 y sin habilitar promocion automatica.
 
-## Restricciones activas (fase 9.11)
+## Restricciones activas (fase 9.12)
 
 - No promocion automatica a master operativo.
 - No actualizacion del master operativo.
@@ -98,7 +99,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No subir Excels generados.
 - No subir reports/outputs sensibles.
 - No disenar interfaz, dashboard ni flujo UX en esta fase.
-- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10.
+- BC3 preservado queda fuera de alcance de esta fase salvo no-regresion documental.
+- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11.
 
 ## Resumen de fases cerradas (alto nivel)
 
@@ -115,14 +117,15 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Ejecutar piloto real dry-run multi-presupuesto con IDs sanitizados y evidencia trazable por archivo.
-- Verificar utilidad visual de preservacion y coherencia de mapeo `preserved -> COST_ITEMS`.
-- Medir `mapping_rate`, `traceability_rate`, `manual_review_rate`, `blocked_rate`, `amount_separation_rate`.
+- Endurecer extraccion economica XLSX heterogenea y separacion descripcion/unidad/cantidad/precio/importe.
+- Evitar importes mezclados en `item_description` cuando exista evidencia separable.
+- Diferenciar filas `COST_ITEM` de `HEADER`, `EMPTY`, `TOTAL`, `SUBTOTAL`, `CHAPTER`, `NON_BUDGET_ROW` y `UNKNOWN`.
+- Mejorar mapping `preserved -> COST_ITEMS` con estados `MAPPED`, `UNMAPPED`, `NOT_COST_ITEM`, `AMBIGUOUS`, `MANUAL_REVIEW_REQUIRED`.
 
 ### P1
 
-- Recalibrar umbrales preliminares con evidencia real del piloto 9.10.
-- Priorizar mejoras en parsing/mapeo para casos clasificados como `MANUAL_REVIEW_REQUIRED` o `PRESERVATION_INCOMPLETE`.
+- Repetir dry-run real local con IDs sanitizados y comparar metricas antes/despues.
+- Recalibrar umbrales preliminares solo tras muestra ampliada.
 
 ### P2
 
@@ -163,6 +166,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.8: scaffolding de preservacion implementado (`PRESERVED_BUDGETS_INDEX`, `PRESERVED_BUDGET_SHEETS`, `PRESERVED_TO_COST_ITEMS_MAP` y hojas `PRES_*` visibles).
 - Fase 9.9: evaluador dry-run combinado implementado (`OPERATIVE_CANDIDATE`, `PROMOTION_BLOCKED`, `MANUAL_REVIEW_REQUIRED`, `PRESERVATION_INCOMPLETE`).
 - Fase 9.10: piloto real dry-run multi-archivo ejecutado y cerrado tecnicamente (1 candidato operativo XLSX, 2 bloqueos controlados).
+- Fase 9.11: cierre documental post-piloto y plan de endurecimiento (Linea A XLSX y Linea B mapping priorizadas).
 
 ## Fuentes canonicas de estado actual
 
@@ -174,6 +178,8 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - `docs/decisions/phase_9_3_live_excel_master_hardening.md`.
 - `docs/decisions/phase_9_4_live_excel_integrity_validation_refactor.md`.
 - `docs/decisions/phase_9_10_real_dry_run_pilot.md`.
+- `docs/decisions/phase_9_11_post_pilot_hardening_plan.md`.
+- `docs/decisions/phase_9_12_xlsx_economic_extraction_and_mapping_hardening.md`.
 - `README.md` (resumen operativo).
 
 ## Reglas de actualización
