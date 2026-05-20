@@ -60,7 +60,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.9: cerrada tecnicamente.
 - Fase 9.10: cerrada tecnicamente (piloto real dry-run ejecutado, sin promocion operativa).
 - Fase 9.11: cerrada documentalmente (cierre post-piloto real dry-run y plan de endurecimiento).
-- Fase 9.12: iniciada (endurecimiento quirurgico de XLSX heterogeneo y mapping preserved -> COST_ITEMS).
+- Fase 9.12: cerrada tecnicamente (endurecimiento de extraccion economica XLSX heterogenea y mapping preserved -> COST_ITEMS).
+- Fase 9.13: iniciada (prueba real ampliada XLSX post-hardening y validacion de generalizacion).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
@@ -72,20 +73,20 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Fase vigente
 
-- Fase vigente: 9.12 - endurecimiento quirurgico de XLSX heterogeneo y mapping preserved -> COST_ITEMS.
+- Fase vigente: 9.13 - prueba real ampliada XLSX post-hardening y validacion de generalizacion.
 - Estado: iniciada y activa.
-- Objetivo: endurecer la extraccion economica de `XLSX` heterogeneo y el mapping `preserved -> COST_ITEMS`.
-- Alcance: atacar Linea A y Linea B del plan post-piloto 9.11.
-- Resultado esperado: separar mejor descripcion/unidad/cantidad/precio/importe y evitar importes dentro de `item_description`.
-- Fuera de alcance: ruta BC3 preservada salvo no-regresion documental.
-- Restriccion metodologica: trabajo funcional medible en modo `PREVIEW_ONLY`/dry-run, trazable y reversible, sin promocion automatica ni ingesta real operativa.
+- Objetivo: validar con evidencia real ampliada si las mejoras de extraccion economica y mapping XLSX de Fase 9.12 generalizan a varios layouts reales.
+- Alcance: evaluacion local/dry-run sobre XLSX reales aislados con IDs sanitizados antes de abrir ruta BC3 preservada.
+- Resultado esperado: confirmar patrones resueltos, detectar bloqueos remanentes y decidir siguiente prioridad tecnica con metricas comparables.
+- Fuera de alcance: implementacion de ruta BC3 preservada (solo seguimiento documental de no-regresion).
+- Restriccion metodologica: trabajo en modo `PREVIEW_ONLY`/dry-run, trazable y reversible, sin promocion automatica ni ingesta real operativa.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.13 - recalibracion post-endurecimiento y decision de siguiente frente tecnico.
-- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11/9.12 y sin habilitar promocion automatica.
+- Proxima fase: 9.14 - decision de cierre de generalizacion XLSX y apertura secuenciada de BC3 preservado.
+- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13 y sin habilitar promocion automatica.
 
-## Restricciones activas (fase 9.12)
+## Restricciones activas (fase 9.13)
 
 - No promocion automatica a master operativo.
 - No actualizacion del master operativo.
@@ -100,7 +101,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No subir reports/outputs sensibles.
 - No disenar interfaz, dashboard ni flujo UX en esta fase.
 - BC3 preservado queda fuera de alcance de esta fase salvo no-regresion documental.
-- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11.
+- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12.
 
 ## Resumen de fases cerradas (alto nivel)
 
@@ -167,6 +168,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.9: evaluador dry-run combinado implementado (`OPERATIVE_CANDIDATE`, `PROMOTION_BLOCKED`, `MANUAL_REVIEW_REQUIRED`, `PRESERVATION_INCOMPLETE`).
 - Fase 9.10: piloto real dry-run multi-archivo ejecutado y cerrado tecnicamente (1 candidato operativo XLSX, 2 bloqueos controlados).
 - Fase 9.11: cierre documental post-piloto y plan de endurecimiento (Linea A XLSX y Linea B mapping priorizadas).
+- Fase 9.12: endurecimiento tecnico de extraccion economica XLSX heterogenea y mapping preserved -> COST_ITEMS.
 
 ## Fuentes canonicas de estado actual
 
@@ -180,6 +182,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - `docs/decisions/phase_9_10_real_dry_run_pilot.md`.
 - `docs/decisions/phase_9_11_post_pilot_hardening_plan.md`.
 - `docs/decisions/phase_9_12_xlsx_economic_extraction_and_mapping_hardening.md`.
+- `docs/decisions/phase_9_13_xlsx_real_dry_run_generalization.md`.
 - `README.md` (resumen operativo).
 
 ## Reglas de actualización
