@@ -1,168 +1,152 @@
 # Fase 9.10: piloto dry-run real con varios presupuestos aislados
 
-## Objetivo de la fase
+## 1. Objetivo de la fase
 
-Ejecutar una prueba real controlada (local, reversible y sin promocion automatica) para validar la combinacion:
+Ejecutar una prueba real controlada en local sobre varios presupuestos aislados para validar preview preservada, trazabilidad, mapeo hacia `COST_ITEMS` y clasificacion dry-run por archivo, sin promocion automatica ni actualizacion del master operativo.
 
-- preview preservada;
-- capa visible preservada;
-- mapeo a `COST_ITEMS`;
-- evaluador dry-run combinado.
+## 2. Contexto desde Fase 9.9
 
-## Contexto desde Fase 9.9
+- Fase 9.9 dejo operativo el evaluador combinado (`OPERATIVE_CANDIDATE`, `PROMOTION_BLOCKED`, `MANUAL_REVIEW_REQUIRED`, `PRESERVATION_INCOMPLETE`).
+- Se mantenian umbrales preliminares:
+  - `traceability_rate >= 0.95`
+  - `amount_separation_rate >= 0.85` (cuando aplica)
+  - `manual_review_rate <= 0.25`
+  - `blocked_rate = 0`
+  - `critical_errors = 0`
+- No existia todavia evidencia con lote multi-archivo real aislado.
 
-- Fase 9.9 cerro el evaluador dry-run con estados:
-  - `OPERATIVE_CANDIDATE`
-  - `PROMOTION_BLOCKED`
-  - `MANUAL_REVIEW_REQUIRED`
-  - `PRESERVATION_INCOMPLETE`
-- Quedaba pendiente contrastar esos estados con varios casos reales aislados.
+## 3. Alcance de la prueba real controlada
 
-## Alcance de la prueba real controlada
+- Ejecucion local en seco (`dry-run`) sobre muestra pequena y representativa.
+- IDs sanitizados obligatorios por archivo.
+- Generacion de previews solo en rutas ignoradas por Git.
+- Evaluacion combinada por archivo y reporte sanitizado.
 
-- Ejecucion local sobre un conjunto pequeno de archivos reales aislados.
-- Generacion de preview por archivo en ruta ignorada por Git.
-- Evaluacion dry-run por `run_id` sanitizado.
-- Registro de metricas, estado y motivos por archivo.
+## 4. Fuera de alcance
 
-## Fuera de alcance
-
-- Promocion operativa real.
+- Promocion automatica a operativo.
 - Actualizacion del master operativo.
 - Calculo final de ratios.
 - Normalizacion final de categorias.
 - Consolidacion definitiva de importes.
+- Modificacion de RAW.
+- Interfaz, dashboard o flujo UX.
+- Subida de archivos reales, Excels generados o reportes sensibles.
 
-## Archivos reales usados (IDs sanitizados)
+## 5. Seleccion de archivos reales (solo IDs sanitizados)
 
-- `REAL_DRY_RUN_001`
-- `REAL_DRY_RUN_002`
-- `REAL_DRY_RUN_003`
+- `REAL_DRY_RUN_001` -> formato `XLSX`.
+- `REAL_DRY_RUN_002` -> formato `BC3` (caso esperado no soportado en preview XLSX directa de esta fase).
+- `REAL_DRY_RUN_003` -> formato `XLSX` con estructura distinta.
 
-## Formato de cada archivo
+## 6. Flujo ejecutado por archivo
 
-- `REAL_DRY_RUN_001`: `xlsx`
-- `REAL_DRY_RUN_002`: `xlsx`
-- `REAL_DRY_RUN_003`: `xlsx`
+1. Verificacion de ruta permitida en `data/samples`.
+2. Generacion de preview preservada local (solo en `XLSX`).
+3. Creacion de hojas visibles preservadas `PRES_*`.
+4. Creacion de `PRESERVED_TO_COST_ITEMS_MAP`.
+5. Evaluacion dry-run combinada.
+6. Registro de estado, motivos y metricas.
 
-## Flujo ejecutado por archivo
-
-1. Generacion preview local preservada (`PREVIEW_ONLY`).
-2. Creacion de hojas preservadas visibles (`PRES_*`) + hojas indice/mapa.
-3. Generacion/actualizacion de `PRESERVED_TO_COST_ITEMS_MAP`.
-4. Evaluacion dry-run combinada sin promocion automatica.
-
-## Resultado de preview preservada por archivo
-
-- `REAL_DRY_RUN_001`: preview generado; hojas preservadas visibles y operativa presentes.
-- `REAL_DRY_RUN_002`: preview generado; hojas preservadas visibles y operativa presentes.
-- `REAL_DRY_RUN_003`: preview generado; hojas preservadas visibles y operativa presentes.
-
-## Resultado del evaluador dry-run por archivo
-
-- `REAL_DRY_RUN_001`: `OPERATIVE_CANDIDATE`
-- `REAL_DRY_RUN_002`: `PROMOTION_BLOCKED`
-- `REAL_DRY_RUN_003`: `OPERATIVE_CANDIDATE`
-
-## Metricas por archivo
+## 7. Resultados por archivo
 
 ### REAL_DRY_RUN_001
-- `mapping_rate`: `0.7938144329896907`
-- `traceability_rate`: `1.0`
-- `manual_review_rate`: `0.0`
-- `blocked_rate`: `0.0`
-- `amount_separation_rate`: `1.0`
-- `ratio_input_rows`: `0.0`
-- `ratio_calculated_rows`: `0.0`
+
+- Estado final: `OPERATIVE_CANDIDATE`.
+- Motivos: ninguno bloqueante.
+- Preview local: `outputs/live_excel_master/real_dry_run/real_dry_run_001_preview.xlsx`.
+- Metricas:
+  - `mapping_rate`: `0.7938144329896907`
+  - `traceability_rate`: `1.0`
+  - `manual_review_rate`: `0.0`
+  - `blocked_rate`: `0.0`
+  - `amount_separation_rate`: `1.0` (sin amount aplicable detectado en filas evaluadas)
+  - `ratio_input_rows`: `0.0`
+  - `ratio_calculated_rows`: `0.0`
+- Evaluacion visual resumida:
+  - Hojas preservadas visibles presentes.
+  - Presupuesto reconocible por estructura y orden de filas.
+  - Trazabilidad hoja/fila presente.
+  - Deteccion automatica de cabeceras economicas limitada en varias filas (`NO_HEADER_DETECTION`).
 
 ### REAL_DRY_RUN_002
-- `mapping_rate`: `0.9`
-- `traceability_rate`: `1.0`
-- `manual_review_rate`: `0.0`
-- `blocked_rate`: `0.0`
-- `amount_separation_rate`: `0.0`
-- `ratio_input_rows`: `0.0`
-- `ratio_calculated_rows`: `0.0`
+
+- Estado final: `PROMOTION_BLOCKED`.
+- Motivo explicito: `format_not_supported_for_preview_phase_9_10`.
+- Preview local: no aplica (sin preview XLSX en esta fase para BC3).
+- Metricas:
+  - `mapping_rate`: `0.0`
+  - `traceability_rate`: `0.0`
+  - `manual_review_rate`: `0.0`
+  - `blocked_rate`: `1.0`
+  - `amount_separation_rate`: `0.0`
+  - `ratio_input_rows`: `0.0`
+  - `ratio_calculated_rows`: `0.0`
+- Evaluacion visual resumida:
+  - No aplica por no existir salida preview en esta fase para ese formato.
 
 ### REAL_DRY_RUN_003
-- `mapping_rate`: `0.7590361445783133`
-- `traceability_rate`: `1.0`
-- `manual_review_rate`: `0.0`
-- `blocked_rate`: `0.0`
-- `amount_separation_rate`: `1.0`
-- `ratio_input_rows`: `0.0`
-- `ratio_calculated_rows`: `0.0`
 
-## Estado final por archivo
-
-- `REAL_DRY_RUN_001`: `OPERATIVE_CANDIDATE`
-- `REAL_DRY_RUN_002`: `PROMOTION_BLOCKED`
-- `REAL_DRY_RUN_003`: `OPERATIVE_CANDIDATE`
-
-## Motivos explicitos por archivo
-
-- `REAL_DRY_RUN_001`: sin motivos de bloqueo/revision.
-- `REAL_DRY_RUN_002`:
+- Estado final: `PROMOTION_BLOCKED`.
+- Motivos explicitos:
   - `amount_mixed_in_description`
   - `insufficient_amount_separation`
-- `REAL_DRY_RUN_003`: sin motivos de bloqueo/revision.
+- Preview local: `outputs/live_excel_master/real_dry_run/real_dry_run_003_preview.xlsx`.
+- Metricas:
+  - `mapping_rate`: `0.8048780487804879`
+  - `traceability_rate`: `1.0`
+  - `manual_review_rate`: `0.0`
+  - `blocked_rate`: `0.0`
+  - `amount_separation_rate`: `0.0`
+  - `ratio_input_rows`: `0.0`
+  - `ratio_calculated_rows`: `0.0`
+- Evaluacion visual resumida:
+  - Preservacion de hojas y trazabilidad correcta.
+  - Reconocimiento economico insuficiente para separacion robusta importe/descripcion.
+  - Utilidad operativa parcial; requiere mejora de deteccion/mapeo.
 
-## Evaluacion visual resumida por archivo
+## 8. Limitaciones detectadas
 
-- `REAL_DRY_RUN_001`:
-  - Se preservan hojas del input (2 hojas visibles preservadas).
-  - Se reconoce estructura tabular.
-  - No se detectaron importes separados en la vista operativa (limitacion de deteccion para este layout).
-- `REAL_DRY_RUN_002`:
-  - Se preserva hoja visible del input.
-  - Se detectan importes en `amount`, pero siguen mezclados en descripcion en filas monetarias detectadas.
-  - El estado `PROMOTION_BLOCKED` es coherente con el contrato.
-- `REAL_DRY_RUN_003`:
-  - Se preservan hojas del input (2 hojas visibles preservadas).
-  - Estructura legible y trazable.
-  - Igual que en `REAL_DRY_RUN_001`, la separacion de importes no siempre aplica por layout detectado.
+- El flujo de preview actual cubre `XLSX` de forma directa; `BC3` queda bloqueado en este piloto.
+- La deteccion de cabeceras en estructuras heterogeneas sigue siendo fragil.
+- `mapping_rate` aceptable, pero con volumen relevante de filas `UNMAPPED`.
+- En ciertos XLSX reales, la separacion de importes es insuficiente para candidatura robusta.
 
-## Limitaciones detectadas
+## 9. Ajustes recomendados
 
-- Heuristica de separacion `description/amount` dependiente de cabeceras y layout real.
-- En algunos XLSX, `amount` no se detecta/puebla aunque la preservacion visible sea correcta.
-- `mapping_rate` aun heterogeneo entre ficheros (rango observado aproximado: 0.75-0.90).
+- Endurecer deteccion de cabeceras y columnas economicas multi-layout.
+- Introducir heuristicas de separacion descripcion/importe menos sensibles a ruido.
+- Mejorar estrategia de mapping para reducir `UNMAPPED`.
+- Definir ruta de preview preservada especifica para BC3 dentro del contrato 9.x.
 
-## Ajustes recomendados
+## 10. Adecuacion de umbrales preliminares
 
-1. Mejorar heuristicas de deteccion de columnas monetarias para layouts heterogeneos.
-2. Aumentar precision de `PRESERVED_TO_COST_ITEMS_MAP` en filas no tabulares o mixtas.
-3. Anadir diagnostico explicito por archivo sobre por que `amount` no fue separable.
+- `traceability_rate` y `blocked_rate` se comportaron de forma consistente.
+- `amount_separation_rate` mostro capacidad discriminante real en al menos un caso bloqueado.
+- Con esta muestra pequena, los umbrales se mantienen preliminares y no se recomiendan cambios definitivos aun.
 
-## Umbrales preliminares: evaluacion de adecuacion
-
-Umbrales usados (preliminares):
-
-- `traceability_rate >= 0.95`
-- `amount_separation_rate >= 0.85` (cuando aplique)
-- `manual_review_rate <= 0.25`
-- `blocked_rate = 0`
-
-Evidencia del piloto:
-
-- `traceability_rate` y `blocked_rate` se comportan bien en los 3 casos.
-- `amount_separation_rate` discrimina correctamente un caso problematico (`REAL_DRY_RUN_002`), pero necesita mejorar cobertura en layouts donde no se detecta `amount`.
-
-Conclusion: los umbrales son utiles como gate preliminar, pero requieren recalibracion y mejor observabilidad antes de fijarlos como definitivos.
-
-## Confirmaciones metodologicas
+## 11. Confirmaciones de seguridad y alcance
 
 - No hubo promocion automatica.
-- No se actualizo master operativo.
-- No se subieron outputs sensibles.
+- No se actualizo el master operativo.
+- No se alimentaron `RATIO_INPUTS` ni `RATIOS_CALCULATED`.
 - No se modifico RAW.
-- No se subieron archivos reales ni Excels generados.
+- No se subieron archivos reales, Excels generados ni reportes sensibles.
+- Todos los outputs del piloto quedaron en ruta local ignorada por Git:
+  - `outputs/live_excel_master/real_dry_run/`
 
-## Recomendacion para Fase 9.11
+## 12. Implementacion de soporte 9.10
 
-Abrir fase de ajustes post-piloto enfocada en:
+- Nuevo wrapper seguro:
+  - `scripts/run_real_dry_run_pilot.py`
+- Cobertura sintetica:
+  - `tests/scripts/test_real_dry_run_pilot_support.py`
 
-1. mejora de separacion de campos monetarios en preview operativa;
-2. mejora de cobertura/precision de mapping preservado -> `COST_ITEMS`;
-3. recalibracion controlada de umbrales preliminares con mas casos reales aislados;
-4. mantener estrictamente `no promotion by default`.
+## 13. Recomendacion para Fase 9.11
+
+Abrir Fase 9.11 para endurecimiento post-piloto con foco en:
+
+1. mejoras de parsing/mapeo para layouts reales heterogeneos;
+2. ruta BC3 preservada bajo contrato 9.x;
+3. recalibracion de umbrales con muestra real ampliada;
+4. mantenimiento estricto de `PREVIEW_ONLY` sin promocion automatica.

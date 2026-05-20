@@ -44,7 +44,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Estado actual
 
-- Fecha de consolidacion documental: 2026-05-19.
+- Fecha de consolidacion documental: 2026-05-20.
 - Fase 8: cerrada tecnicamente.
 - Fase 9.0: iniciada y vigente.
 - Fase 9.1: cerrada documentalmente.
@@ -58,7 +58,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.7: cerrada documentalmente (contrato de preservacion del presupuesto original y enlace con ratios progresivos).
 - Fase 9.8: cerrada tecnicamente.
 - Fase 9.9: cerrada tecnicamente.
-- Fase 9.10: iniciada (piloto dry-run con varios presupuestos reales aislados).
+- Fase 9.10: iniciada y ejecutada en lote piloto local controlado (sin promocion operativa).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
@@ -169,6 +169,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - `docs/decisions/phase_9_2_live_excel_master_generator_implementation.md`.
 - `docs/decisions/phase_9_3_live_excel_master_hardening.md`.
 - `docs/decisions/phase_9_4_live_excel_integrity_validation_refactor.md`.
+- `docs/decisions/phase_9_10_real_dry_run_pilot.md`.
 - `README.md` (resumen operativo).
 
 ## Reglas de actualización

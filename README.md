@@ -2,7 +2,7 @@
 
 Sistema interno para importacion, parsing, validacion estructural y futura normalizacion de presupuestos, con trazabilidad completa desde las fuentes hasta capas intermedias y salida operativa final.
 
-## Estado operativo actual (2026-05-19)
+## Estado operativo actual (2026-05-20)
 
 - Fase 8 cerrada tecnicamente.
 - Fase 9.0 iniciada y vigente.
@@ -17,7 +17,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.7 cerrada documentalmente: contrato de preservacion del presupuesto original y enlace con ratios progresivos.
 - Fase 9.8 cerrada tecnicamente: scaffolding de preservacion y mapeo base implementados.
 - Fase 9.9 cerrada tecnicamente: evaluador dry-run combinado implementado.
-- Fase 9.10 iniciada: piloto dry-run con varios presupuestos reales aislados.
+- Fase 9.10 iniciada y ejecutada localmente en primer lote: piloto dry-run con varios presupuestos reales aislados (sin promocion operativa).
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
@@ -43,11 +43,13 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - `ADRs.md` (ADR-019)
 - `docs/decisions/phase_8_presto_pzh_support_strategy.md`
 - `docs/decisions/phase_9_0_live_excel_master_output_definition.md`
+- `docs/decisions/phase_9_10_real_dry_run_pilot.md`
 
 ## Comandos base
 
 ```bash
 python scripts/validate_context.py
 python scripts/inspect_repo.py
+python scripts/run_real_dry_run_pilot.py --files data/samples/<sanitized_selection> --output-dir outputs/live_excel_master/real_dry_run
 pytest
 ```
