@@ -2,7 +2,7 @@
 
 Sistema interno para importacion, parsing, validacion estructural y futura normalizacion de presupuestos, con trazabilidad completa desde las fuentes hasta capas intermedias y salida operativa final.
 
-## Estado operativo actual (2026-05-20)
+## Estado operativo actual (2026-05-21)
 
 - Fase 8 cerrada tecnicamente.
 - Fase 9.0 iniciada y vigente.
@@ -22,12 +22,13 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.12 cerrada tecnicamente: endurecimiento de extraccion economica XLSX heterogenea y mapping `preserved -> COST_ITEMS`.
 - Fase 9.13 cerrada tecnicamente: prueba real ampliada XLSX post-hardening.
 - Fase 9.14 cerrada tecnicamente: hoja profesional inicial `BUDGET_REVIEW_*` + traza separada `BUDGET_REVIEW_TRACE_*`.
-- Fase 9.15 iniciada: profesionalizacion global del workbook completo (indice, orden y formato por categoria de hoja).
+- Fase 9.15 cerrada tecnicamente: profesionalizacion global del workbook completo (indice, orden y formato por categoria de hoja).
+- Fase 9.16 iniciada: correccion semantica de `BUDGET_REVIEW_001` e `INDEX` para eliminar confusiones descripcion/importe y ruido tecnico visible.
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.16 (cierre de aceptacion humana global del workbook y decision de apertura BC3 preservado).
+- Proxima fase recomendada: Fase 9.17 (consolidacion semantica residual en XLSX y decision de apertura BC3 preservado).
 
 ## Restricciones criticas activas
 
@@ -40,7 +41,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
 - No subir Excels generados.
-- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14 durante Fase 9.15.
+- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14/9.15 durante Fase 9.16.
 - BC3 preservado queda fuera del alcance tecnico de Fase 9.15 salvo no-regresion documental.
 
 ## Referencias de estado
@@ -55,6 +56,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - `docs/decisions/phase_9_13_xlsx_real_dry_run_generalization.md`
 - `docs/decisions/phase_9_14_professional_budget_review_output.md`
 - `docs/decisions/phase_9_15_workbook_wide_professional_formatting.md`
+- `docs/decisions/phase_9_16_budget_review_semantic_correction.md`
 
 ## Comandos base
 

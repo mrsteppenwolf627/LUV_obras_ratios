@@ -44,7 +44,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Estado actual
 
-- Fecha de consolidacion documental: 2026-05-20.
+- Fecha de consolidacion documental: 2026-05-21.
 - Fase 8: cerrada tecnicamente.
 - Fase 9.0: iniciada y vigente.
 - Fase 9.1: cerrada documentalmente.
@@ -63,7 +63,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.12: cerrada tecnicamente (endurecimiento de extraccion economica XLSX heterogenea y mapping preserved -> COST_ITEMS).
 - Fase 9.13: cerrada tecnicamente (prueba real ampliada XLSX post-hardening y validacion de generalizacion).
 - Fase 9.14: cerrada tecnicamente (hoja profesional inicial + trazabilidad separada).
-- Fase 9.15: iniciada (profesionalizacion global del workbook y formato completo del Excel maestro).
+- Fase 9.15: cerrada tecnicamente (profesionalizacion global del workbook y formato completo del Excel maestro).
+- Fase 9.16: iniciada (correccion semantica de `BUDGET_REVIEW_001` e `INDEX` profesional).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
@@ -76,26 +77,29 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Decision de producto 9.15: todas las hojas visibles deben tener presentacion cuidada y navegable.
 - Decision de producto 9.15: hojas internas demasiado tecnicas pueden moverse al final y/o ocultarse manteniendo auditoria.
 - Diagnostico de integracion 9.15 (2026-05-21): algunos previews en `xlsx_generalization` conservaban `activeTab/firstSheet` apuntando a hojas tecnicas pese a tener orden correcto; se corrige para abrir siempre en `INDEX`.
+- Problema confirmado 9.16: `BUDGET_REVIEW_001` puede confundir `Descripcion` e `Importe` en layouts XLSX heterogeneos de baja confianza.
+- Problema confirmado 9.16: `INDEX` puede degradarse visualmente si usa formulas `HYPERLINK(...)` en renderizadores sin soporte.
+- Problema confirmado 9.16: filas auxiliares con formulas internas pueden contaminar `COST_ITEMS` y provocar ruido semantico en vistas humanas.
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
 - Presto/PZH: obligatorio en roadmap mediante ruta tecnica evidenciada (export/herramienta equivalente), sin lectura nativa directa confirmada.
 
 ## Fase vigente
 
-- Fase vigente: 9.15 - profesionalizacion global del workbook y formato completo del Excel maestro.
+- Fase vigente: 9.16 - correccion semantica de `BUDGET_REVIEW_001` e `INDEX` profesional.
 - Estado: iniciada y activa.
-- Objetivo: aplicar formato profesional coherente a todas las hojas del workbook (humanas, preservadas, trazabilidad y tecnicas), no solo a la primera hoja.
-- Alcance: indice de navegacion, orden global de hojas, estilos por categoria, formateo tabular tecnico y mejora visual de hojas preservadas.
-- Resultado esperado: workbook completo revisable sin sensacion de volcado tecnico crudo.
+- Objetivo: corregir la semantica de columnas de la hoja profesional (`Codigo`, `Descripcion`, `Importe`) y eliminar ruido tecnico visible en `INDEX`.
+- Alcance: prioridad semantica de extraccion para vista profesional, exclusion de filas auxiliares de calculo y limpieza de navegacion sin `HYPERLINK(...)` formula.
+- Resultado esperado: no mezclar importes dentro de `Descripcion`, no dejar `Importe` vacio cuando existe valor claro, y no mostrar textos tecnicos en `INDEX`.
 - Fuera de alcance: ruta BC3 preservada, promocion operativa y calculo final de ratios.
 - Restriccion metodologica: trabajo en modo `PREVIEW_ONLY`/dry-run, trazable y reversible, sin promocion automatica ni ingesta real operativa.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.16 - cierre de aceptacion humana final y preparacion de decision BC3 preservado.
-- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14/9.15 y sin habilitar promocion automatica.
+- Proxima fase: 9.17 - consolidacion de precision semantica en layouts XLSX residuales y decision de apertura BC3 preservado.
+- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14/9.15/9.16 y sin habilitar promocion automatica.
 
-## Restricciones activas (fase 9.15)
+## Restricciones activas (fase 9.16)
 
 - No promocion automatica a master operativo.
 - No actualizacion del master operativo.
@@ -110,7 +114,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No subir reports/outputs sensibles.
 - No disenar interfaz, dashboard ni flujo UX en esta fase.
 - BC3 preservado queda fuera de alcance de esta fase salvo no-regresion documental.
-- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14.
+- Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14/9.15.
 
 ## Resumen de fases cerradas (alto nivel)
 
@@ -127,9 +131,9 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Profesionalizar visualmente todo el workbook, no solo `BUDGET_REVIEW_*`.
-- Consolidar indice de navegacion y orden de hojas para revision humana integral.
-- Asegurar que hojas tecnicas y vacias pendientes se perciban como controladas, no rotas.
+- Corregir semantica en `BUDGET_REVIEW_001`: no mezclar importes en `Descripcion` y no perder `Importe` cuando existe en origen.
+- Corregir `INDEX` para evitar textos tecnicos derivados de `HYPERLINK(...)` en renderizadores sin soporte.
+- Excluir filas auxiliares/calculo de `COST_ITEMS` cuando no representen partidas reales.
 
 ### P1
 
@@ -179,7 +183,8 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - Fase 9.12: endurecimiento tecnico de extraccion economica XLSX heterogenea y mapping preserved -> COST_ITEMS.
 - Fase 9.13: prueba real ampliada XLSX post-hardening y validacion de generalizacion (cerrada tecnicamente).
 - Fase 9.14: salida profesional inicial de presupuesto preservado (cerrada tecnicamente).
-- Fase 9.15: inicio de profesionalizacion global de todo el workbook.
+- Fase 9.15: profesionalizacion global de todo el workbook (cerrada tecnicamente).
+- Fase 9.16: correccion semantica de `BUDGET_REVIEW_001` e `INDEX` profesional (iniciada).
 
 ## Fuentes canonicas de estado actual
 
@@ -196,6 +201,7 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - `docs/decisions/phase_9_13_xlsx_real_dry_run_generalization.md`.
 - `docs/decisions/phase_9_14_professional_budget_review_output.md`.
 - `docs/decisions/phase_9_15_workbook_wide_professional_formatting.md`.
+- `docs/decisions/phase_9_16_budget_review_semantic_correction.md`.
 - `README.md` (resumen operativo).
 
 ## Reglas de actualización

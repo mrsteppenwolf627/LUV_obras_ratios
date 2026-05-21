@@ -74,6 +74,13 @@ def _to_decimal(value: str) -> Decimal | None:
         return None
 
 
+def _safe_review_text(value: str) -> str:
+    text = "" if value is None else str(value).strip()
+    if text.startswith("="):
+        return f"'{text}"
+    return text
+
+
 def _sum_formula(rows: list[int]) -> str:
     if not rows:
         return ""
@@ -273,7 +280,7 @@ def append_professional_budget_review(
 
         review_row_id = f"brv_{uuid4().hex[:10]}"
         code = extraction.item_code or extraction.chapter_code
-        description = extraction.item_description or extraction.chapter_name
+        description = _safe_review_text(extraction.item_description or extraction.chapter_name)
         unit = extraction.unit
         quantity_value = _to_decimal(extraction.quantity)
         unit_price_value = _to_decimal(extraction.unit_price)

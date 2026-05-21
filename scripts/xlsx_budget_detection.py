@@ -20,6 +20,9 @@ ROW_NON_BUDGET = "NON_BUDGET_ROW"
 ROW_UNKNOWN = "UNKNOWN"
 ROW_AMBIGUOUS = "AMBIGUOUS"
 ROW_MANUAL_REVIEW = "MANUAL_REVIEW_REQUIRED"
+ROW_FORMULA = "FORMULA_ROW"
+ROW_AUXILIARY = "AUXILIARY_ROW"
+ROW_CALCULATION = "CALCULATION_ROW"
 
 MAPPING_MAPPED = "MAPPED"
 MAPPING_UNMAPPED = "UNMAPPED"
@@ -136,6 +139,17 @@ UNIT_VALUES = {
 TOTAL_WORDS = {"total", "totales", "presupuesto total", "total presupuesto"}
 SUBTOTAL_WORDS = {"subtotal", "sub total", "sub-total"}
 HEADER_HINT_WORDS = {alias for aliases in HEADER_ALIASES.values() for alias in aliases}
+AUXILIARY_WORDS = {
+    "honorarios",
+    "deducciones",
+    "incrementos",
+    "iva",
+    "porcentaje",
+    "coeficiente",
+    "suma",
+    "base",
+    "licitacion",
+}
 
 
 @dataclass(frozen=True)
@@ -331,9 +345,116 @@ def _header_match_score(header: str, alias: str) -> int:
     alias_tokens = set(alias.split())
     if alias_tokens and alias_tokens.issubset(header_tokens):
         return 3
-    if alias in header:
+    if re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", header):
         return 2
     return 0
+
+
+def _is_formula_like(value: object) -> bool:
+    text = _safe_text(value)
+    return bool(text) and text.startswith("=")
+
+
+def _parsed_is_zero(parsed: ParsedNumber) -> bool:
+    if not parsed.is_valid:
+        return False
+    try:
+        return Decimal(parsed.normalized) == Decimal("0")
+    except (InvalidOperation, ValueError):
+        return False
+
+
+def _pick_text_description_candidate(values: list[object], mapping: dict[str, int]) -> str:
+    technical_cols = {
+        mapping.get("amount"),
+        mapping.get("quantity"),
+        mapping.get("unit_price"),
+        mapping.get("item_code"),
+        mapping.get("chapter_code"),
+    }
+    candidates: list[tuple[int, str]] = []
+    for col_idx, value in enumerate(values, start=1):
+        if col_idx in technical_cols:
+            continue
+        text = _safe_text(value)
+        if not text or _is_formula_like(text):
+            continue
+        if not re.search(r"[A-Za-z]", text):
+            continue
+        candidates.append((len(text), text))
+    if not candidates:
+        return ""
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    return candidates[0][1]
+
+
+def _looks_like_code_value(text: str) -> bool:
+    candidate = text.strip()
+    if not candidate or candidate.startswith("="):
+        return False
+    normalized = candidate.replace(",", ".")
+    if re.fullmatch(r"\d+\.\d{1,2}", normalized):
+        return False
+    if re.fullmatch(r"[A-Za-z0-9_.-]{1,40}", candidate) and re.search(r"[A-Za-z]", candidate):
+        return True
+    if re.fullmatch(r"\d+(?:[.-]\d+)*", candidate):
+        return True
+    return False
+
+
+def _pick_code_candidate(values: list[object], mapping: dict[str, int]) -> str:
+    preferred_indices = [
+        mapping.get("item_code"),
+        mapping.get("chapter_code"),
+    ]
+    for col_idx in preferred_indices:
+        if not col_idx or col_idx < 1 or col_idx > len(values):
+            continue
+        candidate = _safe_text(values[col_idx - 1])
+        if _looks_like_code_value(candidate):
+            return candidate
+
+    excluded = {
+        mapping.get("amount"),
+        mapping.get("item_description"),
+        mapping.get("chapter_name"),
+        mapping.get("unit"),
+    }
+    for col_idx, value in enumerate(values, start=1):
+        if col_idx in excluded:
+            continue
+        candidate = _safe_text(value)
+        if _looks_like_code_value(candidate):
+            return candidate
+    return ""
+
+
+def _recover_amount_from_row(values: list[object], mapping: dict[str, int]) -> ParsedNumber:
+    excluded = {mapping.get("item_code"), mapping.get("chapter_code")}
+    candidates: list[tuple[int, ParsedNumber]] = []
+    for col_idx, value in enumerate(values, start=1):
+        if col_idx in excluded or _is_formula_like(value):
+            continue
+        parsed = parse_budget_number(value, field_context="amount")
+        if not parsed.is_valid:
+            continue
+        score = 0
+        if col_idx == mapping.get("amount"):
+            score += 8
+        if col_idx == mapping.get("unit_price"):
+            score -= 2
+        if col_idx == mapping.get("quantity"):
+            score -= 3
+        if parsed.confidence == NUMERIC_HIGH:
+            score += 2
+        if _parsed_is_zero(parsed):
+            score -= 1
+        score += col_idx
+        candidates.append((score, parsed))
+    if not candidates:
+        return ParsedNumber("", NUMERIC_NONE, "amount_not_recovered")
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    return candidates[0][1]
 
 
 def _field_for_header(value: object) -> tuple[str, int]:
@@ -558,7 +679,20 @@ def classify_budget_row(
     quantity = parse_budget_number(_get_mapped_value(values, mapping, "quantity"), field_context="quantity")
     unit_price = parse_budget_number(_get_mapped_value(values, mapping, "unit_price"), field_context="unit_price")
     has_description = bool(description or chapter)
+    normalized_description = normalize_label(description or chapter)
+    has_formula = any(
+        _is_formula_like(_get_mapped_value(values, mapping, field))
+        for field in ("item_description", "chapter_name", "amount")
+    )
+    only_aux_signals = not item_code and not unit and not quantity.is_valid and not unit_price.is_valid
 
+    if has_formula and (not amount.is_valid or _parsed_is_zero(amount)) and only_aux_signals:
+        return ROW_FORMULA
+    if has_description and any(word in normalized_description for word in AUXILIARY_WORDS):
+        if only_aux_signals and (not amount.is_valid or _parsed_is_zero(amount)):
+            return ROW_AUXILIARY
+        if has_formula:
+            return ROW_CALCULATION
     if has_description and (amount.is_valid or quantity.is_valid or unit_price.is_valid or unit):
         return ROW_COST_ITEM
     if has_description and item_code and not amount.is_valid:
@@ -579,7 +713,18 @@ def classify_budget_row(
 def mapping_status_for_row_class(row_class: str) -> str:
     if row_class == ROW_COST_ITEM:
         return MAPPING_MAPPED
-    if row_class in {ROW_HEADER, ROW_EMPTY, ROW_TOTAL, ROW_SUBTOTAL, ROW_CHAPTER, ROW_SUBCHAPTER, ROW_NON_BUDGET}:
+    if row_class in {
+        ROW_HEADER,
+        ROW_EMPTY,
+        ROW_TOTAL,
+        ROW_SUBTOTAL,
+        ROW_CHAPTER,
+        ROW_SUBCHAPTER,
+        ROW_NON_BUDGET,
+        ROW_FORMULA,
+        ROW_AUXILIARY,
+        ROW_CALCULATION,
+    }:
         return MAPPING_NOT_COST_ITEM
     if row_class == ROW_AMBIGUOUS:
         return MAPPING_AMBIGUOUS
@@ -597,7 +742,7 @@ def extract_budget_rows_from_worksheet(ws: object, source_file_id: str = "") -> 
     for row_idx in range(start_row, getattr(ws, "max_row", 0) + 1):
         values = _row_values(ws, row_idx, max_col)
         row_class = classify_budget_row(values, detection.mapping, row_idx, detection.header_row)
-        if row_class in {ROW_EMPTY, ROW_HEADER, ROW_NON_BUDGET, ROW_UNKNOWN}:
+        if row_class in {ROW_EMPTY, ROW_HEADER, ROW_NON_BUDGET, ROW_UNKNOWN, ROW_FORMULA, ROW_AUXILIARY, ROW_CALCULATION}:
             continue
 
         notes = list(detection.notes)
@@ -607,19 +752,21 @@ def extract_budget_rows_from_worksheet(ws: object, source_file_id: str = "") -> 
         chapter_code = _safe_text(_get_mapped_value(values, detection.mapping, "chapter_code"))
         chapter_name = _safe_text(_get_mapped_value(values, detection.mapping, "chapter_name"))
         item_code = _safe_text(_get_mapped_value(values, detection.mapping, "item_code"))
+        if item_code and not _looks_like_code_value(item_code):
+            item_code = ""
+        recovered_code = _pick_code_candidate(values, detection.mapping)
+        if not item_code and recovered_code:
+            item_code = recovered_code
+            notes.append("ITEM_CODE_RECOVERED_FROM_ROW_PATTERN")
         item_description = _safe_text(_get_mapped_value(values, detection.mapping, "item_description"))
+        if _is_formula_like(item_description):
+            item_description = ""
         if not item_description and chapter_name:
             item_description = chapter_name
         if not item_description:
-            text_candidates = [
-                _safe_text(value)
-                for value in values
-                if _safe_text(value)
-                and re.search(r"[A-Za-z]", _safe_text(value))
-                and not parse_budget_number(value, field_context="amount").is_valid
-            ]
-            if text_candidates:
-                item_description = max(text_candidates, key=len)
+            best_text = _pick_text_description_candidate(values, detection.mapping)
+            if best_text:
+                item_description = best_text
             else:
                 item_description = next((_safe_text(value) for value in values if _safe_text(value)), "")
                 if item_description and contains_budget_number(item_description):
@@ -629,6 +776,15 @@ def extract_budget_rows_from_worksheet(ws: object, source_file_id: str = "") -> 
         quantity_parse = parse_budget_number(_get_mapped_value(values, detection.mapping, "quantity"), "quantity")
         unit_price_parse = parse_budget_number(_get_mapped_value(values, detection.mapping, "unit_price"), "unit_price")
         amount_parse = parse_budget_number(_get_mapped_value(values, detection.mapping, "amount"), "amount")
+        description_as_amount = parse_budget_number(item_description, "amount")
+        if description_as_amount.is_valid and not re.search(r"[A-Za-z]", item_description):
+            best_text = _pick_text_description_candidate(values, detection.mapping)
+            if best_text:
+                item_description = best_text
+                notes.append("DESCRIPTION_RECOVERED_FROM_TEXT_COLUMN")
+            if not amount_parse.is_valid:
+                amount_parse = description_as_amount
+                notes.append("AMOUNT_RECOVERED_FROM_NUMERIC_DESCRIPTION")
 
         if not amount_parse.is_valid and item_description:
             split_description, split_amount = _split_trailing_amount_from_description(item_description)
@@ -636,6 +792,11 @@ def extract_budget_rows_from_worksheet(ws: object, source_file_id: str = "") -> 
                 item_description = split_description
                 amount_parse = ParsedNumber(split_amount, NUMERIC_LOW)
                 notes.append("AMOUNT_EXTRACTED_FROM_DESCRIPTION_LOW_CONFIDENCE")
+        if not amount_parse.is_valid:
+            recovered_amount = _recover_amount_from_row(values, detection.mapping)
+            if recovered_amount.is_valid:
+                amount_parse = recovered_amount
+                notes.append("AMOUNT_RECOVERED_FROM_ROW_NUMERIC_PATTERN")
 
         if not amount_parse.is_valid:
             notes.append("AMOUNT_NOT_DETECTED")

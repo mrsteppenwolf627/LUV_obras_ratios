@@ -205,7 +205,10 @@ def _apply_index_sheet(workbook: object, mode_label: str) -> None:
         if name == "INDEX":
             continue
         category = _sheet_category(name)
-        ws.cell(row=row, column=1, value=f"=HYPERLINK(\"#'{name}'!A1\",\"{name}\")")
+        link_cell = ws.cell(row=row, column=1, value=name)
+        safe_name = name.replace("'", "''")
+        link_cell.hyperlink = f"#'{safe_name}'!A1"
+        link_cell.style = "Hyperlink"
         ws.cell(row=row, column=2, value=category.lower())
         ws.cell(row=row, column=3, value=_sheet_description(name, category))
         row += 1
