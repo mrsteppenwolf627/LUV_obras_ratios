@@ -103,6 +103,19 @@ def _reorder_sheets(workbook: object) -> None:
     workbook._sheets = ordered
 
 
+def _set_initial_open_sheet(workbook: object, preferred_name: str = "INDEX") -> None:
+    if preferred_name not in workbook.sheetnames:
+        return
+    target_index = workbook.sheetnames.index(preferred_name)
+    workbook.active = target_index
+    for ws in workbook.worksheets:
+        ws.sheet_view.tabSelected = False
+    workbook[preferred_name].sheet_view.tabSelected = True
+    if workbook.views:
+        workbook.views[0].activeTab = target_index
+        workbook.views[0].firstSheet = 0
+
+
 def _autowidth(ws: object, max_rows: int = 120) -> None:
     for col_idx in range(1, ws.max_column + 1):
         letter = get_column_letter(col_idx)
@@ -218,6 +231,7 @@ def apply_workbook_professional_formatting(workbook: object, mode_label: str = "
     """Apply global workbook presentation without mutating business data."""
     _apply_index_sheet(workbook, mode_label=mode_label)
     _reorder_sheets(workbook)
+    _set_initial_open_sheet(workbook, preferred_name="INDEX")
     metas = _collect_sheet_meta(workbook)
 
     for meta in metas:
@@ -250,4 +264,3 @@ def apply_workbook_professional_formatting(workbook: object, mode_label: str = "
         "index_sheet": "INDEX",
         "sheet_count": str(len(workbook.sheetnames)),
     }
-

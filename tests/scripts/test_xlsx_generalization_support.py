@@ -4,6 +4,7 @@ import uuid
 
 import pytest
 from openpyxl import Workbook
+from openpyxl import load_workbook
 
 from scripts.run_xlsx_generalization_dry_run import (
     ALLOWED_INPUT_ROOT,
@@ -97,6 +98,36 @@ def test_generalization_generates_sanitized_results_without_ratio_ingestion():
             assert str((root / ALLOWED_OUTPUT_ROOT).resolve()) in str(preview.resolve())
             assert result["metrics"]["ratio_input_rows"] == 0.0
             assert result["metrics"]["ratio_calculated_rows"] == 0.0
+
+        first_preview = Path(report["results"][0]["preview_output"])
+        wb = load_workbook(first_preview)
+        try:
+            assert "INDEX" in wb.sheetnames
+            assert "BUDGET_REVIEW_001" in wb.sheetnames
+            assert "BUDGET_REVIEW_TRACE_001" in wb.sheetnames
+            assert wb.sheetnames[0] == "INDEX"
+            assert wb.sheetnames[1] == "BUDGET_REVIEW_001"
+            assert wb.sheetnames[2] == "BUDGET_REVIEW_TRACE_001"
+            assert wb.active.title == "INDEX"
+            if wb.views:
+                assert wb.views[0].activeTab == 0
+                assert wb.views[0].firstSheet == 0
+
+            pres_sheets = [name for name in wb.sheetnames if name.startswith("PRES_")]
+            assert pres_sheets
+            for sheet_name in pres_sheets:
+                ws = wb[sheet_name]
+                headers = {
+                    str(ws.cell(row=1, column=col_idx).value or ""): ws.column_dimensions[
+                        ws.cell(row=1, column=col_idx).column_letter
+                    ].hidden
+                    for col_idx in range(1, ws.max_column + 1)
+                }
+                assert headers.get("__source_sheet_name") is True
+                assert headers.get("__source_row_number") is True
+                assert headers.get("__source_column_number") is True
+        finally:
+            wb.close()
     finally:
         _cleanup(root)
 

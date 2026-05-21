@@ -75,6 +75,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Decision de producto 9.15: no basta con profesionalizar solo `BUDGET_REVIEW_*`.
 - Decision de producto 9.15: todas las hojas visibles deben tener presentacion cuidada y navegable.
 - Decision de producto 9.15: hojas internas demasiado tecnicas pueden moverse al final y/o ocultarse manteniendo auditoria.
+- Diagnostico de integracion 9.15 (2026-05-21): algunos previews en `xlsx_generalization` conservaban `activeTab/firstSheet` apuntando a hojas tecnicas pese a tener orden correcto; se corrige para abrir siempre en `INDEX`.
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
 - Presto/PZH: obligatorio en roadmap mediante ruta tecnica evidenciada (export/herramienta equivalente), sin lectura nativa directa confirmada.
