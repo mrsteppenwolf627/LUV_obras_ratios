@@ -334,6 +334,15 @@ def validate_generated_xlsx_preview(
                     errors.append(f"comparison_view_missing_column:{comparison_view}:{item}")
             if "Cantidad" in headers or "Precio unitario" in headers or "Ud" in headers:
                 errors.append(f"comparison_view_unexpected_classic_columns:{comparison_view}")
+            if "Diferencia" in headers:
+                difference_col = headers.index("Diferencia") + 1
+                nonempty_difference = 0
+                for row_idx in range(5, ws.max_row + 1):
+                    value = str(ws.cell(row=row_idx, column=difference_col).value or "").strip()
+                    if value:
+                        nonempty_difference += 1
+                if ws.max_row >= 5 and nonempty_difference == 0:
+                    errors.append(f"comparison_view_difference_lost:{comparison_view}")
 
         for space_view in space_views:
             if not space_view or space_view not in sheetnames:
