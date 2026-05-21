@@ -108,7 +108,7 @@ def test_generalization_generates_sanitized_results_without_ratio_ingestion():
             assert "BUDGET_REVIEW_TRACE_001" in wb.sheetnames
             assert wb.sheetnames[0] == "INDEX"
             assert wb.sheetnames[1] == "BUDGET_REVIEW_001"
-            assert wb.sheetnames[2] == "BUDGET_REVIEW_TRACE_001"
+            assert wb.sheetnames.index("BUDGET_REVIEW_TRACE_001") > wb.sheetnames.index("BUDGET_REVIEW_001")
             assert wb.active.title == "INDEX"
             if wb.views:
                 assert wb.views[0].activeTab == 0

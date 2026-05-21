@@ -24,12 +24,13 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.14 cerrada tecnicamente: hoja profesional inicial `BUDGET_REVIEW_*` + traza separada `BUDGET_REVIEW_TRACE_*`.
 - Fase 9.15 cerrada tecnicamente: profesionalizacion global del workbook completo (indice, orden y formato por categoria de hoja).
 - Fase 9.16 cerrada tecnicamente: correccion semantica inicial de `BUDGET_REVIEW_001` e `INDEX`.
-- Fase 9.17 iniciada: auditoria de outputs reales XLSX y correccion integral del pipeline oficial de generacion preview.
+- Fase 9.17 cerrada tecnicamente: auditoria de outputs reales XLSX y enforcement del pipeline oficial de generacion preview.
+- Fase 9.18 cerrada tecnicamente: clasificacion semantica de hojas XLSX y vistas profesionales adaptativas por tipo.
 - Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.18 (cierre de no-regresion XLSX con muestra ampliada antes de decidir apertura BC3 preservado).
+- Proxima fase recomendada: Fase 9.19 (no-regresion semantica XLSX ampliada antes de decidir apertura BC3 preservado).
 
 ## Restricciones criticas activas
 
@@ -42,7 +43,7 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - No modificar RAW.
 - No subir muestras reales ni reports/outputs sensibles.
 - No subir Excels generados.
-- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14/9.15/9.16 durante Fase 9.17.
+- Respetar contratos documentales de Fase 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14/9.15/9.16/9.17 durante Fase 9.18.
 - No abrir ruta BC3 en esta fase.
 - BC3 preservado queda fuera del alcance tecnico de Fase 9.15 salvo no-regresion documental.
 

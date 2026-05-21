@@ -1,4 +1,4 @@
-"""Professional human-review budget sheets for PREVIEW_ONLY workbooks."""
+"""Adaptive professional review sheets for PREVIEW_ONLY XLSX outputs."""
 
 from __future__ import annotations
 
@@ -10,35 +10,36 @@ from uuid import uuid4
 from openpyxl.styles import Alignment, Font, PatternFill
 
 try:
-    from scripts.xlsx_budget_detection import (
-        ROW_AMBIGUOUS,
-        ROW_CHAPTER,
-        ROW_COST_ITEM,
-        ROW_NON_BUDGET,
-        ROW_SUBCHAPTER,
-        ROW_SUBTOTAL,
-        ROW_TOTAL,
-        BudgetRowExtraction,
+    from scripts.xlsx_sheet_semantic_classifier import (
+        SHEET_AUXILIARY,
+        SHEET_BUDGET_CLASSIC,
+        SHEET_BUDGET_SUMMARY,
+        SHEET_COMPARISON_TABLE,
+        SHEET_FORMULA_CALCULATION,
+        SHEET_METADATA,
+        SHEET_SPACE_BREAKDOWN,
+        SHEET_UNKNOWN,
+        SheetSemanticClassification,
     )
 except ModuleNotFoundError:
-    from xlsx_budget_detection import (  # type: ignore
-        ROW_AMBIGUOUS,
-        ROW_CHAPTER,
-        ROW_COST_ITEM,
-        ROW_NON_BUDGET,
-        ROW_SUBCHAPTER,
-        ROW_SUBTOTAL,
-        ROW_TOTAL,
-        BudgetRowExtraction,
+    from xlsx_sheet_semantic_classifier import (  # type: ignore
+        SHEET_AUXILIARY,
+        SHEET_BUDGET_CLASSIC,
+        SHEET_BUDGET_SUMMARY,
+        SHEET_COMPARISON_TABLE,
+        SHEET_FORMULA_CALCULATION,
+        SHEET_METADATA,
+        SHEET_SPACE_BREAKDOWN,
+        SHEET_UNKNOWN,
+        SheetSemanticClassification,
     )
 
 
-REVIEW_HEADERS = ["Codigo", "Descripcion", "Ud", "Cantidad", "Precio unitario", "Importe"]
 TRACE_HEADERS = [
     "review_row_id",
     "review_sheet_name",
     "review_row_number",
-    "row_class",
+    "sheet_type",
     "mapping_status",
     "validation_status",
     "source_file_id",
@@ -52,6 +53,18 @@ TRACE_HEADERS = [
 ]
 
 
+TYPE_HEADERS: dict[str, list[str]] = {
+    SHEET_BUDGET_CLASSIC: ["Codigo", "Descripcion", "Ud", "Cantidad", "Precio unitario", "Importe"],
+    SHEET_BUDGET_SUMMARY: ["Codigo", "Descripcion", "Formula / Ratio", "Importe"],
+    SHEET_SPACE_BREAKDOWN: ["Codigo", "Info", "Resumen", "Presupuesto"],
+    SHEET_COMPARISON_TABLE: ["Cap.", "Nombre del capítulo", "Importe (€)", "Nombre equivalente", "Importe equivalente", "Diferencia"],
+    SHEET_FORMULA_CALCULATION: ["Concepto", "Formula", "Valor"],
+    SHEET_AUXILIARY: ["Contenido", "Notas"],
+    SHEET_METADATA: ["Contenido", "Notas"],
+    SHEET_UNKNOWN: ["Contenido", "Notas"],
+}
+
+
 def _next_sequence(workbook: Any, prefix: str) -> int:
     pattern = re.compile(rf"^{re.escape(prefix)}_(\d{{3}})$")
     max_seq = 0
@@ -62,31 +75,67 @@ def _next_sequence(workbook: Any, prefix: str) -> int:
     return max_seq + 1
 
 
-def _to_decimal(value: str) -> Decimal | None:
-    if value is None:
-        return None
-    text = str(value).strip()
+def _safe_text(value: object) -> str:
+    return "" if value is None else str(value).strip()
+
+
+def _to_decimal(value: object) -> Decimal | None:
+    text = _safe_text(value)
     if not text:
         return None
+    text = text.replace(" ", "")
+    if "," in text and "." in text:
+        if text.rfind(",") > text.rfind("."):
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            text = text.replace(",", "")
+    elif "," in text:
+        text = text.replace(".", "").replace(",", ".")
+    else:
+        text = text.replace(",", "")
     try:
         return Decimal(text)
     except (InvalidOperation, ValueError):
         return None
 
 
-def _safe_review_text(value: str) -> str:
-    text = "" if value is None else str(value).strip()
-    if text.startswith("="):
-        return f"'{text}"
-    return text
+def _looks_like_year(text: str) -> bool:
+    if not text.isdigit():
+        return False
+    year = int(text)
+    return 1900 <= year <= 2100
 
 
-def _sum_formula(rows: list[int]) -> str:
-    if not rows:
-        return ""
-    if len(rows) == 1:
-        return f"=F{rows[0]}"
-    return "=SUM(" + ",".join(f"F{idx}" for idx in rows) + ")"
+def _looks_like_metadata_row(description: str, amount: str) -> bool:
+    low = description.lower()
+    if not low:
+        return False
+    month_pattern = re.compile(
+        r"\b(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b",
+        flags=re.IGNORECASE,
+    )
+    if month_pattern.search(low) and re.search(r"\b(19|20)\d{2}\b", low):
+        return True
+    if "revision" not in low and "fecha" not in low and "abril" not in low:
+        return False
+    return _looks_like_year(amount)
+
+
+def _source_to_preserved_sheet(workbook: Any) -> dict[str, str]:
+    if "PRESERVED_BUDGET_SHEETS" not in workbook.sheetnames:
+        return {}
+    ws = workbook["PRESERVED_BUDGET_SHEETS"]
+    headers = [str(ws.cell(row=1, column=idx).value or "").strip() for idx in range(1, ws.max_column + 1)]
+    idx = {name: pos + 1 for pos, name in enumerate(headers)}
+    if "source_sheet_name" not in idx or "preserved_sheet_name" not in idx:
+        return {}
+    mapping: dict[str, str] = {}
+    for row_idx in range(2, ws.max_row + 1):
+        source = str(ws.cell(row=row_idx, column=idx["source_sheet_name"]).value or "").strip()
+        preserved = str(ws.cell(row=row_idx, column=idx["preserved_sheet_name"]).value or "").strip()
+        if source and preserved:
+            mapping[source] = preserved
+    return mapping
 
 
 def _build_preserved_trace_index(workbook: Any, import_batch_id: str) -> dict[tuple[str, str], dict[str, str]]:
@@ -118,243 +167,286 @@ def _build_preserved_trace_index(workbook: Any, import_batch_id: str) -> dict[tu
     return trace
 
 
-def _apply_visual_style(review_ws: Any) -> None:
+def _sanitize_suffix(value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9]+", "_", value).strip("_")
+    return (cleaned or "SHEET")[:18]
+
+
+def _cell_text(ws: Any, row_idx: int, col_idx: int | None) -> str:
+    if not col_idx:
+        return ""
+    return _safe_text(ws.cell(row=row_idx, column=col_idx).value)
+
+
+def _extract_view_rows(
+    preserved_ws: Any,
+    semantic: SheetSemanticClassification,
+) -> list[dict[str, str]]:
+    fields = semantic.detected_columns
+    rows: list[dict[str, str]] = []
+    for row_idx in range(semantic.header_row + 1, preserved_ws.max_row + 1):
+        code = _cell_text(preserved_ws, row_idx, fields.get("code") or fields.get("cap"))
+        description = _cell_text(preserved_ws, row_idx, fields.get("description") or fields.get("chapter_name"))
+        amount = _cell_text(preserved_ws, row_idx, fields.get("amount"))
+        formula = _cell_text(preserved_ws, row_idx, fields.get("formula"))
+        if semantic.sheet_type == SHEET_COMPARISON_TABLE:
+            description = _cell_text(preserved_ws, row_idx, fields.get("chapter_name"))
+        if not any([code, description, amount, formula]):
+            continue
+        if _looks_like_metadata_row(description, amount):
+            continue
+        rows.append(
+            {
+                "row_number": str(row_idx),
+                "code": code,
+                "description": description,
+                "unit": _cell_text(preserved_ws, row_idx, fields.get("unit")),
+                "quantity": _cell_text(preserved_ws, row_idx, fields.get("quantity")),
+                "unit_price": _cell_text(preserved_ws, row_idx, fields.get("unit_price")),
+                "amount": amount,
+                "formula": formula,
+                "info": _cell_text(preserved_ws, row_idx, fields.get("info")),
+                "equivalent_name": _cell_text(preserved_ws, row_idx, fields.get("equivalent_name")),
+                "equivalent_amount": _cell_text(preserved_ws, row_idx, fields.get("equivalent_amount")),
+                "difference": _cell_text(preserved_ws, row_idx, fields.get("difference")),
+            }
+        )
+    return rows
+
+
+def _style_review_sheet(ws: Any, visible_columns: int) -> None:
     header_fill = PatternFill(fill_type="solid", fgColor="D9E1F2")
-    chapter_fill = PatternFill(fill_type="solid", fgColor="E2F0D9")
-    subtotal_fill = PatternFill(fill_type="solid", fgColor="FCE4D6")
-    total_fill = PatternFill(fill_type="solid", fgColor="D9D9D9")
-    ambiguous_fill = PatternFill(fill_type="solid", fgColor="FFF2CC")
-    bold = Font(bold=True)
-
-    review_ws.merge_cells("A1:F1")
-    review_ws["A1"].font = Font(bold=True, size=14)
-    review_ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
-    review_ws["A2"].alignment = Alignment(horizontal="left", vertical="center")
-    review_ws.row_dimensions[1].height = 22
-    review_ws.row_dimensions[2].height = 18
-
-    for col, width in {"A": 14, "B": 64, "C": 8, "D": 12, "E": 16, "F": 16, "G": 2}.items():
-        review_ws.column_dimensions[col].width = width
-    review_ws.column_dimensions["G"].hidden = True
-
-    for col_idx in range(1, 7):
-        cell = review_ws.cell(row=4, column=col_idx)
-        cell.font = bold
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max(visible_columns, 2))
+    ws.row_dimensions[1].height = 22
+    ws.row_dimensions[2].height = 18
+    ws["A1"].font = Font(bold=True, size=13)
+    ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
+    ws["A2"].alignment = Alignment(horizontal="left", vertical="center")
+    ws["A3"].alignment = Alignment(horizontal="left", vertical="center")
+    ws.freeze_panes = "A5"
+    for col_idx in range(1, visible_columns + 1):
+        cell = ws.cell(row=4, column=col_idx)
+        cell.font = Font(bold=True)
         cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-    review_ws.row_dimensions[4].height = 20
-    review_ws.freeze_panes = "A5"
-    review_ws.auto_filter.ref = "A4:F4"
-
-    for row_idx in range(5, review_ws.max_row + 1):
-        code = str(review_ws.cell(row=row_idx, column=1).value or "").strip()
-        description = str(review_ws.cell(row=row_idx, column=2).value or "").strip().upper()
-        marker = str(review_ws.cell(row=row_idx, column=7).value or "")
-
-        row_fill = None
-        row_bold = False
-        if marker.startswith("CHAPTER_") or marker.startswith("SUBCHAPTER_"):
-            row_fill = chapter_fill
-            row_bold = True
-        elif marker.startswith("SUBTOTAL_"):
-            row_fill = subtotal_fill
-            row_bold = True
-        elif marker.startswith("TOTAL_") or description.startswith("TOTAL GENERAL"):
-            row_fill = total_fill
-            row_bold = True
-        elif marker.startswith("AMBIGUOUS_"):
-            row_fill = ambiguous_fill
-
-        for col_idx in range(1, 7):
-            cell = review_ws.cell(row=row_idx, column=col_idx)
-            if col_idx == 2:
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    ws.auto_filter.ref = f"A4:{chr(64 + visible_columns)}4"
+    for row_idx in range(5, ws.max_row + 1):
+        for col_idx in range(1, visible_columns + 1):
+            cell = ws.cell(row=row_idx, column=col_idx)
+            header = str(ws.cell(row=4, column=col_idx).value or "").lower()
+            if header in {"descripcion", "nombre del capítulo", "resumen", "contenido", "notas", "formula / ratio", "concepto"}:
                 cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
-            elif col_idx == 3:
+            elif header in {"ud", "cap."}:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
             else:
                 cell.alignment = Alignment(horizontal="right", vertical="center")
-            if col_idx in {4, 5} and cell.value not in ("", None):
-                cell.number_format = "#,##0.00"
-            if col_idx == 6 and cell.value not in ("", None):
-                cell.number_format = '#,##0.00 "EUR"'
-            if row_fill is not None:
-                cell.fill = row_fill
-            if row_bold:
-                cell.font = Font(bold=True)
-        if code and len(code) <= 6 and marker.startswith("CHAPTER_"):
-            review_ws.row_dimensions[row_idx].height = 20
+            if header in {"cantidad", "precio unitario", "importe", "importe (€)", "importe equivalente", "presupuesto", "valor"}:
+                parsed = _to_decimal(cell.value)
+                if parsed is not None:
+                    cell.value = float(parsed)
+                    cell.number_format = '#,##0.00 "EUR"' if "importe" in header or header == "presupuesto" else "#,##0.00"
+    ws.sheet_view.showGridLines = False
+    for col_idx in range(1, visible_columns + 1):
+        ws.column_dimensions[chr(64 + col_idx)].width = 20 if col_idx != 2 else 52
+    if ws.max_column >= visible_columns + 1:
+        ws.column_dimensions[chr(64 + visible_columns + 1)].hidden = True
+
+
+def _append_trace_row(
+    trace_ws: Any,
+    review_row_id: str,
+    review_sheet_name: str,
+    review_row_number: int,
+    sheet_type: str,
+    source_file_id: str,
+    import_batch_id: str,
+    budget_version_id: str,
+    source_sheet_name: str,
+    source_row_number: str,
+    map_row: dict[str, str] | None,
+    notes: str,
+) -> None:
+    map_row = map_row or {}
+    trace_ws.append(
+        [
+            review_row_id,
+            review_sheet_name,
+            str(review_row_number),
+            sheet_type,
+            map_row.get("mapping_status", "NOT_COST_ITEM"),
+            "PENDING",
+            source_file_id,
+            import_batch_id,
+            budget_version_id,
+            source_sheet_name,
+            source_row_number,
+            map_row.get("preserved_row_id", ""),
+            map_row.get("cost_item_id", ""),
+            "|".join(part for part in [notes, map_row.get("map_notes", "")] if part),
+        ]
+    )
+
+
+def _write_type_row(ws: Any, row_idx: int, sheet_type: str, row_data: dict[str, str], review_row_id: str) -> None:
+    if sheet_type == SHEET_BUDGET_CLASSIC:
+        values = [
+            row_data["code"],
+            row_data["description"],
+            row_data["unit"],
+            row_data["quantity"],
+            row_data["unit_price"],
+            row_data["amount"],
+        ]
+    elif sheet_type == SHEET_BUDGET_SUMMARY:
+        values = [row_data["code"], row_data["description"], row_data["formula"], row_data["amount"]]
+    elif sheet_type == SHEET_SPACE_BREAKDOWN:
+        values = [row_data["code"], row_data["info"], row_data["description"], row_data["amount"]]
+    elif sheet_type == SHEET_COMPARISON_TABLE:
+        values = [
+            row_data["code"],
+            row_data["description"],
+            row_data["amount"],
+            row_data["equivalent_name"],
+            row_data["equivalent_amount"],
+            row_data["difference"],
+        ]
+    elif sheet_type == SHEET_FORMULA_CALCULATION:
+        values = [row_data["description"] or row_data["code"], row_data["formula"], row_data["amount"]]
+    else:
+        values = [row_data["description"] or row_data["code"], row_data["formula"] or row_data["amount"]]
+    for col_idx, value in enumerate(values, start=1):
+        ws.cell(row=row_idx, column=col_idx, value=value)
+    ws.cell(row=row_idx, column=len(values) + 1, value=review_row_id)
+
+
+def _create_home_sheet(
+    workbook: Any,
+    sheet_name: str,
+    source_file_id: str,
+    mode_label: str,
+    source_rows: list[dict[str, str]],
+) -> Any:
+    ws = workbook.create_sheet(title=sheet_name, index=0)
+    ws["A1"] = "Presupuesto de obra - Revision profesional (Home)"
+    ws["A2"] = f"ID sanitizado: {source_file_id} | Modo: {mode_label}"
+    ws["A3"] = "Seleccione una vista por hoja semantica. No se mezclan hojas incompatibles en una sola tabla."
+    headers = ["Hoja origen", "Tipo semantico", "Confianza", "Vista profesional", "Estado", "Advertencias"]
+    for col_idx, header in enumerate(headers, start=1):
+        ws.cell(row=4, column=col_idx, value=header)
+    for row_idx, row in enumerate(source_rows, start=5):
+        ws.cell(row=row_idx, column=1, value=row["source_sheet_name"])
+        ws.cell(row=row_idx, column=2, value=row["sheet_type"])
+        ws.cell(row=row_idx, column=3, value=row["confidence"])
+        ws.cell(row=row_idx, column=4, value=row["review_sheet_name"])
+        ws.cell(row=row_idx, column=5, value=row["status"])
+        ws.cell(row=row_idx, column=6, value=row["warnings"])
+    _style_review_sheet(ws, visible_columns=6)
+    return ws
 
 
 def append_professional_budget_review(
     workbook: Any,
-    extractions: list[BudgetRowExtraction],
+    extractions: list[object],  # Kept for backward compatibility with existing callers.
     source_file_id: str,
     import_batch_id: str,
     budget_version_id: str,
     mode_label: str = "PREVIEW_ONLY",
+    sheet_semantics: dict[str, SheetSemanticClassification] | None = None,
 ) -> dict[str, str]:
     seq = _next_sequence(workbook, "BUDGET_REVIEW")
-    review_sheet_name = f"BUDGET_REVIEW_{seq:03d}"
+    home_sheet_name = f"BUDGET_REVIEW_{seq:03d}"
     trace_sheet_name = f"BUDGET_REVIEW_TRACE_{seq:03d}"
-    review_ws = workbook.create_sheet(title=review_sheet_name, index=0)
     trace_ws = workbook.create_sheet(title=trace_sheet_name, index=1)
-
-    review_ws["A1"] = "Presupuesto de obra - Revision profesional"
-    review_ws["A2"] = f"ID sanitizado: {source_file_id} | Modo: {mode_label}"
-    review_ws["A3"] = "Vista humana prioritaria. Trazabilidad tecnica en hoja BUDGET_REVIEW_TRACE_*."
-
-    for col_idx, header in enumerate(REVIEW_HEADERS, start=1):
-        review_ws.cell(row=4, column=col_idx, value=header)
-    review_ws.cell(row=4, column=7, value="_review_row_id")
-
     trace_ws.append(TRACE_HEADERS)
 
+    preserved_index = _source_to_preserved_sheet(workbook)
     preserved_trace = _build_preserved_trace_index(workbook, import_batch_id=import_batch_id)
-    current_row = 5
-    current_chapter = ""
-    chapter_item_rows: list[int] = []
-    all_item_rows: list[int] = []
-    subtotal_rows: list[int] = []
-    has_input_total = False
+    semantics = sheet_semantics or {}
+    source_rows: list[dict[str, str]] = []
+    generated_view_count = 0
+    trace_rows = 0
 
-    def append_trace(
-        review_row_id: str,
-        review_row_number: int,
-        extraction: BudgetRowExtraction | None,
-        row_class: str,
-        mapping_status: str,
-        notes: str,
-    ) -> None:
-        source_sheet_name = extraction.source_sheet_name if extraction else ""
-        source_row_number = str(extraction.source_row_number) if extraction else ""
-        trace_key = (source_sheet_name, source_row_number)
-        from_map = preserved_trace.get(trace_key, {})
-        validation_status = extraction.validation_status if extraction else "PENDING"
-        trace_ws.append(
-            [
-                review_row_id,
-                review_sheet_name,
-                str(review_row_number),
-                row_class,
-                mapping_status or from_map.get("mapping_status", ""),
-                validation_status,
-                source_file_id,
-                import_batch_id,
-                budget_version_id,
-                source_sheet_name,
-                source_row_number,
-                from_map.get("preserved_row_id", ""),
-                from_map.get("cost_item_id", ""),
-                "|".join(part for part in [notes, from_map.get("map_notes", "")] if part),
-            ]
-        )
-
-    def append_subtotal_row(label: str) -> None:
-        nonlocal current_row
-        if not chapter_item_rows:
-            return
-        review_row_id = f"brv_{uuid4().hex[:10]}"
-        review_ws.cell(row=current_row, column=2, value=f"Subtotal {label}".strip())
-        review_ws.cell(row=current_row, column=6, value=_sum_formula(chapter_item_rows))
-        review_ws.cell(row=current_row, column=7, value=f"SUBTOTAL_{review_row_id}")
-        append_trace(
-            review_row_id=review_row_id,
-            review_row_number=current_row,
-            extraction=None,
-            row_class=ROW_SUBTOTAL,
-            mapping_status="NOT_COST_ITEM",
-            notes="GENERATED_SUBTOTAL",
-        )
-        subtotal_rows.append(current_row)
-        current_row += 1
-
-    for extraction in extractions:
-        row_class = extraction.row_class
-        if row_class == ROW_NON_BUDGET:
+    for source_sheet_name, preserved_sheet_name in preserved_index.items():
+        if preserved_sheet_name not in workbook.sheetnames:
             continue
-
-        if row_class in {ROW_CHAPTER, ROW_SUBCHAPTER}:
-            append_subtotal_row(current_chapter)
-            chapter_item_rows = []
-            current_chapter = extraction.chapter_name or extraction.item_description
-
-        review_row_id = f"brv_{uuid4().hex[:10]}"
-        code = extraction.item_code or extraction.chapter_code
-        description = _safe_review_text(extraction.item_description or extraction.chapter_name)
-        unit = extraction.unit
-        quantity_value = _to_decimal(extraction.quantity)
-        unit_price_value = _to_decimal(extraction.unit_price)
-        amount_value = _to_decimal(extraction.amount)
-
-        review_ws.cell(row=current_row, column=1, value=code)
-        review_ws.cell(row=current_row, column=2, value=description)
-        review_ws.cell(row=current_row, column=3, value=unit)
-        review_ws.cell(row=current_row, column=4, value=float(quantity_value) if quantity_value is not None else None)
-        review_ws.cell(row=current_row, column=5, value=float(unit_price_value) if unit_price_value is not None else None)
-
-        if row_class == ROW_COST_ITEM and quantity_value is not None and unit_price_value is not None:
-            review_ws.cell(row=current_row, column=6, value=f"=D{current_row}*E{current_row}")
-        elif amount_value is not None:
-            review_ws.cell(row=current_row, column=6, value=float(amount_value))
-
-        if row_class == ROW_SUBTOTAL:
-            if chapter_item_rows:
-                review_ws.cell(row=current_row, column=2, value=description or f"Subtotal {current_chapter}".strip())
-                review_ws.cell(row=current_row, column=6, value=_sum_formula(chapter_item_rows))
-                chapter_item_rows = []
-            elif amount_value is not None:
-                review_ws.cell(row=current_row, column=6, value=float(amount_value))
-            subtotal_rows.append(current_row)
-        elif row_class == ROW_TOTAL:
-            has_input_total = True
-            review_ws.cell(row=current_row, column=2, value=description or "TOTAL GENERAL")
-            total_from_rows = subtotal_rows if subtotal_rows else all_item_rows
-            if total_from_rows:
-                review_ws.cell(row=current_row, column=6, value=_sum_formula(total_from_rows))
-            elif amount_value is not None:
-                review_ws.cell(row=current_row, column=6, value=float(amount_value))
-        elif row_class == ROW_COST_ITEM:
-            all_item_rows.append(current_row)
-            chapter_item_rows.append(current_row)
-        elif row_class == ROW_AMBIGUOUS:
-            review_ws.cell(row=current_row, column=2, value=f"[REVISION] {description}".strip())
-
-        marker = f"{row_class}_{review_row_id}"
-        review_ws.cell(row=current_row, column=7, value=marker)
-        append_trace(
-            review_row_id=review_row_id,
-            review_row_number=current_row,
-            extraction=extraction,
-            row_class=row_class,
-            mapping_status=extraction.mapping_status,
-            notes=extraction.notes,
+        preserved_ws = workbook[preserved_sheet_name]
+        semantic = semantics.get(
+            source_sheet_name,
+            SheetSemanticClassification(
+                sheet_name=source_sheet_name,
+                sheet_type=SHEET_UNKNOWN,
+                confidence="LOW",
+                reasons=("semantic_profile_missing",),
+                warnings=("MANUAL_REVIEW_REQUIRED",),
+                header_row=1,
+                detected_columns={},
+            ),
         )
-        current_row += 1
+        review_sheet_name = f"{home_sheet_name}_{_sanitize_suffix(source_sheet_name)}"
+        review_ws = workbook.create_sheet(title=review_sheet_name, index=generated_view_count + 2)
+        headers = TYPE_HEADERS.get(semantic.sheet_type, TYPE_HEADERS[SHEET_UNKNOWN])
+        review_ws["A1"] = f"Vista profesional: {semantic.sheet_type}"
+        review_ws["A2"] = f"Hoja origen: {source_sheet_name} | Preservada: {preserved_sheet_name}"
+        review_ws["A3"] = f"Confianza: {semantic.confidence} | Razones: {', '.join(semantic.reasons) or 'n/a'}"
+        for col_idx, header in enumerate(headers, start=1):
+            review_ws.cell(row=4, column=col_idx, value=header)
+        review_ws.cell(row=4, column=len(headers) + 1, value="_review_row_id")
 
-    append_subtotal_row(current_chapter)
+        row_counter = 5
+        extracted_rows = _extract_view_rows(preserved_ws, semantic)
+        for row_data in extracted_rows:
+            review_row_id = f"brv_{uuid4().hex[:10]}"
+            _write_type_row(review_ws, row_counter, semantic.sheet_type, row_data, review_row_id)
+            map_key = (source_sheet_name, row_data["row_number"])
+            map_row = preserved_trace.get(map_key)
+            _append_trace_row(
+                trace_ws=trace_ws,
+                review_row_id=review_row_id,
+                review_sheet_name=review_sheet_name,
+                review_row_number=row_counter,
+                sheet_type=semantic.sheet_type,
+                source_file_id=source_file_id,
+                import_batch_id=import_batch_id,
+                budget_version_id=budget_version_id,
+                source_sheet_name=source_sheet_name,
+                source_row_number=row_data["row_number"],
+                map_row=map_row,
+                notes="|".join(semantic.warnings),
+            )
+            row_counter += 1
+            trace_rows += 1
 
-    if not has_input_total:
-        review_row_id = f"brv_{uuid4().hex[:10]}"
-        review_ws.cell(row=current_row, column=2, value="TOTAL GENERAL")
-        total_from_rows = subtotal_rows if subtotal_rows else all_item_rows
-        if total_from_rows:
-            review_ws.cell(row=current_row, column=6, value=_sum_formula(total_from_rows))
-        review_ws.cell(row=current_row, column=7, value=f"TOTAL_{review_row_id}")
-        append_trace(
-            review_row_id=review_row_id,
-            review_row_number=current_row,
-            extraction=None,
-            row_class=ROW_TOTAL,
-            mapping_status="NOT_COST_ITEM",
-            notes="GENERATED_TOTAL",
+        if row_counter == 5:
+            review_ws.cell(row=5, column=1, value="Sin filas interpretables. Requiere revision manual.")
+            review_ws.cell(row=5, column=len(headers) + 1, value=f"brv_{uuid4().hex[:10]}")
+            row_counter += 1
+        _style_review_sheet(review_ws, visible_columns=len(headers))
+        generated_view_count += 1
+
+        source_rows.append(
+            {
+                "source_sheet_name": source_sheet_name,
+                "sheet_type": semantic.sheet_type,
+                "confidence": semantic.confidence,
+                "review_sheet_name": review_sheet_name,
+                "status": "MANUAL_REVIEW_REQUIRED" if semantic.sheet_type in {SHEET_UNKNOWN, SHEET_AUXILIARY, SHEET_METADATA} else "READY",
+                "warnings": ", ".join(semantic.warnings),
+            }
         )
-        current_row += 1
 
-    _apply_visual_style(review_ws)
+    home_ws = _create_home_sheet(
+        workbook=workbook,
+        sheet_name=home_sheet_name,
+        source_file_id=source_file_id,
+        mode_label=mode_label,
+        source_rows=source_rows,
+    )
+    home_ws.sheet_properties.tabColor = "2F75B5"
 
     return {
-        "review_sheet_name": review_sheet_name,
+        "review_sheet_name": home_sheet_name,
         "trace_sheet_name": trace_sheet_name,
-        "review_row_count": str(max(current_row - 5, 0)),
-        "trace_row_count": str(max(trace_ws.max_row - 1, 0)),
+        "review_row_count": str(max(home_ws.max_row - 4, 0)),
+        "trace_row_count": str(trace_rows),
+        "adaptive_review_views": str(generated_view_count),
     }

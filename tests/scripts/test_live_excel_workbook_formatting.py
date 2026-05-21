@@ -54,7 +54,7 @@ def test_index_exists_and_order_is_human_first():
             trace = _first_sheet_with_prefix(wb, "BUDGET_REVIEW_TRACE_")
             assert wb.sheetnames[0] == "INDEX"
             assert wb.sheetnames[1] == review
-            assert wb.sheetnames[2] == trace
+            assert wb.sheetnames.index(trace) > wb.sheetnames.index(review)
 
             index_ws = wb["INDEX"]
             assert "PREVIEW_ONLY" in str(index_ws["A2"].value)
@@ -86,7 +86,8 @@ def test_preserved_sheets_keep_original_columns_before_technical_columns():
             assert "__source_column_number" in headers
 
             first_tech = headers.index("__source_sheet_name")
-            assert headers[:first_tech] == ["Codigo", "Descripcion", "Ud", "Cantidad", "Precio Unitario", "Importe"]
+            assert headers[:6] == ["Codigo", "Descripcion", "Ud", "Cantidad", "Precio Unitario", "Importe"]
+            assert all(value == "" for value in headers[6:first_tech])
             assert ws.column_dimensions[ws.cell(row=1, column=first_tech + 1).column_letter].hidden is True
             assert ws.freeze_panes == "A2"
             assert ws.auto_filter.ref == f"A1:{ws.cell(row=1, column=ws.max_column).column_letter}1"
@@ -124,4 +125,3 @@ def test_technical_sheets_are_formatted_and_pending_sheets_are_marked():
             wb.close()
     finally:
         _cleanup(root)
-

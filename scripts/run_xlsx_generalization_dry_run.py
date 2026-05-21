@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 9.17 helper: run local XLSX dry-run generalization with sanitized IDs."""
+"""Phase 9.18 helper: run local XLSX dry-run generalization with sanitized IDs."""
 
 from __future__ import annotations
 

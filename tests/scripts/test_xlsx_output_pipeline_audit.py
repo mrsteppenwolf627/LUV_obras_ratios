@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import shutil
 import uuid
 
@@ -39,8 +40,14 @@ def _build_semantic_input(path: Path) -> None:
 
 
 def _review_sheet_name(wb: object) -> str:
-    return next(
-        name for name in wb.sheetnames if name.startswith("BUDGET_REVIEW_") and not name.startswith("BUDGET_REVIEW_TRACE_")
+    return next(name for name in wb.sheetnames if re.fullmatch(r"BUDGET_REVIEW_\d{3}", name))
+
+
+def _review_detail_sheets(wb: object, home: str) -> list[str]:
+    return sorted(
+        name
+        for name in wb.sheetnames
+        if name.startswith(home + "_")
     )
 
 
@@ -66,6 +73,7 @@ def test_generalization_pipeline_enforces_professional_output_and_semantics():
             assert "INDEX" in wb.sheetnames
             assert "BUDGET_REVIEW_001" in wb.sheetnames
             assert "BUDGET_REVIEW_TRACE_001" in wb.sheetnames
+            assert _review_detail_sheets(wb, "BUDGET_REVIEW_001")
 
             phase_value = ""
             for row_idx in range(2, wb["README_MASTER"].max_row + 1):
@@ -81,22 +89,34 @@ def test_generalization_pipeline_enforces_professional_output_and_semantics():
                 assert not text.startswith("=HYPERLINK(")
                 assert "HYPERLINK is not implemented" not in text
 
-            review = wb[_review_sheet_name(wb)]
+            home_review = _review_sheet_name(wb)
+            review_sheets = _review_detail_sheets(wb, home_review)
             luv_ap = []
-            for row_idx in range(5, review.max_row + 1):
-                code = review.cell(row=row_idx, column=1).value
-                desc = review.cell(row=row_idx, column=2).value
-                amount = review.cell(row=row_idx, column=6).value
-                if code == "LUV_AP":
-                    luv_ap.append((desc, amount))
-                if isinstance(desc, str):
-                    assert not desc.startswith("=")
-                    assert "#NAME?" not in desc
-                    assert not desc.replace(".", "").replace(",", "").isdigit()
+            for review_name in review_sheets:
+                review = wb[review_name]
+                headers = [str(review.cell(row=4, column=idx).value or "").strip() for idx in range(1, review.max_column + 1)]
+                if "Descripcion" not in headers:
+                    continue
+                code_col = headers.index("Codigo") + 1 if "Codigo" in headers else None
+                desc_col = headers.index("Descripcion") + 1
+                amount_col = headers.index("Importe") + 1 if "Importe" in headers else None
+                for row_idx in range(5, review.max_row + 1):
+                    code = review.cell(row=row_idx, column=code_col).value if code_col else None
+                    desc = review.cell(row=row_idx, column=desc_col).value
+                    amount = review.cell(row=row_idx, column=amount_col).value if amount_col else None
+                    if code == "LUV_AP":
+                        luv_ap.append((desc, amount))
+                    if isinstance(desc, str):
+                        assert not desc.startswith("=")
+                        assert "#NAME?" not in desc
+                        assert not desc.replace(".", "").replace(",", "").isdigit()
             assert luv_ap, "Expected LUV_AP row in review output"
             assert luv_ap[0][0] == "EQUIPAMIENTO"
             assert str(luv_ap[0][1]) == "37297.09"
-            assert bool(review.column_dimensions["G"].hidden)
+            assert all(
+                bool(wb[name].column_dimensions[wb[name].cell(row=4, column=wb[name].max_column).column_letter].hidden)
+                for name in review_sheets
+            )
 
             cost = wb["COST_ITEMS"]
             descriptions = [str(cost.cell(row=row, column=5).value or "") for row in range(2, cost.max_row + 1)]
@@ -171,18 +191,31 @@ def test_preview_validator_fails_when_review_has_name_error_or_cost_formula():
         index = wb.active
         index.title = "INDEX"
         review = wb.create_sheet("BUDGET_REVIEW_001")
+        review_detail = wb.create_sheet("BUDGET_REVIEW_001_DATOS")
         trace = wb.create_sheet("BUDGET_REVIEW_TRACE_001")
         readme = wb.create_sheet("README_MASTER")
         cost = wb.create_sheet("COST_ITEMS")
 
-        review["A4"] = "Codigo"
-        review["B4"] = "Descripcion"
-        review["F4"] = "Importe"
-        review["G4"] = "_review_row_id"
-        review.column_dimensions["G"].hidden = True
-        review["A5"] = "LUV_AP"
-        review["B5"] = "#NAME?"
-        review["F5"] = 10
+        review["A4"] = "Hoja origen"
+        review["B4"] = "Tipo semantico"
+        review["C4"] = "Confianza"
+        review["D4"] = "Vista profesional"
+        review["E4"] = "Estado"
+        review["F4"] = "Advertencias"
+        review["A5"] = "Datos"
+        review["B5"] = "BUDGET_SUMMARY"
+        review["C5"] = "HIGH"
+        review["D5"] = "BUDGET_REVIEW_001_DATOS"
+        review["E5"] = "READY"
+
+        review_detail["A4"] = "Codigo"
+        review_detail["B4"] = "Descripcion"
+        review_detail["F4"] = "Importe"
+        review_detail["G4"] = "_review_row_id"
+        review_detail.column_dimensions["G"].hidden = True
+        review_detail["A5"] = "LUV_AP"
+        review_detail["B5"] = "#NAME?"
+        review_detail["F5"] = 10
 
         trace["A1"] = "review_row_id"
         readme.append(["field", "value", "updated_at", "updated_by"])

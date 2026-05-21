@@ -65,7 +65,8 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.14: cerrada tecnicamente (hoja profesional inicial + trazabilidad separada).
 - Fase 9.15: cerrada tecnicamente (profesionalizacion global del workbook y formato completo del Excel maestro).
 - Fase 9.16: cerrada tecnicamente (correccion semantica inicial de `BUDGET_REVIEW_001` e `INDEX` profesional).
-- Fase 9.17: iniciada (auditoria de outputs reales XLSX y correccion integral de pipeline oficial).
+- Fase 9.17: cerrada tecnicamente (auditoria de outputs reales XLSX y enforcement del pipeline oficial).
+- Fase 9.18: cerrada tecnicamente (clasificacion semantica de hojas XLSX y vistas profesionales adaptativas por tipo de hoja).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
@@ -78,30 +79,30 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Decision de producto 9.15: todas las hojas visibles deben tener presentacion cuidada y navegable.
 - Decision de producto 9.15: hojas internas demasiado tecnicas pueden moverse al final y/o ocultarse manteniendo auditoria.
 - Diagnostico de integracion 9.15 (2026-05-21): algunos previews en `xlsx_generalization` conservaban `activeTab/firstSheet` apuntando a hojas tecnicas pese a tener orden correcto; se corrige para abrir siempre en `INDEX`.
-- Problema confirmado por usuario al inicio de 9.17: discrepancia entre reporte tecnico y archivos revisados manualmente en `outputs/live_excel_master/xlsx_generalization/`.
-- Problema confirmado por usuario al inicio de 9.17: `output 001` seguia mostrando `Descripcion`/`Importe` inconsistentes y formulas auxiliares visibles segun revision manual previa.
-- Problema confirmado por usuario al inicio de 9.17: `output 002` se percibia como workbook antiguo/no regenerado por la ruta nueva.
-- Decision 9.17: toda ruta oficial de preview XLSX debe pasar por validacion programatica post-generacion y fallar explicitamente ante incoherencias.
+- Problema confirmado por usuario al inicio de 9.18: el pipeline seguia forzando una plantilla clasica unica en hojas de naturaleza distinta (resumen, espacios, comparativas, metadata y calculo).
+- Problema confirmado por usuario al inicio de 9.18: `xlsx_generalization_001_preview.xlsx` mezclaba hojas `Datos` + `Espacios` e inventaba jerarquias/subtotales sin evidencia fiable.
+- Problema confirmado por usuario al inicio de 9.18: `xlsx_generalization_002_preview.xlsx` (comparativa) se interpretaba como presupuesto clasico, moviendo `Cap.` a cantidad y `Importe equivalente` a codigo.
+- Decision 9.18: clasificar semanticamente cada hoja XLSX antes de construir vistas profesionales y evitar mezclas entre tipos incompatibles.
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
 - Presto/PZH: obligatorio en roadmap mediante ruta tecnica evidenciada (export/herramienta equivalente), sin lectura nativa directa confirmada.
 
 ## Fase vigente
 
-- Fase vigente: 9.17 - auditoria de outputs reales XLSX y correccion integral de pipeline oficial.
-- Estado: iniciada y activa.
-- Objetivo: garantizar que los outputs `xlsx_generalization_*_preview.xlsx` se generen siempre con la ruta oficial unificada y validaciones post-generacion obligatorias.
-- Alcance: auditoria programatica de outputs exactos, trazado de rutas de generacion, endurecimiento de validacion final e imposicion de fallo explicito si el workbook queda incoherente.
-- Resultado esperado: `INDEX` limpio, `BUDGET_REVIEW_*` y `TRACE` presentes, semantica correcta `Codigo/Descripcion/Importe`, filas auxiliares fuera de `COST_ITEMS` y apertura inicial en `INDEX`.
-- Fuera de alcance: BC3 preservado, promocion operativa y calculo final de ratios.
+- Fase vigente: 9.18 - clasificacion semantica de hojas XLSX y vistas profesionales adaptativas.
+- Estado: cerrada tecnicamente.
+- Objetivo: evitar plantilla unica universal, clasificar hoja por tipo semantico y generar vistas profesionales separadas (sin inventar jerarquia/cantidad/subtotales/importe).
+- Alcance: clasificador semantico por hoja, vistas adaptativas por tipo, separacion de hojas incompatibles, hard-stop post-generacion para reglas semanticas y no-regresion sobre 001/002.
+- Resultado esperado: vistas separadas por hoja semantica, comparativas preservadas como comparativas, metadata fuera de partidas, sin mezclas Datos/Espacios y sin reinterpretaciones de columnas.
+- Fuera de alcance: BC3 preservado, promocion operativa, calculo final de ratios, normalizacion final.
 - Restriccion metodologica: trabajo en modo `PREVIEW_ONLY`/dry-run, trazable y reversible, sin promocion automatica ni ingesta real operativa.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.18 - consolidacion final de validacion visual/semantica en muestra XLSX ampliada y cierre de no-regresion antes de decidir apertura BC3 preservado.
-- Condicion: mantener contrato 9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14/9.15/9.16/9.17 y sin habilitar promocion automatica.
+- Proxima fase: 9.19 - cierre de no-regresion semantica sobre muestra ampliada y decision de apertura BC3 preservado solo si XLSX queda estable.
+- Condicion: mantener contrato 9.6-9.18 sin habilitar promocion automatica.
 
-## Restricciones activas (fase 9.17)
+## Restricciones activas (fase 9.18)
 
 - No promocion automatica a master operativo.
 - No actualizacion del master operativo.
@@ -115,6 +116,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - No subir Excels generados.
 - No subir reports/outputs sensibles.
 - No abrir BC3 en esta fase.
+- No abrir Presto/PZH en esta fase.
 - No disenar interfaz, dashboard ni flujo UX en esta fase.
 - BC3 preservado queda fuera de alcance de esta fase salvo no-regresion documental.
 - Mantener compatibilidad con contratos 9.1/9.2/9.3/9.4/9.5/9.6/9.7/9.8/9.9/9.10/9.11/9.12/9.13/9.14/9.15/9.16.
@@ -134,9 +136,9 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ### P0
 
-- Auditar programaticamente `xlsx_generalization_001/002_preview.xlsx` antes y despues de regeneracion.
-- Unificar ruta oficial de generacion preview XLSX con validacion post-generacion obligatoria.
-- Bloquear outputs incoherentes (INDEX con formulas HYPERLINK visibles, `BUDGET_REVIEW_*` ausente, semantica rota, `COST_ITEMS` con formulas auxiliares).
+- Implementar clasificacion semantica por hoja XLSX (`BUDGET_CLASSIC`, `BUDGET_SUMMARY`, `SPACE_BREAKDOWN`, `COMPARISON_TABLE`, `FORMULA_CALCULATION_SHEET`, `AUXILIARY`, `METADATA`, `UNKNOWN`).
+- Generar vistas profesionales adaptativas por hoja semantica sin mezcla entre hojas incompatibles.
+- Endurecer validacion post-generacion para bloquear mezclas, comparativas mal proyectadas y metadata tratada como partidas/importes.
 
 ### P1
 

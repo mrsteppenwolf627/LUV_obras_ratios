@@ -20,10 +20,21 @@ def _cleanup(path: Path) -> None:
         shutil.rmtree(path, ignore_errors=True)
 
 
-def _review_sheet_name(wb: object) -> str:
-    return next(
-        name for name in wb.sheetnames if name.startswith("BUDGET_REVIEW_") and not name.startswith("BUDGET_REVIEW_TRACE_")
+def _review_home_and_details(wb: object) -> tuple[str, list[str]]:
+    homes = sorted(
+        name
+        for name in wb.sheetnames
+        if name.startswith("BUDGET_REVIEW_")
+        and not name.startswith("BUDGET_REVIEW_TRACE_")
+        and len(name.split("_")) == 3
     )
+    home = homes[0]
+    details = sorted(
+        name
+        for name in wb.sheetnames
+        if name.startswith(home + "_")
+    )
+    return home, details
 
 
 def _build_semantic_input(path: Path) -> None:
@@ -52,15 +63,25 @@ def test_budget_review_keeps_description_and_amount_semantics():
 
         wb = load_workbook(out)
         try:
-            review = wb[_review_sheet_name(wb)]
-            rows = [
-                (
-                    review.cell(row=row, column=1).value,
-                    review.cell(row=row, column=2).value,
-                    review.cell(row=row, column=6).value,
-                )
-                for row in range(5, review.max_row + 1)
-            ]
+            _home, detail_sheets = _review_home_and_details(wb)
+            assert detail_sheets
+            rows = []
+            for sheet_name in detail_sheets:
+                review = wb[sheet_name]
+                headers = [str(review.cell(row=4, column=idx).value or "").strip() for idx in range(1, review.max_column + 1)]
+                if "Codigo" not in headers or "Descripcion" not in headers:
+                    continue
+                code_col = headers.index("Codigo") + 1
+                desc_col = headers.index("Descripcion") + 1
+                amount_col = headers.index("Importe") + 1 if "Importe" in headers else None
+                for row in range(5, review.max_row + 1):
+                    rows.append(
+                        (
+                            review.cell(row=row, column=code_col).value,
+                            review.cell(row=row, column=desc_col).value,
+                            review.cell(row=row, column=amount_col).value if amount_col else None,
+                        )
+                    )
             target = [entry for entry in rows if entry[0] == "LUV_AP"]
             assert target, "Expected LUV_AP row in BUDGET_REVIEW"
             assert target[0][1] == "EQUIPAMIENTO"
@@ -107,12 +128,18 @@ def test_auxiliary_formula_rows_do_not_become_cost_items_or_name_errors():
 
         wb = load_workbook(out)
         try:
-            review = wb[_review_sheet_name(wb)]
-            for row in range(5, review.max_row + 1):
-                desc = review.cell(row=row, column=2).value
-                if isinstance(desc, str):
-                    assert not desc.startswith("=")
-                    assert "#NAME?" not in desc
+            _home, detail_sheets = _review_home_and_details(wb)
+            for sheet_name in detail_sheets:
+                review = wb[sheet_name]
+                headers = [str(review.cell(row=4, column=idx).value or "").strip() for idx in range(1, review.max_column + 1)]
+                if "Descripcion" not in headers:
+                    continue
+                desc_col = headers.index("Descripcion") + 1
+                for row in range(5, review.max_row + 1):
+                    desc = review.cell(row=row, column=desc_col).value
+                    if isinstance(desc, str):
+                        assert not desc.startswith("=")
+                        assert "#NAME?" not in desc
 
             cost = wb["COST_ITEMS"]
             descriptions = [

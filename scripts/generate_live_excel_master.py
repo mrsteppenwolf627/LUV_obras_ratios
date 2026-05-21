@@ -37,10 +37,17 @@ try:
     from scripts.live_excel_dry_run_evaluator import evaluate_dry_run_workbook
     from scripts.live_excel_professional_output import append_professional_budget_review
     from scripts.live_excel_workbook_formatting import apply_workbook_professional_formatting
+    from scripts.xlsx_sheet_semantic_classifier import (
+        SHEET_BUDGET_SUMMARY,
+        SHEET_COMPARISON_TABLE,
+        SHEET_SPACE_BREAKDOWN,
+        SheetSemanticClassification,
+        classify_worksheet_semantics,
+    )
     from scripts.xlsx_budget_detection import (
         MAPPING_AMBIGUOUS,
-        MAPPING_MANUAL_REVIEW,
         MAPPING_MAPPED,
+        MAPPING_MANUAL_REVIEW,
         MAPPING_NOT_COST_ITEM,
         MAPPING_UNMAPPED,
         BudgetRowExtraction,
@@ -73,10 +80,17 @@ except ModuleNotFoundError:
     from live_excel_dry_run_evaluator import evaluate_dry_run_workbook  # type: ignore
     from live_excel_professional_output import append_professional_budget_review  # type: ignore
     from live_excel_workbook_formatting import apply_workbook_professional_formatting  # type: ignore
+    from xlsx_sheet_semantic_classifier import (  # type: ignore
+        SHEET_BUDGET_SUMMARY,
+        SHEET_COMPARISON_TABLE,
+        SHEET_SPACE_BREAKDOWN,
+        SheetSemanticClassification,
+        classify_worksheet_semantics,
+    )
     from xlsx_budget_detection import (  # type: ignore
         MAPPING_AMBIGUOUS,
-        MAPPING_MANUAL_REVIEW,
         MAPPING_MAPPED,
+        MAPPING_MANUAL_REVIEW,
         MAPPING_NOT_COST_ITEM,
         MAPPING_UNMAPPED,
         BudgetRowExtraction,
@@ -93,7 +107,7 @@ ALLOWED_OUTPUT_ROOT = Path("outputs/live_excel_master")
 SNAPSHOTS_DIRNAME = "snapshots"
 DEFAULT_RETENTION_MAX = 5
 OPERATIONAL_PREVIEW_SHEET = "IMPORTED_BUDGET_VIEW"
-PREVIEW_PIPELINE_PHASE = "9.17"
+PREVIEW_PIPELINE_PHASE = "9.18"
 OPERATIONAL_PREVIEW_COLUMNS = [
     "preview_row_id",
     "source_file_id",
@@ -173,20 +187,35 @@ def validate_generated_xlsx_preview(
         sheetnames = wb.sheetnames
         if "INDEX" not in sheetnames:
             errors.append("missing_INDEX")
-        review_candidates = [
-            name
-            for name in sheetnames
-            if name.startswith("BUDGET_REVIEW_") and not name.startswith("BUDGET_REVIEW_TRACE_")
-        ]
+        review_candidates = sorted(
+            [
+                name
+                for name in sheetnames
+                if name.startswith("BUDGET_REVIEW_") and not name.startswith("BUDGET_REVIEW_TRACE_")
+            ]
+        )
+        review_home_candidates = [name for name in review_candidates if re.fullmatch(r"BUDGET_REVIEW_\d{3}", name)]
+        if not review_home_candidates:
+            errors.append("missing_BUDGET_REVIEW_HOME")
+            review_home_sheet_name = ""
+        else:
+            review_home_sheet_name = review_home_candidates[0]
         if not review_candidates:
             errors.append("missing_BUDGET_REVIEW")
-            review_sheet_name = ""
+        if review_home_sheet_name:
+            detail_prefix = review_home_sheet_name + "_"
+            review_detail_candidates = [name for name in review_candidates if name.startswith(detail_prefix)]
+            if not review_detail_candidates:
+                errors.append("missing_adaptive_review_views")
         else:
-            review_sheet_name = sorted(review_candidates)[0]
-        if "BUDGET_REVIEW_TRACE_001" not in sheetnames:
-            trace_any = [name for name in sheetnames if name.startswith("BUDGET_REVIEW_TRACE_")]
-            if not trace_any:
-                errors.append("missing_BUDGET_REVIEW_TRACE")
+            review_detail_candidates = []
+        trace_candidates = [
+            name
+            for name in sheetnames
+            if name.startswith("BUDGET_REVIEW_TRACE_")
+        ]
+        if not trace_candidates:
+            errors.append("missing_BUDGET_REVIEW_TRACE")
 
         if wb.active.title != "INDEX":
             errors.append(f"active_sheet_not_INDEX:{wb.active.title}")
@@ -216,38 +245,104 @@ def validate_generated_xlsx_preview(
                         if "HYPERLINK is not implemented" in value:
                             errors.append(f"index_technical_hyperlink_text:{cell.coordinate}")
 
-        if review_sheet_name:
+        home_entries: list[dict[str, str]] = []
+        comparison_views: set[str] = set()
+        space_views: set[str] = set()
+        if review_home_sheet_name:
+            home_ws = wb[review_home_sheet_name]
+            headers = [str(home_ws.cell(row=4, column=idx).value or "").strip() for idx in range(1, home_ws.max_column + 1)]
+            idx_home = {header: pos + 1 for pos, header in enumerate(headers)}
+            if not {"Hoja origen", "Tipo semantico", "Vista profesional"}.issubset(idx_home.keys()):
+                errors.append("review_home_missing_expected_columns")
+            else:
+                for row_idx in range(5, home_ws.max_row + 1):
+                    source_sheet_name = str(home_ws.cell(row=row_idx, column=idx_home["Hoja origen"]).value or "").strip()
+                    sheet_type = str(home_ws.cell(row=row_idx, column=idx_home["Tipo semantico"]).value or "").strip()
+                    view_sheet_name = str(home_ws.cell(row=row_idx, column=idx_home["Vista profesional"]).value or "").strip()
+                    if not source_sheet_name and not view_sheet_name:
+                        continue
+                    home_entries.append(
+                        {
+                            "source_sheet_name": source_sheet_name,
+                            "sheet_type": sheet_type,
+                            "view_sheet_name": view_sheet_name,
+                        }
+                    )
+                    if not view_sheet_name or view_sheet_name not in sheetnames:
+                        errors.append(f"review_view_missing:{source_sheet_name or 'unknown'}")
+                    if sheet_type == SHEET_COMPARISON_TABLE:
+                        comparison_views.add(view_sheet_name)
+                    if sheet_type == SHEET_SPACE_BREAKDOWN:
+                        space_views.add(view_sheet_name)
+        if len({entry["sheet_type"] for entry in home_entries if entry["sheet_type"]}) > 1:
+            if len({entry["view_sheet_name"] for entry in home_entries if entry["view_sheet_name"]}) < len(home_entries):
+                errors.append("review_semantic_views_mixed")
+
+        for review_sheet_name in review_candidates:
             review_ws = wb[review_sheet_name]
-            if str(review_ws.cell(row=4, column=7).value or "").strip() == "_review_row_id":
-                if not bool(review_ws.column_dimensions["G"].hidden):
-                    errors.append("review_row_id_not_hidden")
+            headers = [str(review_ws.cell(row=4, column=idx).value or "").strip() for idx in range(1, review_ws.max_column + 1)]
+            idx = {header: pos + 1 for pos, header in enumerate(headers)}
+            if "_review_row_id" in idx:
+                letter = review_ws.cell(row=4, column=idx["_review_row_id"]).column_letter
+                if not bool(review_ws.column_dimensions[letter].hidden):
+                    errors.append(f"review_row_id_not_hidden:{review_sheet_name}")
             numeric_desc_rows: list[int] = []
             formula_desc_rows: list[int] = []
             aux_desc_rows: list[int] = []
             name_error_rows: list[int] = []
             aux_pattern = re.compile(r"(?:^=)|(?:\\bPEM\\b)|(?:\\bHONPRY\\b)|(?:\\bHONDIR\\b)|(?:\\bPOR[A-Z])", re.IGNORECASE)
             numeric_pattern = re.compile(r"^-?\d+(?:[.,]\d+)?$")
+            desc_col = idx.get("Descripcion")
+            amount_col = idx.get("Importe")
             for row_idx in range(5, review_ws.max_row + 1):
-                desc = str(review_ws.cell(row=row_idx, column=2).value or "").strip()
-                if numeric_pattern.fullmatch(desc):
-                    numeric_desc_rows.append(row_idx)
-                if desc.startswith("="):
-                    formula_desc_rows.append(row_idx)
-                if aux_pattern.search(desc):
-                    aux_desc_rows.append(row_idx)
-                for col_idx in range(1, 7):
+                if desc_col:
+                    desc = str(review_ws.cell(row=row_idx, column=desc_col).value or "").strip()
+                    if numeric_pattern.fullmatch(desc):
+                        amount_cell = str(review_ws.cell(row=row_idx, column=amount_col).value or "").strip() if amount_col else ""
+                        if amount_cell in {"", "None"}:
+                            numeric_desc_rows.append(row_idx)
+                    if desc.startswith("="):
+                        formula_desc_rows.append(row_idx)
+                    if aux_pattern.search(desc):
+                        aux_desc_rows.append(row_idx)
+                    if "revision" in desc.lower() and amount_col:
+                        amount_val = str(review_ws.cell(row=row_idx, column=amount_col).value or "").strip()
+                        if amount_val.isdigit() and 1900 <= int(amount_val) <= 2100:
+                            errors.append(f"review_metadata_row_misclassified:{review_sheet_name}:{row_idx}")
+                for col_idx in range(1, min(review_ws.max_column, 12) + 1):
                     value = review_ws.cell(row=row_idx, column=col_idx).value
                     if isinstance(value, str) and "#NAME?" in value.upper():
                         name_error_rows.append(row_idx)
                         break
             if numeric_desc_rows:
-                errors.append(f"review_numeric_description_rows:{','.join(map(str, numeric_desc_rows[:10]))}")
+                errors.append(f"review_numeric_description_rows:{review_sheet_name}:{','.join(map(str, numeric_desc_rows[:10]))}")
             if formula_desc_rows:
-                errors.append(f"review_formula_description_rows:{','.join(map(str, formula_desc_rows[:10]))}")
+                errors.append(f"review_formula_description_rows:{review_sheet_name}:{','.join(map(str, formula_desc_rows[:10]))}")
             if aux_desc_rows:
-                errors.append(f"review_auxiliary_description_rows:{','.join(map(str, aux_desc_rows[:10]))}")
+                errors.append(f"review_auxiliary_description_rows:{review_sheet_name}:{','.join(map(str, aux_desc_rows[:10]))}")
             if name_error_rows:
-                errors.append(f"review_name_error_rows:{','.join(map(str, sorted(set(name_error_rows))[:10]))}")
+                errors.append(f"review_name_error_rows:{review_sheet_name}:{','.join(map(str, sorted(set(name_error_rows))[:10]))}")
+
+        for comparison_view in comparison_views:
+            if not comparison_view or comparison_view not in sheetnames:
+                continue
+            ws = wb[comparison_view]
+            headers = [str(ws.cell(row=4, column=idx).value or "").strip() for idx in range(1, ws.max_column + 1)]
+            required = ["Cap.", "Nombre del capítulo", "Importe (€)", "Nombre equivalente", "Importe equivalente", "Diferencia"]
+            for item in required:
+                if item not in headers:
+                    errors.append(f"comparison_view_missing_column:{comparison_view}:{item}")
+            if "Cantidad" in headers or "Precio unitario" in headers or "Ud" in headers:
+                errors.append(f"comparison_view_unexpected_classic_columns:{comparison_view}")
+
+        for space_view in space_views:
+            if not space_view or space_view not in sheetnames:
+                continue
+            ws = wb[space_view]
+            for row_idx in range(5, ws.max_row + 1):
+                desc = str(ws.cell(row=row_idx, column=3).value or "").strip()
+                if desc.lower().startswith("subtotal"):
+                    errors.append(f"space_view_generated_subtotal:{space_view}:{row_idx}")
 
         for name in sheetnames:
             if not name.startswith("PRES_"):
@@ -267,10 +362,23 @@ def validate_generated_xlsx_preview(
             idx = {header: pos + 1 for pos, header in enumerate(headers)}
             desc_col = idx.get("description_raw") or idx.get("description") or idx.get("item_description")
             amount_col = idx.get("amount_raw") or idx.get("amount")
+            origin_col = idx.get("origin_record_ref")
+            comparison_sources = {
+                entry["source_sheet_name"]
+                for entry in home_entries
+                if entry.get("sheet_type") == SHEET_COMPARISON_TABLE
+            }
+            space_sources = {
+                entry["source_sheet_name"]
+                for entry in home_entries
+                if entry.get("sheet_type") == SHEET_SPACE_BREAKDOWN
+            }
             if desc_col:
                 for row_idx in range(2, cost_ws.max_row + 1):
                     desc = str(cost_ws.cell(row=row_idx, column=desc_col).value or "").strip()
                     amount = str(cost_ws.cell(row=row_idx, column=amount_col).value or "").strip() if amount_col else ""
+                    origin = str(cost_ws.cell(row=row_idx, column=origin_col).value or "").strip() if origin_col else ""
+                    source_name = origin.split("!", 1)[0] if "!" in origin else ""
                     if desc.startswith("="):
                         errors.append(f"cost_items_formula_description_row:{row_idx}")
                         continue
@@ -279,6 +387,12 @@ def validate_generated_xlsx_preview(
                         continue
                     if re.search(r"(?:\\bPEM\\b)|(?:\\bHONPRY\\b)|(?:\\bHONDIR\\b)|(?:\\bPOR[A-Z])", desc, flags=re.IGNORECASE):
                         errors.append(f"cost_items_auxiliary_description_row:{row_idx}")
+                        continue
+                    if source_name and source_name in comparison_sources:
+                        errors.append(f"cost_items_from_comparison_sheet:{row_idx}")
+                        continue
+                    if source_name and source_name in space_sources and amount in {"", "0", "0.0", "0.00"}:
+                        errors.append(f"cost_items_space_row_zero_amount:{row_idx}")
                         continue
     finally:
         wb.close()
@@ -371,6 +485,8 @@ def _append_preserved_budget_scaffolding(
             cost_item_id = cost_item_by_origin.get(map_key, "")
             row_class = row_classes.get(row_idx, "")
             mapping_status = MAPPING_MAPPED if cost_item_id else mapping_status_for_row_class(row_class)
+            if not cost_item_id and mapping_status == MAPPING_MAPPED:
+                mapping_status = MAPPING_UNMAPPED
             mapping_confidence = "1.0" if cost_item_id else ("1.0" if mapping_status == MAPPING_NOT_COST_ITEM else "0.0")
             validation_status = "MANUAL_REVIEW_REQUIRED" if mapping_status in {MAPPING_AMBIGUOUS, MAPPING_MANUAL_REVIEW} else "PENDING"
             note = row_class or "NO_COST_ITEM_MATCH"
@@ -426,21 +542,182 @@ def _preview_row_from_extraction(extraction: BudgetRowExtraction, source_file_id
     ]
 
 
-def _iter_operational_extractions_from_xlsx(input_path: Path, source_file_id: str) -> list[BudgetRowExtraction]:
-    source_wb = load_workbook(input_path, data_only=False)
-    out_rows: list[BudgetRowExtraction] = []
+def _safe_cell_text(value: object) -> str:
+    return "" if value is None else str(value).strip()
+
+
+def _sheet_row_values(ws: object, row_idx: int, max_col: int) -> list[object]:
+    return [ws.cell(row=row_idx, column=col_idx).value for col_idx in range(1, max_col + 1)]
+
+
+def _looks_like_metadata_row(description: str, amount_text: str) -> bool:
+    desc = normalize_label(description)
+    if not desc:
+        return False
+    if "revision" not in desc and "rev" not in desc and "fecha" not in desc:
+        return False
+    parsed = parse_budget_number(amount_text, field_context="amount")
+    if not parsed.is_valid:
+        return True
     try:
-        for ws in source_wb.worksheets:
-            out_rows.extend(extract_budget_rows_from_worksheet(ws, source_file_id=source_file_id))
-    finally:
-        source_wb.close()
+        value = int(float(parsed.normalized))
+    except ValueError:
+        return False
+    return 1900 <= value <= 2100
+
+
+def _semantic_amount_text(value: object) -> str:
+    return parse_budget_number(value, field_context="amount").normalized
+
+
+def _build_semantic_rows_for_nonclassic_sheet(
+    ws: object,
+    source_file_id: str,
+    semantic: SheetSemanticClassification,
+) -> list[BudgetRowExtraction]:
+    detected = semantic.detected_columns
+    max_col = min(getattr(ws, "max_column", 1), 50)
+    rows: list[BudgetRowExtraction] = []
+    for row_idx in range(semantic.header_row + 1, getattr(ws, "max_row", 0) + 1):
+        values = _sheet_row_values(ws, row_idx, max_col)
+        if all(_safe_cell_text(value) == "" for value in values):
+            continue
+        code = _safe_cell_text(values[detected.get("code", detected.get("cap", 0)) - 1]) if detected.get("code", detected.get("cap", 0)) else ""
+        description = _safe_cell_text(
+            values[detected.get("description", detected.get("chapter_name", 0)) - 1]
+        ) if detected.get("description", detected.get("chapter_name", 0)) else ""
+        amount = _semantic_amount_text(values[detected.get("amount", 0) - 1]) if detected.get("amount") else ""
+        if not description and semantic.sheet_type == SHEET_COMPARISON_TABLE:
+            description = _safe_cell_text(values[detected.get("chapter_name", 0) - 1]) if detected.get("chapter_name") else ""
+        if not description and not code and not amount:
+            continue
+        if _looks_like_metadata_row(description, amount):
+            rows.append(
+                BudgetRowExtraction(
+                    source_sheet_name=str(getattr(ws, "title", "")),
+                    source_row_number=row_idx,
+                    chapter_code="",
+                    chapter_name="",
+                    item_code=code,
+                    item_description=description,
+                    unit="",
+                    quantity="",
+                    unit_price="",
+                    amount="",
+                    validation_status="PENDING",
+                    notes=f"SHEET_TYPE={semantic.sheet_type}|METADATA_ROW",
+                    row_class="NON_BUDGET_ROW",
+                    mapping_status=MAPPING_NOT_COST_ITEM,
+                )
+            )
+            continue
+        notes_parts = [f"SHEET_TYPE={semantic.sheet_type}"]
+        if semantic.sheet_type == SHEET_COMPARISON_TABLE:
+            eq_name = _safe_cell_text(values[detected.get("equivalent_name", 0) - 1]) if detected.get("equivalent_name") else ""
+            eq_amount = _semantic_amount_text(values[detected.get("equivalent_amount", 0) - 1]) if detected.get("equivalent_amount") else ""
+            diff_raw = _safe_cell_text(values[detected.get("difference", 0) - 1]) if detected.get("difference") else ""
+            if eq_name:
+                notes_parts.append(f"EQUIVALENT_NAME={eq_name}")
+            if eq_amount:
+                notes_parts.append(f"EQUIVALENT_AMOUNT={eq_amount}")
+            if diff_raw:
+                notes_parts.append(f"DIFFERENCE={diff_raw}")
+        elif semantic.sheet_type == SHEET_SPACE_BREAKDOWN:
+            info_col = detected.get("info")
+            if info_col:
+                info_text = _safe_cell_text(values[info_col - 1])
+                if info_text:
+                    notes_parts.append(f"INFO={info_text}")
+        rows.append(
+            BudgetRowExtraction(
+                source_sheet_name=str(getattr(ws, "title", "")),
+                source_row_number=row_idx,
+                chapter_code="",
+                chapter_name="",
+                item_code=code,
+                item_description=description,
+                unit="",
+                quantity="",
+                unit_price="",
+                amount=amount,
+                validation_status="PENDING",
+                notes="|".join(notes_parts),
+                row_class="COST_ITEM",
+                mapping_status=MAPPING_NOT_COST_ITEM,
+            )
+        )
+    return rows
+
+
+def _iter_operational_extractions_from_workbook(
+    source_wb: Workbook,
+    source_file_id: str,
+    sheet_semantics: dict[str, SheetSemanticClassification] | None = None,
+) -> list[BudgetRowExtraction]:
+    out_rows: list[BudgetRowExtraction] = []
+    for ws in source_wb.worksheets:
+        semantic = (sheet_semantics or {}).get(ws.title) or classify_worksheet_semantics(ws)
+        if semantic.sheet_type in {SHEET_COMPARISON_TABLE, SHEET_SPACE_BREAKDOWN}:
+            out_rows.extend(_build_semantic_rows_for_nonclassic_sheet(ws, source_file_id, semantic))
+            continue
+        extracted = extract_budget_rows_from_worksheet(ws, source_file_id=source_file_id)
+        if semantic.sheet_type == SHEET_BUDGET_SUMMARY:
+            adjusted: list[BudgetRowExtraction] = []
+            for row in extracted:
+                notes = row.notes
+                if _looks_like_metadata_row(row.item_description, row.amount):
+                    adjusted.append(
+                        BudgetRowExtraction(
+                            source_sheet_name=row.source_sheet_name,
+                            source_row_number=row.source_row_number,
+                            chapter_code=row.chapter_code,
+                            chapter_name=row.chapter_name,
+                            item_code=row.item_code,
+                            item_description=row.item_description,
+                            unit="",
+                            quantity="",
+                            unit_price="",
+                            amount="",
+                            validation_status="PENDING",
+                            notes="|".join(part for part in [notes, "METADATA_ROW", "SHEET_TYPE=BUDGET_SUMMARY"] if part),
+                            row_class="NON_BUDGET_ROW",
+                            mapping_status=MAPPING_NOT_COST_ITEM,
+                        )
+                    )
+                    continue
+                adjusted.append(
+                    BudgetRowExtraction(
+                        source_sheet_name=row.source_sheet_name,
+                        source_row_number=row.source_row_number,
+                        chapter_code=row.chapter_code,
+                        chapter_name=row.chapter_name,
+                        item_code=row.item_code,
+                        item_description=row.item_description,
+                        unit="",
+                        quantity="",
+                        unit_price="",
+                        amount=row.amount,
+                        validation_status=row.validation_status,
+                        notes="|".join(part for part in [notes, "SHEET_TYPE=BUDGET_SUMMARY"] if part),
+                        row_class=row.row_class,
+                        mapping_status=row.mapping_status,
+                    )
+                )
+            out_rows.extend(adjusted)
+        else:
+            out_rows.extend(extracted)
     return out_rows
 
 
 def _iter_operational_rows_from_xlsx(input_path: Path, source_file_id: str) -> list[list[str]]:
+    source_wb = load_workbook(input_path, data_only=False)
+    try:
+        extractions = _iter_operational_extractions_from_workbook(source_wb, source_file_id)
+    finally:
+        source_wb.close()
     return [
         _preview_row_from_extraction(extraction, source_file_id)
-        for extraction in _iter_operational_extractions_from_xlsx(input_path, source_file_id)
+        for extraction in extractions
     ]
 
 
@@ -933,9 +1210,14 @@ def generate_preview_from_real_xlsx(
     wb = load_workbook(output_path)
     try:
         _append_operational_preview_sheet(wb)
-        operational_extractions = _iter_operational_extractions_from_xlsx(
-            input_xlsx_path,
+        sheet_semantics = {
+            ws.title: classify_worksheet_semantics(ws)
+            for ws in source_wb.worksheets
+        }
+        operational_extractions = _iter_operational_extractions_from_workbook(
+            source_wb,
             source_file_id=source_file_id,
+            sheet_semantics=sheet_semantics,
         )
         operational_rows = [
             _preview_row_from_extraction(extraction, source_file_id)
@@ -1023,6 +1305,7 @@ def generate_preview_from_real_xlsx(
             import_batch_id=import_batch_id,
             budget_version_id=budget_version_id,
             mode_label="PREVIEW_ONLY",
+            sheet_semantics=sheet_semantics,
         )
         wb["CHANGELOG"].append(
             [
