@@ -26,12 +26,13 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - Fase 9.16 cerrada tecnicamente: correccion semantica inicial de `BUDGET_REVIEW_001` e `INDEX`.
 - Fase 9.17 cerrada tecnicamente: auditoria de outputs reales XLSX y enforcement del pipeline oficial de generacion preview.
 - Fase 9.18 cerrada tecnicamente: clasificacion semantica de hojas XLSX y vistas profesionales adaptativas por tipo.
-- Fase 9.19 iniciada tecnicamente: traduccion segura de formulas por vista, navegacion profesional reforzada y evaluador dry-run calibrado por tipo semantico.
-- Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019).
+- Fase 9.19 reportada como COMPLETE por Codex: traduccion segura de formulas por vista, navegacion profesional reforzada y evaluador dry-run calibrado por tipo semantico.
+- Fase 9.20 iniciada tecnicamente: auditoria forense de artefactos XLSX finales y entrega inequivoca para revision humana (carpeta nueva, nombres versionados, manifest con SHA-256, validacion post-guardado desde disco).
+- Decision vigente: la salida principal del sistema sera un Excel maestro vivo, iterativo y actualizable (ADR-019); la entrega para revision humana debe garantizar identidad de artefacto (ADR-020).
 - BC3: modulo avanzado ya operativo, no prioridad unica.
 - Excel: lector integral y flujo multi-formato operativo.
 - Presto/PZH: objetivo obligatorio por ruta tecnica evidenciada (export/herramienta), sin lectura nativa directa confirmada.
-- Proxima fase recomendada: Fase 9.20 (consolidacion de traduccion de formulas avanzadas y no-regresion ampliada antes de decidir apertura BC3 preservado).
+- Proxima fase recomendada: Fase 9.21 (consolidacion de traduccion de formulas avanzadas y no-regresion ampliada antes de decidir apertura BC3 preservado).
 
 ## Restricciones criticas activas
 
@@ -64,6 +65,8 @@ Sistema interno para importacion, parsing, validacion estructural y futura norma
 - `docs/decisions/phase_9_17_xlsx_output_pipeline_audit_and_fix.md`
 - `docs/decisions/phase_9_18_xlsx_sheet_semantic_classification_and_adaptive_reviews.md`
 - `docs/decisions/phase_9_19_adaptive_formula_translation_navigation_and_evaluator_calibration.md`
+- `docs/decisions/phase_9_20_xlsx_final_artifact_audit_and_human_review_delivery.md`
+- `docs/decisions/phase_9_20_artifact_audit_manifest_sanitized.md`
 
 ## Comandos base
 
@@ -72,5 +75,7 @@ python scripts/validate_context.py
 python scripts/inspect_repo.py
 python scripts/run_real_dry_run_pilot.py --files data/samples/<sanitized_selection> --output-dir outputs/live_excel_master/real_dry_run
 python scripts/run_xlsx_generalization_dry_run.py --files data/samples/<xlsx_1> data/samples/<xlsx_2> --output-dir outputs/live_excel_master/xlsx_generalization
+# Fase 9.20: entrega inequivoca para revision humana (carpeta nueva + nombres versionados + manifest con SHA-256)
+python scripts/run_xlsx_generalization_dry_run.py --files data/samples/<xlsx_1> data/samples/<xlsx_2> --output-dir outputs/live_excel_master/manual_review_phase_9_20 --name-template "phase_9_20_review_{index:03d}" --manifest-json outputs/live_excel_master/manual_review_phase_9_20/MANIFEST_phase_9_20.json
 pytest
 ```

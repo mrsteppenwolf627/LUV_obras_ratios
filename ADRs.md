@@ -282,3 +282,24 @@ Presto/PZH forma parte del corpus real del proyecto y no debe desaparecer del ro
 **Racional**
 
 El proyecto no necesita solo una capa de calculo o un report puntual, sino un artefacto operativo vivo que acumule conocimiento y mejore con el volumen procesado. Fijar el master como Excel vivo mantiene la trazabilidad, encaja con la realidad de trabajo del dominio y evita separar el producto final en una base de datos abstracta que no sea el objeto operativo principal de la organizacion.
+
+## ADR-020: Identidad inequivoca del artefacto XLSX entregado para revision humana
+
+**Estado:** Aprobado (fase 9.20)
+
+**Contexto**
+
+Durante 9.16-9.19 se detecto de forma repetida una discrepancia entre lo que el pipeline reportaba generar y lo que el usuario abria manualmente. La auditoria forense de 9.20 demostro que los artefactos reales en disco eran correctos, pero el usuario abria copias obsoletas: los nombres de salida (`xlsx_generalization_00N_preview.xlsx`) se reutilizaban entre fases, conviviendo decenas de XLSX homonimos de distintas edades bajo `outputs/`, ademas de posible lag de sincronizacion de la carpeta de trabajo.
+
+**Decision**
+
+- Toda entrega para revision humana debe garantizar identidad: archivo generado = validado = exportado = revisado = abierto.
+- Las entregas de revision se generan en una carpeta nueva e inequivoca por fase (p.ej. `manual_review_phase_9_20/`), nunca reutilizando carpetas de fases previas.
+- Los archivos de revision usan nombres versionados por fase (`phase_9_XX_review_###.xlsx`), no nombres genericos reutilizables.
+- Cada entrega se acompana de un manifest que vincula nombre <-> SHA-256 <-> fase <-> hoja activa <-> hojas presentes.
+- La validacion se realiza reabriendo el archivo desde disco tras guardarlo; se comprueba que el SHA-256 no cambia a traves de la validacion (no se acepta validacion de workbook solo en memoria).
+- Los outputs generados no se anaden a git.
+
+**Racional**
+
+La calidad del Excel es irrelevante si el usuario no esta abriendo el archivo correcto. Romper la reutilizacion de nombres y exigir un manifest con hash hace imposible confundir un artefacto de la fase actual con una copia antigua, y convierte la trazabilidad del artefacto final en una propiedad verificable, no en una afirmacion.

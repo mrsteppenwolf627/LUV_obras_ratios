@@ -67,7 +67,11 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.16: cerrada tecnicamente (correccion semantica inicial de `BUDGET_REVIEW_001` e `INDEX` profesional).
 - Fase 9.17: cerrada tecnicamente (auditoria de outputs reales XLSX y enforcement del pipeline oficial).
 - Fase 9.18: cerrada tecnicamente (clasificacion semantica de hojas XLSX y vistas profesionales adaptativas por tipo de hoja).
-- Fase 9.19: iniciada (formulas adaptativas, navegacion profesional y recalibracion del evaluador por tipo semantico XLSX).
+- Fase 9.19: reportada como COMPLETE por Codex (formulas adaptativas, navegacion profesional y recalibracion del evaluador por tipo semantico XLSX).
+- Fase 9.20: iniciada (auditoria forense de artefactos XLSX finales y entrega inequivoca para revision humana).
+- Discrepancia critica detectada (2026-05-21): revision manual reportaba archivos `xlsx_generalization_001/002_preview.xlsx` con contenido de fase 9.9 (plantilla clasica, HYPERLINK, COST_ITEMS contaminado), incompatible con el reporte 9.19 de Codex.
+- Hallazgo de auditoria 9.20: los artefactos reales en disco de 001/002 SI son fase 9.19 validos (phase=9.19, abren en INDEX, vistas adaptativas, COST_ITEMS limpio, validacion post-generacion PASSED). El usuario abria copias obsoletas/equivocadas por reutilizacion de nombres entre fases y posible lag de sincronizacion.
+- Objetivo 9.20: garantizar identidad entre archivo generado = validado = exportado = revisado mediante carpeta nueva, nombres inequivocos, manifest con SHA-256 y validacion post-guardado reabriendo desde disco.
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
@@ -93,20 +97,21 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Fase vigente
 
-- Fase vigente: 9.19 - formulas adaptativas, navegacion profesional y evaluador calibrado por tipo semantico.
+- Fase vigente: 9.20 - auditoria forense de artefactos XLSX finales y entrega inequivoca para revision humana.
 - Estado: en implementacion tecnica.
-- Objetivo: traducir formulas de forma segura por vista (sin copiar formulas ciegas), reforzar INDEX/HOME para navegacion humana y recalibrar evaluador dry-run para tipos no clasicos.
-- Alcance: modulo de traduccion de formulas, formulas comparativas `Diferencia=Importe equivalente-Importe (€)` con coordenadas de la vista, politica de formulas con nombres definidos, navegacion INDEX/HOME reforzada y calibracion del evaluador por `sheet_type`.
-- Resultado esperado: vistas profesionales sin formulas rotas, comparativas con formulas coherentes en su propia hoja y evaluador sin penalizaciones falsas por mapping clasico en tipos no clasicos.
-- Fuera de alcance: BC3 preservado, promocion operativa, calculo final de ratios, normalizacion final.
+- Objetivo: eliminar la discrepancia entre outputs reportados y outputs revisados garantizando que el archivo generado = validado = exportado = revisado = abierto por el usuario.
+- Alcance: inventario forense de XLSX, generacion en carpeta nueva inequivoca (`outputs/live_excel_master/manual_review_phase_9_20/`), nombres `phase_9_20_review_###.xlsx`, manifest con SHA-256, validacion post-guardado reabriendo desde disco, tests de integridad de entrega.
+- No es una fase para mejorar el Excel: es para garantizar trazabilidad del artefacto final.
+- Resultado esperado: dos archivos exactos para el usuario, ambos phase=9.20, ambos abren en INDEX, ambos validados desde disco, ambos con SHA-256 reportado.
+- Fuera de alcance: nuevas features, BC3, ratios finales, promocion operativa, modificacion de RAW.
 - Restriccion metodologica: trabajo en modo `PREVIEW_ONLY`/dry-run, trazable y reversible, sin promocion automatica ni ingesta real operativa.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.20 - consolidacion de traduccion de formulas avanzadas (nombres definidos/rangos) y cierre de no-regresion visual/semantica ampliada antes de abrir BC3 preservado.
-- Condicion: mantener contrato 9.6-9.18 sin habilitar promocion automatica.
+- Proxima fase: 9.21 - consolidacion de traduccion de formulas avanzadas (nombres definidos/rangos) y cierre de no-regresion visual/semantica ampliada antes de abrir BC3 preservado.
+- Condicion: mantener contrato 9.6-9.20 sin habilitar promocion automatica.
 
-## Restricciones activas (fase 9.19)
+## Restricciones activas (fase 9.20)
 
 - No promocion automatica a master operativo.
 - No actualizacion del master operativo.
