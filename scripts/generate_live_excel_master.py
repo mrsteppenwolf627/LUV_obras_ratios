@@ -7,6 +7,7 @@ import argparse
 from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
+import re
 import shutil
 import sys
 from typing import Iterable
@@ -92,6 +93,7 @@ ALLOWED_OUTPUT_ROOT = Path("outputs/live_excel_master")
 SNAPSHOTS_DIRNAME = "snapshots"
 DEFAULT_RETENTION_MAX = 5
 OPERATIONAL_PREVIEW_SHEET = "IMPORTED_BUDGET_VIEW"
+PREVIEW_PIPELINE_PHASE = "9.17"
 OPERATIONAL_PREVIEW_COLUMNS = [
     "preview_row_id",
     "source_file_id",
@@ -147,6 +149,145 @@ def _to_number_text(value: object) -> str:
 
 def _safe_text(value: object) -> str:
     return "" if value is None else str(value).strip()
+
+
+def _upsert_readme_field(readme_ws: object, key: str, value: str, updated_by: str = "system") -> None:
+    key_norm = key.strip().lower()
+    for row_idx in range(2, readme_ws.max_row + 1):
+        current_key = str(readme_ws.cell(row=row_idx, column=1).value or "").strip().lower()
+        if current_key == key_norm:
+            readme_ws.cell(row=row_idx, column=2, value=value)
+            readme_ws.cell(row=row_idx, column=3, value=utc_now_iso())
+            readme_ws.cell(row=row_idx, column=4, value=updated_by)
+            return
+    readme_ws.append([key, value, utc_now_iso(), updated_by])
+
+
+def validate_generated_xlsx_preview(
+    output_path: Path,
+    required_phase: str = PREVIEW_PIPELINE_PHASE,
+) -> dict[str, str]:
+    wb = load_workbook(output_path, data_only=False)
+    errors: list[str] = []
+    try:
+        sheetnames = wb.sheetnames
+        if "INDEX" not in sheetnames:
+            errors.append("missing_INDEX")
+        review_candidates = [
+            name
+            for name in sheetnames
+            if name.startswith("BUDGET_REVIEW_") and not name.startswith("BUDGET_REVIEW_TRACE_")
+        ]
+        if not review_candidates:
+            errors.append("missing_BUDGET_REVIEW")
+            review_sheet_name = ""
+        else:
+            review_sheet_name = sorted(review_candidates)[0]
+        if "BUDGET_REVIEW_TRACE_001" not in sheetnames:
+            trace_any = [name for name in sheetnames if name.startswith("BUDGET_REVIEW_TRACE_")]
+            if not trace_any:
+                errors.append("missing_BUDGET_REVIEW_TRACE")
+
+        if wb.active.title != "INDEX":
+            errors.append(f"active_sheet_not_INDEX:{wb.active.title}")
+
+        if "README_MASTER" in sheetnames:
+            readme_ws = wb["README_MASTER"]
+            phase_value = ""
+            for row_idx in range(2, readme_ws.max_row + 1):
+                key = str(readme_ws.cell(row=row_idx, column=1).value or "").strip().lower()
+                if key == "phase":
+                    phase_value = str(readme_ws.cell(row=row_idx, column=2).value or "").strip()
+                    break
+            if phase_value != required_phase:
+                errors.append(f"readme_phase_mismatch:{phase_value or 'empty'}")
+        else:
+            errors.append("missing_README_MASTER")
+
+        if "INDEX" in sheetnames:
+            index_ws = wb["INDEX"]
+            for row in index_ws.iter_rows(min_row=1, max_row=index_ws.max_row, min_col=1, max_col=min(6, index_ws.max_column)):
+                for cell in row:
+                    value = cell.value
+                    if isinstance(value, str):
+                        upper = value.strip().upper()
+                        if upper.startswith("=HYPERLINK("):
+                            errors.append(f"index_formula_hyperlink:{cell.coordinate}")
+                        if "HYPERLINK is not implemented" in value:
+                            errors.append(f"index_technical_hyperlink_text:{cell.coordinate}")
+
+        if review_sheet_name:
+            review_ws = wb[review_sheet_name]
+            if str(review_ws.cell(row=4, column=7).value or "").strip() == "_review_row_id":
+                if not bool(review_ws.column_dimensions["G"].hidden):
+                    errors.append("review_row_id_not_hidden")
+            numeric_desc_rows: list[int] = []
+            formula_desc_rows: list[int] = []
+            aux_desc_rows: list[int] = []
+            name_error_rows: list[int] = []
+            aux_pattern = re.compile(r"(?:^=)|(?:\\bPEM\\b)|(?:\\bHONPRY\\b)|(?:\\bHONDIR\\b)|(?:\\bPOR[A-Z])", re.IGNORECASE)
+            numeric_pattern = re.compile(r"^-?\d+(?:[.,]\d+)?$")
+            for row_idx in range(5, review_ws.max_row + 1):
+                desc = str(review_ws.cell(row=row_idx, column=2).value or "").strip()
+                if numeric_pattern.fullmatch(desc):
+                    numeric_desc_rows.append(row_idx)
+                if desc.startswith("="):
+                    formula_desc_rows.append(row_idx)
+                if aux_pattern.search(desc):
+                    aux_desc_rows.append(row_idx)
+                for col_idx in range(1, 7):
+                    value = review_ws.cell(row=row_idx, column=col_idx).value
+                    if isinstance(value, str) and "#NAME?" in value.upper():
+                        name_error_rows.append(row_idx)
+                        break
+            if numeric_desc_rows:
+                errors.append(f"review_numeric_description_rows:{','.join(map(str, numeric_desc_rows[:10]))}")
+            if formula_desc_rows:
+                errors.append(f"review_formula_description_rows:{','.join(map(str, formula_desc_rows[:10]))}")
+            if aux_desc_rows:
+                errors.append(f"review_auxiliary_description_rows:{','.join(map(str, aux_desc_rows[:10]))}")
+            if name_error_rows:
+                errors.append(f"review_name_error_rows:{','.join(map(str, sorted(set(name_error_rows))[:10]))}")
+
+        for name in sheetnames:
+            if not name.startswith("PRES_"):
+                continue
+            ws = wb[name]
+            for col_idx in range(1, ws.max_column + 1):
+                header = str(ws.cell(row=1, column=col_idx).value or "").strip()
+                if not header.startswith("__source_"):
+                    continue
+                letter = ws.cell(row=1, column=col_idx).column_letter
+                if not bool(ws.column_dimensions[letter].hidden):
+                    errors.append(f"preserved_source_column_visible:{name}:{header}")
+
+        if "COST_ITEMS" in sheetnames:
+            cost_ws = wb["COST_ITEMS"]
+            headers = [str(cost_ws.cell(row=1, column=idx).value or "").strip() for idx in range(1, cost_ws.max_column + 1)]
+            idx = {header: pos + 1 for pos, header in enumerate(headers)}
+            desc_col = idx.get("description_raw") or idx.get("description") or idx.get("item_description")
+            amount_col = idx.get("amount_raw") or idx.get("amount")
+            if desc_col:
+                for row_idx in range(2, cost_ws.max_row + 1):
+                    desc = str(cost_ws.cell(row=row_idx, column=desc_col).value or "").strip()
+                    amount = str(cost_ws.cell(row=row_idx, column=amount_col).value or "").strip() if amount_col else ""
+                    if desc.startswith("="):
+                        errors.append(f"cost_items_formula_description_row:{row_idx}")
+                        continue
+                    if desc == "" and amount in {"", "0", "0.0", "0.00"}:
+                        errors.append(f"cost_items_blank_zero_row:{row_idx}")
+                        continue
+                    if re.search(r"(?:\\bPEM\\b)|(?:\\bHONPRY\\b)|(?:\\bHONDIR\\b)|(?:\\bPOR[A-Z])", desc, flags=re.IGNORECASE):
+                        errors.append(f"cost_items_auxiliary_description_row:{row_idx}")
+                        continue
+    finally:
+        wb.close()
+
+    if errors:
+        raise RuntimeError(
+            "Generated XLSX preview failed post-generation validation: " + "; ".join(errors)
+        )
+    return {"post_generation_validation": "passed", "required_phase": required_phase}
 
 
 def _detect_header_row_and_mapping(ws: object, max_scan_rows: int = 25) -> tuple[int, dict[str, int]]:
@@ -807,8 +948,9 @@ def generate_preview_from_real_xlsx(
         project_id = f"prj_preview_{uuid4().hex[:8]}"
         raw_import_id = f"raw_preview_{uuid4().hex[:8]}"
 
-        wb["README_MASTER"].append(["preview_mode", "PREVIEW_ONLY", ts, "system"])
-        wb["README_MASTER"].append(["preview_master_promotion", "false", ts, "system"])
+        _upsert_readme_field(wb["README_MASTER"], "phase", PREVIEW_PIPELINE_PHASE)
+        _upsert_readme_field(wb["README_MASTER"], "preview_mode", "PREVIEW_ONLY")
+        _upsert_readme_field(wb["README_MASTER"], "preview_master_promotion", "false")
         wb["IMPORT_LOG"].append([import_batch_id, run_id, ts, ts, "PREVIEW_ONLY", str(len(operational_rows)), "0", "", ""])
         wb["SOURCE_FILES"].append(
             [source_file_id, "REAL_SAMPLE_SANITIZED.xlsx", "preview_only_hash", "XLSX", "MEDIUM", ts, import_batch_id, "SENSITIVE_LOCAL_ONLY"]
@@ -914,11 +1056,13 @@ def generate_preview_from_real_xlsx(
         source_wb.close()
 
     validate_workbook_file(output_path)
+    validation_result = validate_generated_xlsx_preview(output_path, required_phase=PREVIEW_PIPELINE_PHASE)
     result["preview_rows"] = str(len(operational_rows))
     result["preview_sheet"] = OPERATIONAL_PREVIEW_SHEET
     result.update(preserved_result)
     result.update(professional_result)
     result.update(formatting_result)
+    result.update(validation_result)
     return result
 
 

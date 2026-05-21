@@ -9,6 +9,7 @@ from openpyxl import load_workbook
 from scripts.run_xlsx_generalization_dry_run import (
     ALLOWED_INPUT_ROOT,
     ALLOWED_OUTPUT_ROOT,
+    PREVIEW_PIPELINE_PHASE,
     SANITIZED_IDS,
     run_xlsx_generalization_dry_run,
 )
@@ -88,7 +89,7 @@ def test_generalization_generates_sanitized_results_without_ratio_ingestion():
             repo_root=root,
         )
 
-        assert report["phase"] == "9.13"
+        assert report["phase"] == PREVIEW_PIPELINE_PHASE
         assert report["auto_promotion_enabled"] is False
         assert len(report["results"]) == 2
         assert report["results"][0]["run_id"] == SANITIZED_IDS[0]
@@ -112,6 +113,18 @@ def test_generalization_generates_sanitized_results_without_ratio_ingestion():
             if wb.views:
                 assert wb.views[0].activeTab == 0
                 assert wb.views[0].firstSheet == 0
+            for row_idx in range(2, wb["README_MASTER"].max_row + 1):
+                key = str(wb["README_MASTER"].cell(row=row_idx, column=1).value or "").strip().lower()
+                if key == "phase":
+                    assert str(wb["README_MASTER"].cell(row=row_idx, column=2).value or "") == PREVIEW_PIPELINE_PHASE
+                    break
+            else:
+                raise AssertionError("README_MASTER phase row not found")
+            for row in range(5, min(wb["INDEX"].max_row, 60) + 1):
+                value = wb["INDEX"].cell(row=row, column=1).value
+                if isinstance(value, str):
+                    assert not value.startswith("=HYPERLINK(")
+                    assert "HYPERLINK is not implemented" not in value
 
             pres_sheets = [name for name in wb.sheetnames if name.startswith("PRES_")]
             assert pres_sheets

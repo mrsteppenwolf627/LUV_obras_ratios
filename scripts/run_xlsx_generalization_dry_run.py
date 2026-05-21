@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 9.13 helper: run local XLSX dry-run generalization with sanitized IDs."""
+"""Phase 9.17 helper: run local XLSX dry-run generalization with sanitized IDs."""
 
 from __future__ import annotations
 
@@ -9,10 +9,18 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from scripts.generate_live_excel_master import generate_preview_from_real_xlsx
+    from scripts.generate_live_excel_master import (
+        PREVIEW_PIPELINE_PHASE,
+        generate_preview_from_real_xlsx,
+        validate_generated_xlsx_preview,
+    )
     from scripts.live_excel_dry_run_evaluator import evaluate_dry_run_workbook
 except ModuleNotFoundError:
-    from generate_live_excel_master import generate_preview_from_real_xlsx  # type: ignore
+    from generate_live_excel_master import (  # type: ignore
+        PREVIEW_PIPELINE_PHASE,
+        generate_preview_from_real_xlsx,
+        validate_generated_xlsx_preview,
+    )
     from live_excel_dry_run_evaluator import evaluate_dry_run_workbook  # type: ignore
 
 
@@ -62,7 +70,7 @@ def run_xlsx_generalization_dry_run(
         if not input_abs.exists():
             raise RuntimeError(f"Input file does not exist: {file_arg}")
         if input_abs.suffix.lower() != ".xlsx":
-            raise ValueError(f"Only .xlsx is allowed for phase 9.13 generalization: {file_arg}")
+            raise ValueError(f"Only .xlsx is allowed for phase {PREVIEW_PIPELINE_PHASE} generalization: {file_arg}")
 
         preview_path = output_dir_abs / f"xlsx_generalization_{idx + 1:03d}_preview.xlsx"
         if preview_path.exists():
@@ -73,6 +81,7 @@ def run_xlsx_generalization_dry_run(
             output_path=preview_path,
             source_file_id=run_id,
         )
+        validate_generated_xlsx_preview(preview_path, required_phase=PREVIEW_PIPELINE_PHASE)
         evaluation = evaluate_dry_run_workbook(preview_path, run_id=run_id)
         results.append(
             {
@@ -86,14 +95,16 @@ def run_xlsx_generalization_dry_run(
         )
 
     return {
-        "phase": "9.13",
+        "phase": PREVIEW_PIPELINE_PHASE,
         "auto_promotion_enabled": False,
         "results": results,
     }
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run local XLSX dry-run generalization (phase 9.13).")
+    parser = argparse.ArgumentParser(
+        description=f"Run local XLSX dry-run generalization (phase {PREVIEW_PIPELINE_PHASE})."
+    )
     parser.add_argument("--files", nargs="+", type=Path, required=True, help="Input XLSX files under data/samples.")
     parser.add_argument(
         "--output-dir",
