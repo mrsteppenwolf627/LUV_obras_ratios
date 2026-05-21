@@ -37,6 +37,7 @@ try:
     from scripts.live_excel_dry_run_evaluator import evaluate_dry_run_workbook
     from scripts.live_excel_professional_output import append_professional_budget_review
     from scripts.live_excel_workbook_formatting import apply_workbook_professional_formatting
+    from scripts.xlsx_formula_translation import extract_defined_names, formula_references_missing_defined_names
     from scripts.xlsx_sheet_semantic_classifier import (
         SHEET_BUDGET_SUMMARY,
         SHEET_COMPARISON_TABLE,
@@ -80,6 +81,7 @@ except ModuleNotFoundError:
     from live_excel_dry_run_evaluator import evaluate_dry_run_workbook  # type: ignore
     from live_excel_professional_output import append_professional_budget_review  # type: ignore
     from live_excel_workbook_formatting import apply_workbook_professional_formatting  # type: ignore
+    from xlsx_formula_translation import extract_defined_names, formula_references_missing_defined_names  # type: ignore
     from xlsx_sheet_semantic_classifier import (  # type: ignore
         SHEET_BUDGET_SUMMARY,
         SHEET_COMPARISON_TABLE,
@@ -107,7 +109,7 @@ ALLOWED_OUTPUT_ROOT = Path("outputs/live_excel_master")
 SNAPSHOTS_DIRNAME = "snapshots"
 DEFAULT_RETENTION_MAX = 5
 OPERATIONAL_PREVIEW_SHEET = "IMPORTED_BUDGET_VIEW"
-PREVIEW_PIPELINE_PHASE = "9.18"
+PREVIEW_PIPELINE_PHASE = "9.19"
 OPERATIONAL_PREVIEW_COLUMNS = [
     "preview_row_id",
     "source_file_id",
@@ -235,6 +237,10 @@ def validate_generated_xlsx_preview(
 
         if "INDEX" in sheetnames:
             index_ws = wb["INDEX"]
+            index_headers = [str(index_ws.cell(row=4, column=i).value or "").strip() for i in range(1, min(index_ws.max_column, 8) + 1)]
+            expected_index = {"Vista principal", "Tipo semantico", "Hoja origen", "Estado", "Descripcion", "Abrir"}
+            if not expected_index.issubset(set(index_headers)):
+                errors.append("index_missing_navigation_columns")
             for row in index_ws.iter_rows(min_row=1, max_row=index_ws.max_row, min_col=1, max_col=min(6, index_ws.max_column)):
                 for cell in row:
                     value = cell.value
@@ -252,7 +258,7 @@ def validate_generated_xlsx_preview(
             home_ws = wb[review_home_sheet_name]
             headers = [str(home_ws.cell(row=4, column=idx).value or "").strip() for idx in range(1, home_ws.max_column + 1)]
             idx_home = {header: pos + 1 for pos, header in enumerate(headers)}
-            if not {"Hoja origen", "Tipo semantico", "Vista profesional"}.issubset(idx_home.keys()):
+            if not {"Hoja origen", "Tipo semantico", "Vista profesional", "Estado", "Accion recomendada"}.issubset(idx_home.keys()):
                 errors.append("review_home_missing_expected_columns")
             else:
                 for row_idx in range(5, home_ws.max_row + 1):
@@ -274,6 +280,7 @@ def validate_generated_xlsx_preview(
                         comparison_views.add(view_sheet_name)
                     if sheet_type == SHEET_SPACE_BREAKDOWN:
                         space_views.add(view_sheet_name)
+        defined_names = extract_defined_names(wb)
         if len({entry["sheet_type"] for entry in home_entries if entry["sheet_type"]}) > 1:
             if len({entry["view_sheet_name"] for entry in home_entries if entry["view_sheet_name"]}) < len(home_entries):
                 errors.append("review_semantic_views_mixed")
@@ -290,10 +297,15 @@ def validate_generated_xlsx_preview(
             formula_desc_rows: list[int] = []
             aux_desc_rows: list[int] = []
             name_error_rows: list[int] = []
+            ref_error_rows: list[int] = []
+            value_error_rows: list[int] = []
+            div_error_rows: list[int] = []
+            unsafe_formula_rows: list[int] = []
             aux_pattern = re.compile(r"(?:^=)|(?:\\bPEM\\b)|(?:\\bHONPRY\\b)|(?:\\bHONDIR\\b)|(?:\\bPOR[A-Z])", re.IGNORECASE)
             numeric_pattern = re.compile(r"^-?\d+(?:[.,]\d+)?$")
             desc_col = idx.get("Descripcion")
             amount_col = idx.get("Importe")
+            formula_ratio_col = idx.get("Formula / Ratio")
             for row_idx in range(5, review_ws.max_row + 1):
                 if desc_col:
                     desc = str(review_ws.cell(row=row_idx, column=desc_col).value or "").strip()
@@ -311,9 +323,27 @@ def validate_generated_xlsx_preview(
                             errors.append(f"review_metadata_row_misclassified:{review_sheet_name}:{row_idx}")
                 for col_idx in range(1, min(review_ws.max_column, 12) + 1):
                     value = review_ws.cell(row=row_idx, column=col_idx).value
-                    if isinstance(value, str) and "#NAME?" in value.upper():
-                        name_error_rows.append(row_idx)
-                        break
+                    if isinstance(value, str):
+                        upper_value = value.upper()
+                        if "#NAME?" in upper_value:
+                            name_error_rows.append(row_idx)
+                            break
+                        if "#REF!" in upper_value:
+                            ref_error_rows.append(row_idx)
+                            break
+                        if "#VALUE!" in upper_value:
+                            value_error_rows.append(row_idx)
+                            break
+                        if "#DIV/0!" in upper_value:
+                            div_error_rows.append(row_idx)
+                            break
+                        if value.startswith("=") and formula_references_missing_defined_names(value, defined_names):
+                            unsafe_formula_rows.append(row_idx)
+                if formula_ratio_col:
+                    formula_val = review_ws.cell(row=row_idx, column=formula_ratio_col).value
+                    if isinstance(formula_val, str) and formula_val.startswith("="):
+                        if formula_references_missing_defined_names(formula_val, defined_names):
+                            unsafe_formula_rows.append(row_idx)
             if numeric_desc_rows:
                 errors.append(f"review_numeric_description_rows:{review_sheet_name}:{','.join(map(str, numeric_desc_rows[:10]))}")
             if formula_desc_rows:
@@ -322,6 +352,14 @@ def validate_generated_xlsx_preview(
                 errors.append(f"review_auxiliary_description_rows:{review_sheet_name}:{','.join(map(str, aux_desc_rows[:10]))}")
             if name_error_rows:
                 errors.append(f"review_name_error_rows:{review_sheet_name}:{','.join(map(str, sorted(set(name_error_rows))[:10]))}")
+            if ref_error_rows:
+                errors.append(f"review_ref_error_rows:{review_sheet_name}:{','.join(map(str, sorted(set(ref_error_rows))[:10]))}")
+            if value_error_rows:
+                errors.append(f"review_value_error_rows:{review_sheet_name}:{','.join(map(str, sorted(set(value_error_rows))[:10]))}")
+            if div_error_rows:
+                errors.append(f"review_div_error_rows:{review_sheet_name}:{','.join(map(str, sorted(set(div_error_rows))[:10]))}")
+            if unsafe_formula_rows:
+                errors.append(f"review_unsafe_formula_rows:{review_sheet_name}:{','.join(map(str, sorted(set(unsafe_formula_rows))[:10]))}")
 
         for comparison_view in comparison_views:
             if not comparison_view or comparison_view not in sheetnames:
@@ -338,9 +376,14 @@ def validate_generated_xlsx_preview(
                 difference_col = headers.index("Diferencia") + 1
                 nonempty_difference = 0
                 for row_idx in range(5, ws.max_row + 1):
-                    value = str(ws.cell(row=row_idx, column=difference_col).value or "").strip()
+                    raw_value = ws.cell(row=row_idx, column=difference_col).value
+                    value = str(raw_value or "").strip()
                     if value:
                         nonempty_difference += 1
+                    if isinstance(raw_value, str) and raw_value.startswith("="):
+                        expected = f"=E{row_idx}-C{row_idx}"
+                        if value.replace("$", "") != expected:
+                            errors.append(f"comparison_difference_formula_mismatch:{comparison_view}:{row_idx}:{value}")
                 if ws.max_row >= 5 and nonempty_difference == 0:
                     errors.append(f"comparison_view_difference_lost:{comparison_view}")
 

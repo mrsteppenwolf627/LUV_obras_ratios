@@ -67,6 +67,7 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Fase 9.16: cerrada tecnicamente (correccion semantica inicial de `BUDGET_REVIEW_001` e `INDEX` profesional).
 - Fase 9.17: cerrada tecnicamente (auditoria de outputs reales XLSX y enforcement del pipeline oficial).
 - Fase 9.18: cerrada tecnicamente (clasificacion semantica de hojas XLSX y vistas profesionales adaptativas por tipo de hoja).
+- Fase 9.19: iniciada (formulas adaptativas, navegacion profesional y recalibracion del evaluador por tipo semantico XLSX).
 - Decision vigente: la salida principal del sistema es un Excel maestro vivo, iterativo y actualizable (ADR-019 y `docs/decisions/phase_9_0_live_excel_master_output_definition.md`).
 - Decision de direccion 9.7: el output debe conservar una logica equivalente al input cuando sea posible.
 - Decision de direccion 9.7: el Excel maestro puede anadir tantas hojas nuevas como sean necesarias para preservar y trazar.
@@ -83,26 +84,29 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 - Problema confirmado por usuario al inicio de 9.18: `xlsx_generalization_001_preview.xlsx` mezclaba hojas `Datos` + `Espacios` e inventaba jerarquias/subtotales sin evidencia fiable.
 - Problema confirmado por usuario al inicio de 9.18: `xlsx_generalization_002_preview.xlsx` (comparativa) se interpretaba como presupuesto clasico, moviendo `Cap.` a cantidad y `Importe equivalente` a codigo.
 - Decision 9.18: clasificar semanticamente cada hoja XLSX antes de construir vistas profesionales y evitar mezclas entre tipos incompatibles.
+- Problema confirmado al inicio de 9.19: en vistas comparativas se heredaban formulas de coordenadas antiguas (ej. `=+H4-F4`) que no corresponden a columnas de la vista profesional.
+- Problema confirmado al inicio de 9.19: formulas con nombres definidos no preservados podian quedar activas en vistas profesionales y producir errores al abrir en Excel.
+- Problema confirmado al inicio de 9.19: INDEX/HOME debian orientar mejor la navegacion a vistas adaptativas y el evaluador penalizaba casos no clasicos con reglas de presupuesto clasico.
 - BC3: modulo avanzado operativo, no prioridad unica.
 - Excel: lector integral operativo y contrato multi-formato vigente.
 - Presto/PZH: obligatorio en roadmap mediante ruta tecnica evidenciada (export/herramienta equivalente), sin lectura nativa directa confirmada.
 
 ## Fase vigente
 
-- Fase vigente: 9.18 - clasificacion semantica de hojas XLSX y vistas profesionales adaptativas.
-- Estado: cerrada tecnicamente.
-- Objetivo: evitar plantilla unica universal, clasificar hoja por tipo semantico y generar vistas profesionales separadas (sin inventar jerarquia/cantidad/subtotales/importe).
-- Alcance: clasificador semantico por hoja, vistas adaptativas por tipo, separacion de hojas incompatibles, hard-stop post-generacion para reglas semanticas y no-regresion sobre 001/002.
-- Resultado esperado: vistas separadas por hoja semantica, comparativas preservadas como comparativas, metadata fuera de partidas, sin mezclas Datos/Espacios y sin reinterpretaciones de columnas.
+- Fase vigente: 9.19 - formulas adaptativas, navegacion profesional y evaluador calibrado por tipo semantico.
+- Estado: en implementacion tecnica.
+- Objetivo: traducir formulas de forma segura por vista (sin copiar formulas ciegas), reforzar INDEX/HOME para navegacion humana y recalibrar evaluador dry-run para tipos no clasicos.
+- Alcance: modulo de traduccion de formulas, formulas comparativas `Diferencia=Importe equivalente-Importe (€)` con coordenadas de la vista, politica de formulas con nombres definidos, navegacion INDEX/HOME reforzada y calibracion del evaluador por `sheet_type`.
+- Resultado esperado: vistas profesionales sin formulas rotas, comparativas con formulas coherentes en su propia hoja y evaluador sin penalizaciones falsas por mapping clasico en tipos no clasicos.
 - Fuera de alcance: BC3 preservado, promocion operativa, calculo final de ratios, normalizacion final.
 - Restriccion metodologica: trabajo en modo `PREVIEW_ONLY`/dry-run, trazable y reversible, sin promocion automatica ni ingesta real operativa.
 
 ## Proxima fase recomendada
 
-- Proxima fase: 9.19 - cierre de no-regresion semantica sobre muestra ampliada y decision de apertura BC3 preservado solo si XLSX queda estable.
+- Proxima fase: 9.20 - consolidacion de traduccion de formulas avanzadas (nombres definidos/rangos) y cierre de no-regresion visual/semantica ampliada antes de abrir BC3 preservado.
 - Condicion: mantener contrato 9.6-9.18 sin habilitar promocion automatica.
 
-## Restricciones activas (fase 9.18)
+## Restricciones activas (fase 9.19)
 
 - No promocion automatica a master operativo.
 - No actualizacion del master operativo.
@@ -209,6 +213,8 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - `docs/decisions/phase_9_15_workbook_wide_professional_formatting.md`.
 - `docs/decisions/phase_9_16_budget_review_semantic_correction.md`.
 - `docs/decisions/phase_9_17_xlsx_output_pipeline_audit_and_fix.md`.
+- `docs/decisions/phase_9_18_xlsx_sheet_semantic_classification_and_adaptive_reviews.md`.
+- `docs/decisions/phase_9_19_adaptive_formula_translation_navigation_and_evaluator_calibration.md`.
 - `README.md` (resumen operativo).
 
 ## Reglas de actualización

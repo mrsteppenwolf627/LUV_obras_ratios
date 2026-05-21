@@ -135,6 +135,7 @@ def test_comparison_sheet_keeps_comparison_columns_without_classic_projection():
             assert "Ud" not in headers
             assert str(view_ws.cell(row=5, column=1).value) == "2"
             assert str(view_ws.cell(row=5, column=5).value) == "550"
+            assert str(view_ws.cell(row=5, column=6).value or "") == "=E5-C5"
         finally:
             wb.close()
     finally:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import re
 from typing import Any
 
 from openpyxl import load_workbook  # type: ignore
@@ -74,6 +75,7 @@ _KNOWN_REASONS = {
     "description_amount_split_failed",
     "cost_item_mapping_ambiguous",
     "cost_item_mapping_low_confidence",
+    "semantic_unknown_requires_manual_review",
 }
 
 
@@ -117,6 +119,53 @@ def _sheet_rows(ws: object, headers: list[str]) -> list[dict[str, str]]:
     return rows
 
 
+def _extract_semantic_types_from_home(workbook: Any) -> set[str]:
+    home_name = ""
+    for name in workbook.sheetnames:
+        if re.fullmatch(r"BUDGET_REVIEW_\d{3}", name):
+            home_name = name
+            break
+    if not home_name:
+        return set()
+    ws = workbook[home_name]
+    headers = [str(ws.cell(row=4, column=i).value or "").strip() for i in range(1, ws.max_column + 1)]
+    if "Tipo semantico" not in headers:
+        return set()
+    type_col = headers.index("Tipo semantico") + 1
+    out: set[str] = set()
+    for row_idx in range(5, ws.max_row + 1):
+        value = str(ws.cell(row=row_idx, column=type_col).value or "").strip().upper()
+        if value:
+            out.add(value)
+    return out
+
+
+def _row_sheet_type_from_notes(notes: str) -> str:
+    for part in notes.split("|"):
+        if part.startswith("SHEET_TYPE="):
+            return part.split("=", 1)[1].strip().upper()
+    return ""
+
+
+def _looks_like_nonclassic_metadata(description: str, amount: str) -> bool:
+    desc = (description or "").lower()
+    if not desc:
+        return False
+    if not re.search(
+        r"\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b",
+        desc,
+    ):
+        return False
+    amount_text = (amount or "").strip()
+    if not amount_text.isdigit():
+        return False
+    try:
+        year = int(amount_text)
+    except ValueError:
+        return False
+    return 1900 <= year <= 2100
+
+
 def evaluate_dry_run_workbook(path: Path, run_id: str = "dry_run_eval") -> DryRunEvaluation:
     workbook = load_workbook(path)
     reasons: list[str] = []
@@ -151,6 +200,10 @@ def evaluate_dry_run_workbook(path: Path, run_id: str = "dry_run_eval") -> DryRu
         "manual_review_rate_max": PRELIM_MANUAL_REVIEW_MAX,
         "blocked_rate_max": PRELIM_BLOCKED_MAX,
     }
+    semantic_types = _extract_semantic_types_from_home(workbook)
+    has_budget_classic = "BUDGET_CLASSIC" in semantic_types
+    if "UNKNOWN" in semantic_types:
+        manual_reasons.append("semantic_unknown_requires_manual_review")
 
     try:
         validate_workbook_schema(workbook)
@@ -225,17 +278,23 @@ def evaluate_dry_run_workbook(path: Path, run_id: str = "dry_run_eval") -> DryRu
             if not status:
                 manual_count += 1
             notes = row.get("notes", "")
+            row_sheet_type = _row_sheet_type_from_notes(notes)
+            is_classic_or_unspecified = row_sheet_type in {"", "BUDGET_CLASSIC"}
+            metadata_nonclassic = (not is_classic_or_unspecified) and _looks_like_nonclassic_metadata(
+                row.get("item_description", ""),
+                row.get("amount", ""),
+            )
             if status == "MANUAL_REVIEW_REQUIRED" and "ECONOMIC_HEADER_LOW_CONFIDENCE" in notes:
                 manual_reasons.append("economic_header_low_confidence")
             if "NUMERIC_PARSE_AMBIGUOUS" in notes:
                 manual_reasons.append("numeric_parse_ambiguous")
-            if "DESCRIPTION_AMOUNT_SPLIT_FAILED" in notes:
+            if "DESCRIPTION_AMOUNT_SPLIT_FAILED" in notes and (is_classic_or_unspecified or not metadata_nonclassic):
                 blocked_reasons.append("description_amount_split_failed")
             desc = row.get("item_description", "")
             amount = row.get("amount", "")
             if amount:
                 amount_applicable += 1
-                if contains_budget_number(desc):
+                if contains_budget_number(desc) and (is_classic_or_unspecified or not metadata_nonclassic):
                     blocked_reasons.append("amount_mixed_in_description")
                 else:
                     amount_ok += 1
@@ -287,14 +346,17 @@ def evaluate_dry_run_workbook(path: Path, run_id: str = "dry_run_eval") -> DryRu
             elif status == MAPPING_AMBIGUOUS:
                 ambiguous += 1
                 candidate_rows += 1
-                manual_reasons.append("ambiguous_mapping")
-                manual_reasons.append("cost_item_mapping_ambiguous")
+                if has_budget_classic:
+                    manual_reasons.append("ambiguous_mapping")
+                    manual_reasons.append("cost_item_mapping_ambiguous")
             elif status == MAPPING_MANUAL_REVIEW:
                 ambiguous += 1
                 candidate_rows += 1
-                manual_reasons.append("cost_item_mapping_low_confidence")
+                if has_budget_classic:
+                    manual_reasons.append("cost_item_mapping_low_confidence")
             else:
-                manual_reasons.append("ambiguous_mapping")
+                if has_budget_classic:
+                    manual_reasons.append("ambiguous_mapping")
         metrics["mapped_rows"] = float(mapped)
         metrics["unmapped_rows"] = float(unmapped)
         metrics["not_cost_item_rows"] = float(not_cost_item)

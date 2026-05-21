@@ -34,6 +34,16 @@ except ModuleNotFoundError:
         SheetSemanticClassification,
     )
 
+try:
+    from scripts.xlsx_formula_translation import (
+        translate_formula_for_review_view,
+        extract_defined_names,
+    )
+except ModuleNotFoundError:
+    from xlsx_formula_translation import (  # type: ignore
+        translate_formula_for_review_view,
+        extract_defined_names,
+    )
 
 TRACE_HEADERS = [
     "review_row_id",
@@ -50,6 +60,7 @@ TRACE_HEADERS = [
     "preserved_row_id",
     "cost_item_id",
     "trace_notes",
+    "formula_translation_status",
 ]
 
 
@@ -234,7 +245,19 @@ def _style_review_sheet(ws: Any, visible_columns: int) -> None:
         for col_idx in range(1, visible_columns + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
             header = str(ws.cell(row=4, column=col_idx).value or "").lower()
-            if header in {"descripcion", "nombre del capítulo", "resumen", "contenido", "notas", "formula / ratio", "concepto"}:
+            if header in {
+                "descripcion",
+                "nombre del capítulo",
+                "resumen",
+                "contenido",
+                "notas",
+                "formula / ratio",
+                "concepto",
+                "accion recomendada",
+                "hoja origen",
+                "vista profesional",
+                "advertencias",
+            }:
                 cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
             elif header in {"ud", "cap."}:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -265,6 +288,7 @@ def _append_trace_row(
     source_row_number: str,
     map_row: dict[str, str] | None,
     notes: str,
+    formula_translation_status: str = "",
 ) -> None:
     map_row = map_row or {}
     trace_ws.append(
@@ -283,6 +307,7 @@ def _append_trace_row(
             map_row.get("preserved_row_id", ""),
             map_row.get("cost_item_id", ""),
             "|".join(part for part in [notes, map_row.get("map_notes", "")] if part),
+            formula_translation_status,
         ]
     )
 
@@ -319,6 +344,22 @@ def _write_type_row(ws: Any, row_idx: int, sheet_type: str, row_data: dict[str, 
     ws.cell(row=row_idx, column=len(values) + 1, value=review_row_id)
 
 
+def _recommended_action(sheet_type: str) -> str:
+    if sheet_type == SHEET_BUDGET_CLASSIC:
+        return "Revisar partidas clasicas y coherencia de importes."
+    if sheet_type == SHEET_BUDGET_SUMMARY:
+        return "Revisar resumen economico, importes y formulas traducidas."
+    if sheet_type == SHEET_SPACE_BREAKDOWN:
+        return "Revisar desglose por espacios sin mezclar con resumen."
+    if sheet_type == SHEET_COMPARISON_TABLE:
+        return "Revisar comparativa de capitulos y diferencia."
+    if sheet_type == SHEET_FORMULA_CALCULATION:
+        return "Revisar hoja de calculo auxiliar (no operativa)."
+    if sheet_type in {SHEET_AUXILIARY, SHEET_METADATA}:
+        return "Revisar como soporte; no operativa para COST_ITEMS."
+    return "Revision manual requerida por baja confianza semantica."
+
+
 def _create_home_sheet(
     workbook: Any,
     sheet_name: str,
@@ -330,7 +371,7 @@ def _create_home_sheet(
     ws["A1"] = "Presupuesto de obra - Revision profesional (Home)"
     ws["A2"] = f"ID sanitizado: {source_file_id} | Modo: {mode_label}"
     ws["A3"] = "Seleccione una vista por hoja semantica. No se mezclan hojas incompatibles en una sola tabla."
-    headers = ["Hoja origen", "Tipo semantico", "Confianza", "Vista profesional", "Estado", "Advertencias"]
+    headers = ["Hoja origen", "Tipo semantico", "Confianza", "Vista profesional", "Estado", "Advertencias", "Accion recomendada"]
     for col_idx, header in enumerate(headers, start=1):
         ws.cell(row=4, column=col_idx, value=header)
     for row_idx, row in enumerate(source_rows, start=5):
@@ -340,7 +381,8 @@ def _create_home_sheet(
         ws.cell(row=row_idx, column=4, value=row["review_sheet_name"])
         ws.cell(row=row_idx, column=5, value=row["status"])
         ws.cell(row=row_idx, column=6, value=row["warnings"])
-    _style_review_sheet(ws, visible_columns=6)
+        ws.cell(row=row_idx, column=7, value=row["recommended_action"])
+    _style_review_sheet(ws, visible_columns=7)
     return ws
 
 
@@ -362,6 +404,7 @@ def append_professional_budget_review(
     preserved_index = _source_to_preserved_sheet(workbook)
     preserved_trace = _build_preserved_trace_index(workbook, import_batch_id=import_batch_id)
     semantics = sheet_semantics or {}
+    defined_names = extract_defined_names(workbook)
     source_rows: list[dict[str, str]] = []
     generated_view_count = 0
     trace_rows = 0
@@ -395,9 +438,72 @@ def append_professional_budget_review(
         row_counter = 5
         extracted_rows = _extract_view_rows(preserved_ws, semantic)
         for row_data in extracted_rows:
+            row_mut = dict(row_data)
+            formula_trace_note = ""
+            formula_status = ""
+            if semantic.sheet_type == SHEET_COMPARISON_TABLE:
+                translation = translate_formula_for_review_view(
+                    sheet_type=semantic.sheet_type,
+                    formula_text=row_mut.get("difference", ""),
+                    amount_value=row_mut.get("difference", ""),
+                    defined_names=defined_names,
+                    row_number=row_counter,
+                    amount_col_letter="C",
+                    equivalent_col_letter="E",
+                )
+                row_mut["difference"] = translation.output_value
+                formula_trace_note = translation.trace_note
+                formula_status = translation.status
+            elif semantic.sheet_type == SHEET_BUDGET_SUMMARY:
+                translation = translate_formula_for_review_view(
+                    sheet_type=semantic.sheet_type,
+                    formula_text=row_mut.get("formula", ""),
+                    amount_value=row_mut.get("formula", ""),
+                    defined_names=defined_names,
+                )
+                row_mut["formula"] = translation.output_value
+                formula_trace_note = translation.trace_note
+                formula_status = translation.status
+                amount_formula_candidate = str(row_mut.get("amount", "") or "").strip()
+                if amount_formula_candidate.startswith("="):
+                    amount_translation = translate_formula_for_review_view(
+                        sheet_type=semantic.sheet_type,
+                        formula_text=amount_formula_candidate,
+                        amount_value="",
+                        defined_names=defined_names,
+                    )
+                    if amount_translation.is_formula:
+                        row_mut["amount"] = amount_translation.output_value
+                    else:
+                        row_mut["amount"] = ""
+                        if row_mut.get("formula"):
+                            row_mut["formula"] = f"{row_mut['formula']} | {amount_translation.output_value}"
+                        else:
+                            row_mut["formula"] = amount_translation.output_value
+                    formula_trace_note = "|".join(
+                        part
+                        for part in [formula_trace_note, amount_translation.trace_note]
+                        if part
+                    )
+                    formula_status = "|".join(
+                        part
+                        for part in [formula_status, amount_translation.status]
+                        if part
+                    )
+            elif semantic.sheet_type == SHEET_FORMULA_CALCULATION:
+                translation = translate_formula_for_review_view(
+                    sheet_type=semantic.sheet_type,
+                    formula_text=row_mut.get("formula", ""),
+                    amount_value=row_mut.get("amount", ""),
+                    defined_names=defined_names,
+                )
+                row_mut["formula"] = translation.output_value
+                formula_trace_note = translation.trace_note
+                formula_status = translation.status
+
             review_row_id = f"brv_{uuid4().hex[:10]}"
-            _write_type_row(review_ws, row_counter, semantic.sheet_type, row_data, review_row_id)
-            map_key = (source_sheet_name, row_data["row_number"])
+            _write_type_row(review_ws, row_counter, semantic.sheet_type, row_mut, review_row_id)
+            map_key = (source_sheet_name, row_mut["row_number"])
             map_row = preserved_trace.get(map_key)
             _append_trace_row(
                 trace_ws=trace_ws,
@@ -409,9 +515,10 @@ def append_professional_budget_review(
                 import_batch_id=import_batch_id,
                 budget_version_id=budget_version_id,
                 source_sheet_name=source_sheet_name,
-                source_row_number=row_data["row_number"],
+                source_row_number=row_mut["row_number"],
                 map_row=map_row,
-                notes="|".join(semantic.warnings),
+                notes="|".join(part for part in [*semantic.warnings, formula_trace_note] if part),
+                formula_translation_status=formula_status,
             )
             row_counter += 1
             trace_rows += 1
@@ -431,6 +538,7 @@ def append_professional_budget_review(
                 "review_sheet_name": review_sheet_name,
                 "status": "MANUAL_REVIEW_REQUIRED" if semantic.sheet_type in {SHEET_UNKNOWN, SHEET_AUXILIARY, SHEET_METADATA} else "READY",
                 "warnings": ", ".join(semantic.warnings),
+                "recommended_action": _recommended_action(semantic.sheet_type),
             }
         )
 

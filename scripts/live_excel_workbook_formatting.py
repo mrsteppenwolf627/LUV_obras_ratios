@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import re
 from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -195,29 +196,72 @@ def _apply_index_sheet(workbook: object, mode_label: str) -> None:
         f"Actualizado: {_utc_now()}"
     )
     ws["A3"] = "Empiece por BUDGET_REVIEW_001. No edite hojas tecnicas manualmente."
-    ws["A4"] = "Hoja"
-    ws["B4"] = "Categoria"
-    ws["C4"] = "Descripcion"
+    ws["A4"] = "Vista principal"
+    ws["B4"] = "Tipo semantico"
+    ws["C4"] = "Hoja origen"
+    ws["D4"] = "Estado"
+    ws["E4"] = "Descripcion"
+    ws["F4"] = "Abrir"
     _style_header(ws, header_row=4)
 
     row = 5
+    home_name = next((name for name in workbook.sheetnames if re.fullmatch(r"BUDGET_REVIEW_\d{3}", name)), "")
+    home_entries: list[dict[str, str]] = []
+    if home_name:
+        home_ws = workbook[home_name]
+        headers = [str(home_ws.cell(row=4, column=idx).value or "").strip() for idx in range(1, home_ws.max_column + 1)]
+        idx = {header: pos + 1 for pos, header in enumerate(headers)}
+        required = {"Hoja origen", "Tipo semantico", "Vista profesional", "Estado"}
+        if required.issubset(idx.keys()):
+            for row_idx in range(5, home_ws.max_row + 1):
+                source_name = str(home_ws.cell(row=row_idx, column=idx["Hoja origen"]).value or "").strip()
+                view_name = str(home_ws.cell(row=row_idx, column=idx["Vista profesional"]).value or "").strip()
+                if not source_name and not view_name:
+                    continue
+                home_entries.append(
+                    {
+                        "source_sheet_name": source_name,
+                        "sheet_type": str(home_ws.cell(row=row_idx, column=idx["Tipo semantico"]).value or "").strip(),
+                        "review_sheet_name": view_name,
+                        "status": str(home_ws.cell(row=row_idx, column=idx["Estado"]).value or "").strip(),
+                    }
+                )
+
+    for entry in home_entries:
+        view_name = entry["review_sheet_name"]
+        ws.cell(row=row, column=1, value=view_name)
+        ws.cell(row=row, column=2, value=entry["sheet_type"])
+        ws.cell(row=row, column=3, value=entry["source_sheet_name"])
+        ws.cell(row=row, column=4, value=entry["status"])
+        ws.cell(row=row, column=5, value="Vista profesional adaptativa para revision humana.")
+        open_cell = ws.cell(row=row, column=6, value=view_name)
+        if view_name in workbook.sheetnames:
+            safe_name = view_name.replace("'", "''")
+            open_cell.hyperlink = f"#'{safe_name}'!A1"
+            open_cell.style = "Hyperlink"
+        row += 1
+
+    row += 1
+    ws.cell(row=row, column=1, value="Hojas tecnicas y de trazabilidad")
+    ws.cell(row=row, column=5, value="Estas hojas son de auditoria; no editar manualmente.")
+    row += 1
     for name in workbook.sheetnames:
-        if name == "INDEX":
+        if name == "INDEX" or name.startswith("BUDGET_REVIEW_"):
             continue
         category = _sheet_category(name)
-        link_cell = ws.cell(row=row, column=1, value=name)
-        safe_name = name.replace("'", "''")
-        link_cell.hyperlink = f"#'{safe_name}'!A1"
-        link_cell.style = "Hyperlink"
+        ws.cell(row=row, column=1, value=name)
         ws.cell(row=row, column=2, value=category.lower())
-        ws.cell(row=row, column=3, value=_sheet_description(name, category))
+        ws.cell(row=row, column=5, value=_sheet_description(name, category))
         row += 1
     _style_body(ws, start_row=5)
     ws.freeze_panes = "A5"
-    ws.auto_filter.ref = f"A4:C4"
-    ws.column_dimensions["A"].width = 40
-    ws.column_dimensions["B"].width = 16
-    ws.column_dimensions["C"].width = 70
+    ws.auto_filter.ref = f"A4:F4"
+    ws.column_dimensions["A"].width = 42
+    ws.column_dimensions["B"].width = 24
+    ws.column_dimensions["C"].width = 22
+    ws.column_dimensions["D"].width = 16
+    ws.column_dimensions["E"].width = 62
+    ws.column_dimensions["F"].width = 40
     ws.sheet_view.showGridLines = False
     ws.sheet_properties.tabColor = CATEGORY_TAB_COLORS["INDEX"]
 

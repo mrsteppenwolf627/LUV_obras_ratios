@@ -202,11 +202,13 @@ def test_preview_validator_fails_when_review_has_name_error_or_cost_formula():
         review["D4"] = "Vista profesional"
         review["E4"] = "Estado"
         review["F4"] = "Advertencias"
+        review["G4"] = "Accion recomendada"
         review["A5"] = "Datos"
         review["B5"] = "BUDGET_SUMMARY"
         review["C5"] = "HIGH"
         review["D5"] = "BUDGET_REVIEW_001_DATOS"
         review["E5"] = "READY"
+        review["G5"] = "Revisar resumen"
 
         review_detail["A4"] = "Codigo"
         review_detail["B4"] = "Descripcion"
@@ -241,6 +243,72 @@ def test_preview_validator_fails_when_review_has_name_error_or_cost_formula():
         wb.close()
 
         with pytest.raises(RuntimeError, match="review_name_error_rows|cost_items_formula_description_row"):
+            validate_generated_xlsx_preview(out, required_phase=PREVIEW_PIPELINE_PHASE)
+    finally:
+        _cleanup(root)
+
+
+def test_preview_validator_fails_when_comparison_formula_uses_legacy_coordinates():
+    root = _make_root()
+    try:
+        out = root / "outputs" / "live_excel_master" / "preview" / "invalid_comparison_formula.xlsx"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        wb = Workbook()
+        index = wb.active
+        index.title = "INDEX"
+        index["A4"] = "Vista principal"
+        index["B4"] = "Tipo semantico"
+        index["C4"] = "Hoja origen"
+        index["D4"] = "Estado"
+        index["E4"] = "Descripcion"
+        index["F4"] = "Abrir"
+        index["A5"] = "BUDGET_REVIEW_001_Hoja1"
+        index["B5"] = "COMPARISON_TABLE"
+        index["C5"] = "Hoja1"
+        index["D5"] = "READY"
+        index["E5"] = "Vista profesional adaptativa para revision humana."
+        index["F5"] = "BUDGET_REVIEW_001_Hoja1"
+        review_home = wb.create_sheet("BUDGET_REVIEW_001")
+        review_home["A4"] = "Hoja origen"
+        review_home["B4"] = "Tipo semantico"
+        review_home["C4"] = "Confianza"
+        review_home["D4"] = "Vista profesional"
+        review_home["E4"] = "Estado"
+        review_home["F4"] = "Advertencias"
+        review_home["G4"] = "Accion recomendada"
+        review_home["A5"] = "Hoja1"
+        review_home["B5"] = "COMPARISON_TABLE"
+        review_home["C5"] = "HIGH"
+        review_home["D5"] = "BUDGET_REVIEW_001_Hoja1"
+        review_home["E5"] = "READY"
+        review_home["G5"] = "Revisar comparativa"
+        detail = wb.create_sheet("BUDGET_REVIEW_001_Hoja1")
+        detail.append(["x"])
+        detail.append(["x"])
+        detail.append(["x"])
+        detail.append(["Cap.", "Nombre del capítulo", "Importe (€)", "Nombre equivalente", "Importe equivalente", "Diferencia", "_review_row_id"])
+        detail.append(["2", "Demoliciones", 687.5, "DEMOLICIONES", 550, "=+H4-F4", "id_1"])
+        detail.column_dimensions["G"].hidden = True
+        trace = wb.create_sheet("BUDGET_REVIEW_TRACE_001")
+        trace["A1"] = "review_row_id"
+        readme = wb.create_sheet("README_MASTER")
+        readme.append(["field", "value", "updated_at", "updated_by"])
+        readme.append(["phase", PREVIEW_PIPELINE_PHASE, "2026-05-21T00:00:00+00:00", "system"])
+        for name in ["PRES_001_001_Hoja1", "PRESERVED_BUDGETS_INDEX", "PRESERVED_BUDGET_SHEETS", "PRESERVED_TO_COST_ITEMS_MAP", "IMPORTED_BUDGET_VIEW", "COST_ITEMS", "VALIDATION_RESULTS", "RATIO_INPUTS", "RATIOS_CALCULATED"]:
+            if name not in wb.sheetnames:
+                wb.create_sheet(name)
+        wb["PRES_001_001_Hoja1"]["A1"] = "A"
+        wb["PRESERVED_BUDGETS_INDEX"]["A1"] = "a"
+        wb["PRESERVED_BUDGET_SHEETS"]["A1"] = "a"
+        wb["PRESERVED_TO_COST_ITEMS_MAP"]["A1"] = "a"
+        wb["IMPORTED_BUDGET_VIEW"]["A1"] = "source_file_id"
+        wb["RATIO_INPUTS"]["A1"] = "ratio_input_id"
+        wb["RATIOS_CALCULATED"]["A1"] = "ratio_calc_id"
+        wb["COST_ITEMS"].append(["cost_item_id", "budget_version_id", "source_file_id", "source_row_ref", "description_raw", "unit_raw", "quantity_raw", "unit_price_raw", "amount_raw", "row_hash", "validation_status"])
+        wb.save(out)
+        wb.close()
+
+        with pytest.raises(RuntimeError, match="comparison_difference_formula_mismatch"):
             validate_generated_xlsx_preview(out, required_phase=PREVIEW_PIPELINE_PHASE)
     finally:
         _cleanup(root)
