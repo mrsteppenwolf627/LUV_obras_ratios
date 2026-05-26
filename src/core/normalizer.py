@@ -91,11 +91,29 @@ def normalize(
 def _validate_chapter(
     ch: dict[str, Any], logs: list[ValidationLog], budget: Budget
 ) -> str:
-    """Return VALID | DUBIOUS and append any validation events to logs."""
+    """Return VALID | DUBIOUS and append any validation events to logs.
+
+    Reader-assigned validation_status is always respected — DUBIOUS from the
+    reader is never upgraded to VALID here.
+    """
     total = ch.get("total_cost")
     code = ch.get("chapter_code", "")
-    confidence = ch.get("confidence", "HIGH")
 
+    # 1. Respect any validation_status the reader already assigned
+    reader_status = ch.get("validation_status")
+    reader_reason = ch.get("validation_reason")
+    if reader_status == "DUBIOUS":
+        logs.append(
+            ValidationLog(
+                budget=budget,
+                rule_name="READER_DUBIOUS",
+                status="FAIL",
+                message=f"chapter_code={code!r}: {reader_reason or 'marcado dudoso por el lector'}",
+            )
+        )
+        return "DUBIOUS"
+
+    # 2. Own structural checks
     if total is None:
         logs.append(
             ValidationLog(
@@ -118,7 +136,8 @@ def _validate_chapter(
         )
         return "DUBIOUS"
 
-    if confidence == "LOW":
+    # 3. Legacy confidence check (for callers that still pass the old field)
+    if ch.get("confidence") == "LOW":
         logs.append(
             ValidationLog(
                 budget=budget,

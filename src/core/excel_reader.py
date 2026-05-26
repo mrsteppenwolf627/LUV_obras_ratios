@@ -145,10 +145,6 @@ def _extract_chapters_from_sheet(ws: Any) -> list[dict[str, Any]]:
         raw_name = _get(name_col)
         raw_amount = _get(amount_col)
 
-        amount = _to_float(raw_amount)
-        if amount is None:
-            continue  # no valid amount → skip row
-
         code = str(raw_code).strip() if raw_code is not None else ""
         name = str(raw_name).strip() if raw_name is not None else ""
 
@@ -165,13 +161,26 @@ def _extract_chapters_from_sheet(ws: Any) -> list[dict[str, Any]]:
         if re.match(r"^[\d\s=+\-*/]+$", code):
             continue
 
-        confidence = "HIGH" if code else "MEDIUM"
+        amount = _to_float(raw_amount)
+
+        # Determine validation status
+        if amount is None:
+            validation_status = "DUBIOUS"
+            validation_reason = "importe faltante o invalido"
+        elif not code:
+            validation_status = "DUBIOUS"
+            validation_reason = "codigo de capitulo ausente"
+        else:
+            validation_status = "VALID"
+            validation_reason = None
+
         chapters.append(
             {
                 "chapter_code": code or name[:50],
                 "chapter_name": name or code,
                 "total_cost": amount,
-                "confidence": confidence,
+                "validation_status": validation_status,
+                "validation_reason": validation_reason,
                 "source_row": header_idx + 1 + ridx if header_idx is not None else ridx,
             }
         )
@@ -243,7 +252,8 @@ def read_excel(filepath: str | Path) -> dict[str, Any]:
         result["warnings"].append("NO_CHAPTERS_DETECTED")
 
     result["chapters"] = deduped
-    valid_totals = [c["total_cost"] for c in deduped if c["total_cost"]]
+    # Sum only chapters with valid amounts for the reported total
+    valid_totals = [c["total_cost"] for c in deduped if c["total_cost"] and c.get("validation_status") == "VALID"]
     result["total_cost"] = sum(valid_totals) if valid_totals else None
 
     return result
