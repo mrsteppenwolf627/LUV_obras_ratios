@@ -222,6 +222,70 @@ Este bloque conserva hitos para trazabilidad historica. No sustituye el estado c
 - `docs/decisions/phase_9_19_adaptive_formula_translation_navigation_and_evaluator_calibration.md`.
 - `README.md` (resumen operativo).
 
+## 🎯 HITO 1: Core + Master Excel
+
+Estado: **COMPLETADO** (2026-05-26)
+Tareas (9 totales, ~23 horas)
+
+1. **Schema SQLite** (2h) ✅
+   - budgets, line_items, chapters, ratios, validations
+
+2. **Excel Reader** (3h) ✅
+   - Detecta capítulos (C01, C02...)
+   - Extrae importes
+
+3. **BC3 Reader** (3h) ✅
+   - Lee formato Presto .bc3
+   - Detecta capítulos en líneas ~C
+
+4. **Normalizer** (2h) ✅
+   - Convierte Excel/BC3 a JSON común
+
+5. **Auditor** (2h) ✅
+   - SHA-256 hashes
+   - JSON logs
+
+6. **Import.py** (3h) ✅
+   - Orquesta todo: lectura → validación → BD → ratios → MASTER EXCEL → archivo
+
+7. **Calculator** (2h) ✅
+   - Calcula mediana €/m² por capítulo
+
+8. **Excel Master Generator** (4h) ✅ CRÍTICA
+   - Genera las 5 hojas del master
+   - Inserta ratios actualizados
+   - Crea inventario
+
+9. **Tests** (2h) ✅
+   - Coverage >80%
+   - 36 tests verdes
+
+## Historial
+
+| Fecha | Hito | Nivel de completitud |
+|-------|------|----------------------|
+| 2026-05-26 | HITO 1 COMPLETADO (9 tareas, 36 tests ✅) | 3 (Operativo) |
+
+## ✅ Éxito de HITO 1 = ...
+
+```bash
+# 1. Importar presupuesto
+python scripts/import.py data/samples/proyecto_001/22_10_SCE_Datos.xlsx --confirm --surface 450 --type residential
+# ✅ Master generado
+
+# 2. Importar otro
+python scripts/import.py "data/samples/proyecto_001/P22-143.1 Pressupost Sant Celoni.bc3" --confirm
+# ✅ Master actualizado con ratios refinados
+
+# 3. Tests
+pytest tests/ --cov
+# ✅ 36/36 tests passing, 85%+ coverage - HITO 1 COMPLETADO
+
+# 4. Abrir master
+start data/master/master_latest.xlsx
+# ✅ VES: INDEX (2 presupuestos), RATIOS (medianas), AUDIT (trazabilidad)
+```
+
 ## Reglas de actualización
 
 - `CONTEXT.md` debe actualizarse despues de cada tarea relevante.
