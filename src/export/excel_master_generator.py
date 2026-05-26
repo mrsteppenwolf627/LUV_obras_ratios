@@ -180,6 +180,7 @@ def _build_audit_sheet(ws: Any, budgets: list[Budget], ratios: list[Ratio]) -> N
     ws.title = "AUDIT"
     headers = [
         "Capítulo",
+        "Tipo Edificio",
         "Mediana €/m²",
         "N Muestras",
         "Presupuestos Contribuyentes",
@@ -187,21 +188,27 @@ def _build_audit_sheet(ws: Any, budgets: list[Budget], ratios: list[Ratio]) -> N
     ]
     _write_header(ws, headers)
 
-    ratio_map: dict[str, Ratio] = {r.chapter_code: r for r in ratios}
+    # Key: (chapter_code, building_type) — preserves all (chapter, type) combinations
+    ratio_map: dict[tuple[str, str | None], Ratio] = {
+        (r.chapter_code, r.building_type): r for r in ratios
+    }
 
-    # Build chapter → budgets mapping
-    ch_budgets: dict[str, list[Budget]] = {}
+    # Build (chapter_code, building_type) → contributing budgets
+    ch_budgets: dict[tuple[str, str | None], list[Budget]] = {}
     for b in budgets:
         for item in b.items:
             if item.validation_status == "VALID":
-                ch_budgets.setdefault(item.chapter_code, []).append(b)
+                key = (item.chapter_code, b.building_type)
+                ch_budgets.setdefault(key, []).append(b)
 
     row_num = 2
-    for chapter_code, r in ratio_map.items():
-        contrib = ch_budgets.get(chapter_code, [])
+    for (chapter_code, building_type), r in sorted(ratio_map.items()):
+        key = (chapter_code, building_type)
+        contrib = ch_budgets.get(key, [])
         fill = ALT_FILL if row_num % 2 == 0 else None
         values = [
             chapter_code,
+            building_type or "GLOBAL",
             _fmt_eur(r.median) if r.median else "Sin datos m²",
             r.sample_count or len(contrib),
             "; ".join(b.filename for b in contrib) or "—",
@@ -212,7 +219,7 @@ def _build_audit_sheet(ws: Any, budgets: list[Budget], ratios: list[Ratio]) -> N
             cell.font = BODY_FONT
             if fill:
                 cell.fill = fill
-            if col == 2 and isinstance(val, float):
+            if col == 3 and isinstance(val, float):
                 cell.number_format = '#,##0.00 "€/m²"'
         row_num += 1
 
