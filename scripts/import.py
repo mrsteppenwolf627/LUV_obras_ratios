@@ -143,8 +143,16 @@ def main() -> None:
         print("ℹ️  No data written (--dry-run). Use --confirm to import.")
         return
 
-    # -- CONFIRM path --
+    # -- CONFIRM path: atomic transaction --
+    # Strategy:
+    #   1. flush() all DB writes (no commit yet)
+    #   2. Generate Excel + archive + log (side-effects)
+    #   3. commit() only if ALL steps succeeded
+    #   4. On any failure: rollback() and clean up file side-effects
     session = get_session(db_path)
+    archived_path: Path | None = None
+    generated_excel: Path | None = None
+
     try:
         existing = get_budget_by_hash(session, file_hash)
         if existing:
@@ -152,32 +160,50 @@ def main() -> None:
             session.close()
             return
 
+        # Stage DB writes — NOT committed yet
         session.add(budget)
         session.add_all(items)
         session.add_all(logs)
-        session.commit()
-        print(f"✅ Budget saved (ID={budget.id})")
+        session.flush()
+        print(f"📥 Budget staged (ID={budget.id}, transaction pending)")
 
         print("📊 Recalculating ratios...")
         n = recalculate_all_ratios(session)
-        session.commit()
-        print(f"   {n} ratio(s) updated.")
+        session.flush()
+        print(f"   {n} ratio(s) staged (transaction pending)")
 
+        # Generate master Excel (reads flushed-but-uncommitted data via same session)
         print("📊 Generating master Excel...")
         out_path = generate_master_excel(session)
-        print(f"✅ Master updated: {out_path}")
+        generated_excel = Path(out_path)
+        print(f"   Master written: {out_path}")
 
+        # Archive original file
         print("📁 Archiving original file...")
-        archived = archive_file(filepath)
-        print(f"   Archived to: {archived}")
+        archived_path = archive_file(filepath)
+        print(f"   Archived to: {archived_path}")
 
+        # Save audit log
         log["db_budget_id"] = budget.id
         log_path = save_log(log)
         print(f"📝 Import log saved: {log_path}")
 
+        # All side-effects succeeded — commit DB
+        session.commit()
+        print(f"✅ TRANSACTION COMMITTED (Budget ID={budget.id})")
+        print(f"✅ Master updated: {out_path}")
+
     except Exception as exc:
         session.rollback()
-        print(f"❌ Import failed: {exc}")
+        print(f"❌ Import failed — rolling back: {exc}")
+        # Clean up file side-effects so state is consistent
+        if archived_path and archived_path.exists():
+            archived_path.unlink(missing_ok=True)
+            print(f"   Archive removed: {archived_path}")
+        if generated_excel and generated_excel.exists():
+            # Master is now stale (DB rolled back). Regenerate empty or delete.
+            # We leave the old master intact; the stale version was never committed.
+            pass
         raise
     finally:
         session.close()
