@@ -254,7 +254,11 @@ def recalculate_item_master_stats(session, item_master_id: int) -> bool:
         .filter(ItemInstance.item_master_id == item_master_id)
         .all()
     )
-    dates = [i.created_at for i in instances if i.created_at]
+    dates = [
+        i.created_at.replace(tzinfo=None) if i.created_at else None
+        for i in instances
+    ]
+    dates = [d for d in dates if d is not None]
     if dates:
         master.primera_fecha = min(dates)
         master.ultima_fecha = max(dates)
