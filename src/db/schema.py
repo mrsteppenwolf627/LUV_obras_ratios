@@ -42,6 +42,7 @@ class Budget(Base):
     raw_data_json = Column(Text, nullable=True)
 
     items = relationship("LineItem", back_populates="budget", cascade="all, delete-orphan")
+    space_ratios = relationship("SpaceRatio", back_populates="budget", cascade="all, delete-orphan")
     validation_logs = relationship(
         "ValidationLog",
         primaryjoin="ValidationLog.budget_id == Budget.id",
@@ -104,6 +105,27 @@ class Ratio(Base):
 
     def __repr__(self) -> str:
         return f"<Ratio chapter={self.chapter_code!r} median={self.median} n={self.sample_count}>"
+
+
+class SpaceRatio(Base):
+    """Per-space cost ratio extracted from a Presto budget."""
+
+    __tablename__ = "space_ratios"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    budget_id = Column(Integer, ForeignKey("budgets.id"), nullable=False)
+    nombre = Column(String(200), nullable=False)
+    zona = Column(String(100), nullable=True)
+    coste = Column(Float, nullable=True)
+    m2 = Column(Float, default=0.0)
+    ratio_eur_m2 = Column(Float, nullable=True)
+    coste_prorrateado = Column(Float, nullable=True)
+    import_date = Column(DateTime, default=_utcnow, nullable=False)
+
+    budget = relationship("Budget", back_populates="space_ratios")
+
+    def __repr__(self) -> str:
+        return f"<SpaceRatio nombre={self.nombre!r} coste={self.coste} m2={self.m2}>"
 
 
 class ValidationLog(Base):

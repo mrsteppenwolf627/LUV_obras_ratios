@@ -7,9 +7,9 @@ from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.db.schema import Base, Budget, LineItem, Ratio, ValidationLog
+from src.db.schema import Base, Budget, LineItem, Ratio, SpaceRatio, ValidationLog
 
-__all__ = ["Budget", "LineItem", "Ratio", "ValidationLog", "Base", "get_session", "init_db"]
+__all__ = ["Budget", "LineItem", "Ratio", "SpaceRatio", "ValidationLog", "Base", "get_session", "init_db"]
 
 DEFAULT_DB_PATH = Path("data/master/ratios.db")
 

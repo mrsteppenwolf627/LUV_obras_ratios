@@ -59,6 +59,10 @@ data/samples/*
 data/raw/*
 !data/raw/.gitkeep
 
+# Archived originals (real budget files, never commit)
+data/archived_budgets/*
+!data/archived_budgets/.gitkeep
+
 # Processed/export artifacts (generated)
 data/processed/*
 !data/processed/.gitkeep

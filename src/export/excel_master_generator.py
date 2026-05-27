@@ -202,7 +202,13 @@ def _build_audit_sheet(ws: Any, budgets: list[Budget], ratios: list[Ratio]) -> N
                 ch_budgets.setdefault(key, []).append(b)
 
     row_num = 2
-    for (chapter_code, building_type), r in sorted(ratio_map.items()):
+    # Sort safely even when building_type is None
+    sorted_ratios = sorted(
+        ratio_map.items(),
+        key=lambda kv: ((kv[0][0] or ""), (kv[0][1] or "")),
+    )
+
+    for (chapter_code, building_type), r in sorted_ratios:
         key = (chapter_code, building_type)
         contrib = ch_budgets.get(key, [])
         fill = ALT_FILL if row_num % 2 == 0 else None
