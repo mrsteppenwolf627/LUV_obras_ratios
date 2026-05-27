@@ -576,3 +576,247 @@ class TestItemsAPI:
     def test_search_count_field_present(self, api_client):
         resp = api_client.get("/api/items/search")
         assert "count" in resp.json()
+
+
+# ===========================================================================
+# 7. MULTI-UNIT TESTS (refactoring)
+# ===========================================================================
+
+class TestMultiUnit:
+    """Ratios must work with ANY unit — not just m²."""
+
+    # --- make_item_key ---
+
+    def test_same_desc_different_units_produce_different_keys(self):
+        from src.core.item_extractor import make_item_key
+        k_m3 = make_item_key("Hormigón HA-30", "m³")
+        k_kg = make_item_key("Hormigón HA-30", "kg")
+        assert k_m3 != k_kg
+
+    def test_same_desc_same_unit_produce_same_key(self):
+        from src.core.item_extractor import make_item_key
+        k1 = make_item_key("Pintura plástica", "l")
+        k2 = make_item_key("Pintura plástica", "l")
+        assert k1 == k2
+
+    # --- classify_new_item_price — unit propagation ---
+
+    def _hist(self, prices, unidad="m³"):
+        from src.ratios.item_ratio_calculator import compute_stats
+        stats = compute_stats(prices)
+        stats["unidad"] = unidad
+        return stats
+
+    def test_result_includes_unidad(self):
+        from src.ratios.item_ratio_calculator import classify_new_item_price
+        hist = self._hist([950.0, 950.0, 950.0], "t")
+        result = classify_new_item_price({"precio_unitario": 950.0, "unidad": "t"}, hist)
+        assert "unidad" in result
+        assert result["unidad"] == "t"
+
+    def test_unidad_diferente_when_units_mismatch(self):
+        from src.ratios.item_ratio_calculator import classify_new_item_price
+        hist = self._hist([185.0, 185.0, 185.0], "m³")
+        # New item is in kg — should refuse comparison
+        result = classify_new_item_price({"precio_unitario": 0.5, "unidad": "kg"}, hist)
+        assert result["clasificacion"] == "UNIDAD_DIFERENTE"
+
+    def test_normal_when_units_match(self):
+        from src.ratios.item_ratio_calculator import classify_new_item_price
+        hist = self._hist([185.0, 185.0, 185.0], "m³")
+        result = classify_new_item_price({"precio_unitario": 190.0, "unidad": "m³"}, hist)
+        assert result["clasificacion"] == "NORMAL"
+
+    def test_caro_when_units_match_and_price_high(self):
+        from src.ratios.item_ratio_calculator import classify_new_item_price
+        # 18/15 = 20% above median → CARO (15–30% band)
+        hist = self._hist([15.0, 15.0, 15.0], "l")
+        result = classify_new_item_price({"precio_unitario": 18.0, "unidad": "l"}, hist)
+        assert result["clasificacion"] == "CARO"
+
+    def test_no_unit_check_when_hist_unit_empty(self):
+        from src.ratios.item_ratio_calculator import classify_new_item_price
+        # If historic has no unit, allow comparison (backward compat)
+        hist = self._hist([100.0, 100.0, 100.0], "")
+        result = classify_new_item_price({"precio_unitario": 110.0, "unidad": "m²"}, hist)
+        assert result["clasificacion"] == "NORMAL"
+
+    def test_sin_precio_has_unidad(self):
+        from src.ratios.item_ratio_calculator import classify_new_item_price
+        result = classify_new_item_price({"precio_unitario": None, "unidad": "t"}, None)
+        assert result["unidad"] == "t"
+
+    def test_primera_muestra_has_unidad(self):
+        from src.ratios.item_ratio_calculator import classify_new_item_price
+        result = classify_new_item_price({"precio_unitario": 950.0, "unidad": "t"}, None)
+        assert result["unidad"] == "t"
+
+    # --- DB: ItemInstance stores unidad ---
+
+    def test_item_instance_stores_unidad(self, db_session):
+        from datetime import datetime, timezone
+        from src.db.schema import Budget, ItemInstance, ItemMaster
+        budget = Budget(filename="b.Presto", file_hash="zz001", source_format="presto", total_cost=1000.0)
+        db_session.add(budget)
+        db_session.flush()
+
+        master = ItemMaster(item_key="acero b500s|t", categoria="ESTRUCTURA", unidad="t", muestras_count=0)
+        db_session.add(master)
+        db_session.flush()
+
+        inst = ItemInstance(
+            budget_id=budget.id,
+            item_master_id=master.id,
+            descripcion="Acero B-500S",
+            unidad="t",
+            cantidad=12.0,
+            precio_unitario=950.0,
+            precio_total=11400.0,
+            validation_status="VALID",
+        )
+        db_session.add(inst)
+        db_session.commit()
+
+        fetched = db_session.get(ItemInstance, inst.id)
+        assert fetched.unidad == "t"
+
+    # --- get_item_ratio_history propagates unidad ---
+
+    def test_get_item_ratio_history_returns_unidad(self, db_session):
+        from datetime import datetime, timezone
+        from src.db.schema import Budget, ItemInstance, ItemMaster
+        from src.ratios.item_ratio_calculator import get_item_ratio_history
+
+        budget = Budget(filename="c.Presto", file_hash="zz002", source_format="presto", total_cost=5000.0)
+        db_session.add(budget)
+        db_session.flush()
+
+        master = ItemMaster(item_key="hormigon ha30|m3", categoria="ESTRUCTURA", unidad="m3", muestras_count=0)
+        db_session.add(master)
+        db_session.flush()
+
+        for price in [180.0, 185.0, 190.0]:
+            db_session.add(ItemInstance(
+                budget_id=budget.id,
+                item_master_id=master.id,
+                descripcion="Hormigón HA-30",
+                unidad="m3",
+                precio_unitario=price,
+                precio_total=price * 10,
+                validation_status="VALID",
+            ))
+        db_session.commit()
+
+        stats = get_item_ratio_history(db_session, master.id)
+        assert stats is not None
+        assert stats["unidad"] == "m3"
+        assert stats["mediana"] == pytest.approx(185.0, abs=0.01)
+
+    # --- Different units create separate ItemMaster records ---
+
+    def test_different_units_create_separate_masters(self, db_session):
+        from src.db.schema import ItemMaster
+        from src.core.item_extractor import make_item_key
+
+        key_m3 = make_item_key("Hormigón", "m³")
+        key_kg = make_item_key("Hormigón", "kg")
+
+        m1 = ItemMaster(item_key=key_m3, categoria="ESTRUCTURA", unidad="m³", muestras_count=0)
+        m2 = ItemMaster(item_key=key_kg, categoria="ESTRUCTURA", unidad="kg", muestras_count=0)
+        db_session.add_all([m1, m2])
+        db_session.commit()
+
+        masters = db_session.query(ItemMaster).filter(
+            ItemMaster.item_key.in_([key_m3, key_kg])
+        ).all()
+        assert len(masters) == 2
+        units = {m.unidad for m in masters}
+        assert "m³" in units
+        assert "kg" in units
+
+    # --- Non-m² items produce correct ratios ---
+
+    def test_acero_ratio_per_ton(self):
+        from src.core.item_extractor import extract_items_from_budget
+        budget = {
+            "source_format": "bc3",
+            "chapters": [
+                {
+                    "chapter_code": "E01",
+                    "chapter_name": "Acero B-500S",
+                    "total_cost": 11400.0,
+                    "quantity": 12.0,
+                    "unit": "t",
+                    "unit_cost": 950.0,
+                }
+            ],
+            "errors": [],
+            "warnings": [],
+        }
+        items = extract_items_from_budget(budget)
+        assert len(items) == 1
+        assert items[0]["unidad"] == "t"
+        assert items[0]["precio_unitario"] == pytest.approx(950.0, abs=0.01)
+
+    def test_pintura_ratio_per_litre(self):
+        from src.core.item_extractor import extract_items_from_budget
+        budget = {
+            "source_format": "bc3",
+            "chapters": [
+                {
+                    "chapter_code": "A01",
+                    "chapter_name": "Pintura plástica",
+                    "total_cost": 7500.0,
+                    "quantity": 500.0,
+                    "unit": "l",
+                    "unit_cost": 15.0,
+                }
+            ],
+            "errors": [],
+            "warnings": [],
+        }
+        items = extract_items_from_budget(budget)
+        assert items[0]["unidad"] == "l"
+        assert items[0]["precio_unitario"] == pytest.approx(15.0, abs=0.01)
+
+    def test_puerta_ratio_per_ud(self):
+        from src.core.item_extractor import extract_items_from_budget
+        budget = {
+            "source_format": "bc3",
+            "chapters": [
+                {
+                    "chapter_code": "C01",
+                    "chapter_name": "Puerta interior",
+                    "total_cost": 3600.0,
+                    "quantity": 3.0,
+                    "unit": "ud",
+                    "unit_cost": 1200.0,
+                }
+            ],
+            "errors": [],
+            "warnings": [],
+        }
+        items = extract_items_from_budget(budget)
+        assert items[0]["unidad"] == "ud"
+        assert items[0]["precio_unitario"] == pytest.approx(1200.0, abs=0.01)
+
+    # --- crud: response includes unidad_medida ---
+
+    def test_master_to_dict_has_unidad_medida(self, db_session):
+        from src.db.schema import ItemMaster
+        from app.crud.items import _master_to_dict
+        master = ItemMaster(item_key="x|m3", categoria="ESTRUCTURA", unidad="m3", muestras_count=0)
+        db_session.add(master)
+        db_session.commit()
+        d = _master_to_dict(master)
+        assert "unidad_medida" in d
+        assert d["unidad_medida"] == "€/m3"
+
+    def test_master_to_dict_fallback_unidad(self, db_session):
+        from src.db.schema import ItemMaster
+        from app.crud.items import _master_to_dict
+        master = ItemMaster(item_key="y|", categoria="OTROS", unidad=None, muestras_count=0)
+        db_session.add(master)
+        db_session.commit()
+        d = _master_to_dict(master)
+        assert d["unidad_medida"] == "€/ud"

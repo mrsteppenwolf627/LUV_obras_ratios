@@ -79,6 +79,7 @@ def get_item_history(session: Session, item_key: str) -> Optional[dict]:
         {
             "presupuesto_id": i.budget_id,
             "codigo": i.codigo,
+            "unidad": i.unidad or master.unidad or "",
             "cantidad": i.cantidad,
             "precio_unitario": i.precio_unitario,
             "precio_total": i.precio_total,
@@ -94,12 +95,15 @@ def get_item_history(session: Session, item_key: str) -> Optional[dict]:
     if prices:
         import statistics as _stats
         mediana = round(_stats.median(prices), 4)
+        unidad_m = master.unidad or "ud"
         stats = {
             "mediana": mediana,
             "media": round(_stats.mean(prices), 4),
             "min": round(min(prices), 4),
             "max": round(max(prices), 4),
             "desv_std": round(_stats.stdev(prices), 4) if len(prices) > 1 else 0.0,
+            "unidad": unidad_m,
+            "unidad_medida": f"€/{unidad_m}",
             "tendencia": _tendencia(prices),
         }
 
@@ -114,11 +118,13 @@ def get_item_history(session: Session, item_key: str) -> Optional[dict]:
 
 
 def _master_to_dict(m: "ItemMaster") -> dict:  # type: ignore[name-defined]  # noqa: F821
+    unidad = m.unidad or "ud"
     return {
         "item_key": m.item_key,
         "categoria": m.categoria,
         "subcategoria": m.subcategoria,
-        "unidad": m.unidad,
+        "unidad": unidad,
+        "unidad_medida": f"€/{unidad}",
         "mediana_unitario": m.mediana_unitario,
         "media_unitario": m.media_unitario,
         "min_unitario": m.min_unitario,

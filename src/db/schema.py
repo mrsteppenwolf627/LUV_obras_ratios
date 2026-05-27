@@ -171,6 +171,7 @@ class ItemInstance(Base):
     codigo = Column(String(200), nullable=True)
     descripcion = Column(Text, nullable=True)
     categoria_original = Column(String(200), nullable=True)
+    unidad = Column(String(50), nullable=True)
     cantidad = Column(Float, nullable=True)
     precio_unitario = Column(Float, nullable=True)
     precio_total = Column(Float, nullable=True)

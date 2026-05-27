@@ -362,6 +362,7 @@ def _import_items(session, budget_data: dict, budget_id: int) -> int:
             codigo=raw["codigo"],
             descripcion=raw["descripcion"],
             categoria_original=raw["categoria_original"],
+            unidad=raw["unidad"],
             cantidad=raw["cantidad"],
             precio_unitario=raw["precio_unitario"],
             precio_total=raw["precio_total"],

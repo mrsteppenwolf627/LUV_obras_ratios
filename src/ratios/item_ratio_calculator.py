@@ -23,7 +23,10 @@ def get_item_ratio_history(session, item_master_id: int) -> Optional[dict]:
 
     Returns None if there are no priced instances.
     """
-    from src.db.schema import ItemInstance
+    from src.db.schema import ItemInstance, ItemMaster
+
+    master = session.get(ItemMaster, item_master_id)
+    unidad = (master.unidad or "") if master else ""
 
     instances = (
         session.query(ItemInstance)
@@ -52,6 +55,7 @@ def get_item_ratio_history(session, item_master_id: int) -> Optional[dict]:
         {
             "presupuesto_id": i.budget_id,
             "precio_unitario": i.precio_unitario,
+            "unidad": i.unidad or unidad,
             "created_at": i.created_at.isoformat() if i.created_at else None,
         }
         for i in instances
@@ -66,6 +70,7 @@ def get_item_ratio_history(session, item_master_id: int) -> Optional[dict]:
         "max": max_val,
         "desv_std": desv_std,
         "desv_porcentaje": desv_pct,
+        "unidad": unidad,
         "muestras": samples,
     }
 
@@ -115,6 +120,9 @@ def classify_new_item_price(item: dict, historic_stats: Optional[dict]) -> dict:
     """
     precio_nuevo = item.get("precio_unitario")
 
+    unidad_item = item.get("unidad", "")
+    unidad_hist = (historic_stats or {}).get("unidad", "")
+
     if precio_nuevo is None or precio_nuevo <= 0:
         return {
             "clasificacion": "SIN_PRECIO",
@@ -124,6 +132,7 @@ def classify_new_item_price(item: dict, historic_stats: Optional[dict]) -> dict:
             "desviacion_porcentaje": 0.0,
             "confianza": "BAJA",
             "n_muestras": 0,
+            "unidad": unidad_item,
             "accion": "Ítem sin precio unitario — marcar como DUBIOUS",
         }
 
@@ -137,7 +146,25 @@ def classify_new_item_price(item: dict, historic_stats: Optional[dict]) -> dict:
             "desviacion_porcentaje": 0.0,
             "confianza": "BAJA",
             "n_muestras": 0,
+            "unidad": unidad_item,
             "accion": "Primera muestra de este ítem — sin histórico disponible",
+        }
+
+    # Reject comparison when units differ (would mix e.g. €/m³ with €/kg)
+    if unidad_hist and unidad_item and unidad_hist.lower() != unidad_item.lower():
+        return {
+            "clasificacion": "UNIDAD_DIFERENTE",
+            "precio_nuevo": precio_nuevo,
+            "precio_historico": historic_stats.get("mediana"),
+            "desviacion_absoluta": 0.0,
+            "desviacion_porcentaje": 0.0,
+            "confianza": "BAJA",
+            "n_muestras": n,
+            "unidad": unidad_item,
+            "accion": (
+                f"Histórico en '{unidad_hist}', ítem nuevo en '{unidad_item}' "
+                "— no comparables"
+            ),
         }
 
     mediana = historic_stats["mediana"]
@@ -150,6 +177,7 @@ def classify_new_item_price(item: dict, historic_stats: Optional[dict]) -> dict:
             "desviacion_porcentaje": 0.0,
             "confianza": "BAJA",
             "n_muestras": n,
+            "unidad": unidad_item,
             "accion": "Histórico con mediana ≤ 0, no comparable",
         }
 
@@ -191,6 +219,7 @@ def classify_new_item_price(item: dict, historic_stats: Optional[dict]) -> dict:
         "desviacion_porcentaje": desv_pct,
         "confianza": confianza,
         "n_muestras": n,
+        "unidad": unidad_item,
         "accion": accion,
     }
 
