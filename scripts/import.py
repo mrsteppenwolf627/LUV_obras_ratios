@@ -28,14 +28,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.core.auditor import compute_file_hash, generate_import_log, save_log
 from src.core.bc3_reader import read_bc3
 from src.core.excel_reader import read_excel
+from src.core.item_extractor import extract_items_from_budget, make_item_key
 from src.core.normalizer import normalize
 from src.core.presto_reader import parse_presto
 from src.db.models import DEFAULT_DB_PATH, get_session
 from src.db.queries import get_budget_by_hash
-from src.db.schema import Budget, SpaceRatio
+from src.db.schema import Budget, ItemInstance, ItemMaster, SpaceRatio
 from src.export.excel_master_generator import generate_master_excel
 from src.export.space_ratios_generator import generate_space_ratios_excel
 from src.ratios.calculator import recalculate_all_ratios
+from src.ratios.item_classifier import classify_item
+from src.ratios.item_ratio_calculator import classify_new_item_price, get_item_ratio_history, recalculate_item_master_stats
 from src.ratios.space_calculator import calculate_space_ratios
 
 ARCHIVED_DIR = Path("data/archived_budgets")
@@ -226,6 +229,10 @@ def _import_presto(
         archived_path = archive_file(filepath)
         print(f"   Archived to: {archived_path}")
 
+        # Item extraction + classification (HITO 4)
+        n_items = _import_items(session, presupuesto, budget.id)
+        print(f"   {n_items} item(s) clasificados y registrados")
+
         session.commit()
         print(f"✅ COMMITTED (Budget ID={budget.id})")
         print(f"✅ Space ratios Excel: {generated_excel}")
@@ -294,6 +301,10 @@ def _import_chapter_based(
         archived_path = archive_file(filepath)
         print(f"   Archived to: {archived_path}")
 
+        # Item extraction + classification (HITO 4)
+        n_items = _import_items(session, raw_data, budget.id)
+        print(f"   {n_items} item(s) clasificados y registrados")
+
         log["db_budget_id"] = budget.id
         log_path = save_log(log)
         print(f"📝 Import log saved: {log_path}")
@@ -312,6 +323,62 @@ def _import_chapter_based(
         raise
     finally:
         session.close()
+
+
+def _import_items(session, budget_data: dict, budget_id: int) -> int:
+    """Extract, classify, and persist items from a parsed budget. Returns item count."""
+    raw_items = extract_items_from_budget(budget_data, budget_id=budget_id)
+    if not raw_items:
+        return 0
+
+    count = 0
+    for raw in raw_items:
+        key = make_item_key(raw["descripcion"], raw["unidad"])
+        if not key.strip("|"):
+            continue
+
+        classification = classify_item(raw)
+
+        # Get or create ItemMaster
+        master = session.query(ItemMaster).filter(ItemMaster.item_key == key).first()
+        if master is None:
+            master = ItemMaster(
+                item_key=key,
+                categoria=classification["categoria"],
+                subcategoria=classification["subcategoria"],
+                unidad=raw["unidad"],
+                muestras_count=0,
+            )
+            session.add(master)
+            session.flush()
+
+        # Price comparison vs history
+        historic = get_item_ratio_history(session, master.id)
+        price_class = classify_new_item_price(raw, historic)
+
+        instance = ItemInstance(
+            budget_id=budget_id,
+            item_master_id=master.id,
+            codigo=raw["codigo"],
+            descripcion=raw["descripcion"],
+            categoria_original=raw["categoria_original"],
+            cantidad=raw["cantidad"],
+            precio_unitario=raw["precio_unitario"],
+            precio_total=raw["precio_total"],
+            categoria_detectada=classification["categoria"],
+            confianza_clasificacion=classification["confianza"],
+            desviacion_vs_historico=price_class.get("desviacion_porcentaje"),
+            clasificacion_precio=price_class["clasificacion"],
+            validation_status=raw["validation_status"],
+        )
+        session.add(instance)
+        session.flush()
+
+        # Update ItemMaster stats
+        recalculate_item_master_stats(session, master.id)
+        count += 1
+
+    return count
 
 
 if __name__ == "__main__":

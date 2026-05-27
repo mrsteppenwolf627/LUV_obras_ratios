@@ -43,6 +43,7 @@ class Budget(Base):
 
     items = relationship("LineItem", back_populates="budget", cascade="all, delete-orphan")
     space_ratios = relationship("SpaceRatio", back_populates="budget", cascade="all, delete-orphan")
+    item_instances = relationship("ItemInstance", back_populates="budget", cascade="all, delete-orphan")
     validation_logs = relationship(
         "ValidationLog",
         primaryjoin="ValidationLog.budget_id == Budget.id",
@@ -126,6 +127,70 @@ class SpaceRatio(Base):
 
     def __repr__(self) -> str:
         return f"<SpaceRatio nombre={self.nombre!r} coste={self.coste} m2={self.m2}>"
+
+
+class ItemMaster(Base):
+    """Deduplicated catalogue of unique items across all budgets."""
+
+    __tablename__ = "item_master"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    item_key = Column(String(500), unique=True, nullable=False)
+    categoria = Column(String(100), nullable=True)
+    subcategoria = Column(String(100), nullable=True)
+    unidad = Column(String(50), nullable=True)
+
+    mediana_unitario = Column(Float, nullable=True)
+    media_unitario = Column(Float, nullable=True)
+    min_unitario = Column(Float, nullable=True)
+    max_unitario = Column(Float, nullable=True)
+    desv_std = Column(Float, nullable=True)
+    muestras_count = Column(Integer, default=0)
+
+    primera_fecha = Column(DateTime, nullable=True)
+    ultima_fecha = Column(DateTime, nullable=True)
+    ultima_actualizacion = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    instances = relationship(
+        "ItemInstance", back_populates="item_master", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<ItemMaster key={self.item_key!r} cat={self.categoria!r} n={self.muestras_count}>"
+
+
+class ItemInstance(Base):
+    """One occurrence of an item inside a specific budget."""
+
+    __tablename__ = "item_instance"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    budget_id = Column(Integer, ForeignKey("budgets.id"), nullable=False)
+    item_master_id = Column(Integer, ForeignKey("item_master.id"), nullable=False)
+
+    codigo = Column(String(200), nullable=True)
+    descripcion = Column(Text, nullable=True)
+    categoria_original = Column(String(200), nullable=True)
+    cantidad = Column(Float, nullable=True)
+    precio_unitario = Column(Float, nullable=True)
+    precio_total = Column(Float, nullable=True)
+
+    categoria_detectada = Column(String(100), nullable=True)
+    confianza_clasificacion = Column(Float, nullable=True)
+    desviacion_vs_historico = Column(Float, nullable=True)
+    clasificacion_precio = Column(String(50), nullable=True)
+
+    validation_status = Column(String(20), nullable=False, default="VALID")
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+    budget = relationship("Budget", back_populates="item_instances")
+    item_master = relationship("ItemMaster", back_populates="instances")
+
+    def __repr__(self) -> str:
+        return (
+            f"<ItemInstance id={self.id} master={self.item_master_id} "
+            f"precio={self.precio_unitario} status={self.clasificacion_precio!r}>"
+        )
 
 
 class ValidationLog(Base):
