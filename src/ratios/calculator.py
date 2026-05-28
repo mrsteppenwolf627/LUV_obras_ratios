@@ -91,11 +91,22 @@ def recalculate_all_ratios(session: Session) -> int:
             session.add(ratio)
 
         if values:
-            ratio.median = statistics.median(values)
-            ratio.min_value = min(values)
-            ratio.max_value = max(values)
+            sorted_values = sorted(values)
+            n = len(sorted_values)
+            ratio.median = statistics.median(sorted_values)
+            ratio.min_value = sorted_values[0]
+            ratio.max_value = sorted_values[-1]
             ratio.cost_per_m2 = ratio.median
-            ratio.sample_count = len(values)
+            ratio.sample_count = n
+            if n >= 2:
+                quartiles = statistics.quantiles(sorted_values, n=4)
+                ratio.percentil_25 = quartiles[0]
+                ratio.percentil_75 = quartiles[2]
+                ratio.std_dev = statistics.stdev(sorted_values)
+            else:
+                ratio.percentil_25 = sorted_values[0]
+                ratio.percentil_75 = sorted_values[0]
+                ratio.std_dev = 0.0
         else:
             # No surface data — count samples without ratio
             count = (

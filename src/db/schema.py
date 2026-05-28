@@ -97,6 +97,9 @@ class Ratio(Base):
     median = Column(Float, nullable=True)
     min_value = Column(Float, nullable=True)
     max_value = Column(Float, nullable=True)
+    percentil_25 = Column(Float, nullable=True)
+    percentil_75 = Column(Float, nullable=True)
+    std_dev = Column(Float, nullable=True)
     sample_count = Column(Integer, default=0)
     last_updated = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
