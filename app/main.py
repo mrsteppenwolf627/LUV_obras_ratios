@@ -21,6 +21,7 @@ from .crud.budgets import get_archived_budgets
 from .crud.items import get_item_history, get_items_by_category, search_items
 from .utils.stats import get_stats
 from .utils.excel_export import generate_or_get_excel
+from .routers.visuales import router as visuales_router, invalidar_cache_chapters
 
 app = FastAPI(title="LUV Obras Ratios API", version="1.0.0")
 
@@ -31,6 +32,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(visuales_router)
 
 
 @app.get("/api/master")
@@ -130,6 +133,7 @@ async def api_import(file: UploadFile = File(...)):
 
         ratios_created = recalculate_all_ratios(session)
         session.flush()
+        invalidar_cache_chapters()
 
         generate_master_excel(session)
 
