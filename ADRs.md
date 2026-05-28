@@ -4,6 +4,8 @@ Registro de decisiones arquitectonicas del proyecto.
 
 ## Estado operativo de referencia (consistencia documental)
 
+- Pausa documental registrada el 2026-05-28: se crea `PROJECT_STATUS.md` como snapshot de pausa para la linea Backend FASE 1-3 + Frontend FASE 4 (`/visuales`), sin sustituir el estado canonico del roadmap multi-fase del Excel maestro.
+- Estado de pausa asociado: API backend verificada en `localhost:8000`, frontend pendiente de validacion final en navegador, 49 capitulos consolidados con `N=1` y necesidad de ampliar importaciones reales antes de reclamar solidez estadistica.
 - Referencia vigente: Fase 8 cerrada tecnicamente, Fase 9.0 iniciada, Fase 9.1 cerrada documentalmente, Fase 9.2 cerrada tecnicamente, Fase 9.3 cerrada tecnicamente, Fase 9.4 cerrada tecnicamente, Fase 9.5 cerrada tecnicamente, Fase 9.6-preview ejecutada, Fase 9.6-preview-fix ejecutada, Fase 9.6 formal cerrada documentalmente, Fase 9.7 cerrada documentalmente, Fase 9.8 cerrada tecnicamente, Fase 9.9 cerrada tecnicamente, Fase 9.10 cerrada tecnicamente, Fase 9.11 cerrada documentalmente, Fase 9.12 cerrada tecnicamente, Fase 9.13 cerrada tecnicamente, Fase 9.14 cerrada tecnicamente, Fase 9.15 cerrada tecnicamente, Fase 9.16 cerrada tecnicamente, Fase 9.17 cerrada tecnicamente, Fase 9.18 cerrada tecnicamente y Fase 9.19 iniciada para traduccion adaptativa de formulas/navegacion/evaluacion semantica.
 - Decision vigente principal: ADR-019 (Excel maestro vivo como salida principal).
 - Proxima fase recomendada: Fase 9.20 (consolidacion de formulas avanzadas y no-regresion semantica ampliada antes de decidir apertura BC3 preservado).

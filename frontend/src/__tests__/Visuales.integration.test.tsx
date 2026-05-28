@@ -1,31 +1,50 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import * as visualesAPI from '@/api/visuales';
 import Visuales from '@/pages/Visuales';
 
 vi.mock('@/api/visuales', () => ({
   analizarComparativa: vi.fn(),
-  getCapitulosRatios: vi.fn(),
 }));
 
 describe('Visuales Integration', () => {
+  const fetchMock = vi.fn();
+  const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(visualesAPI.getCapitulosRatios).mockResolvedValue([
-      {
-        capitulo: 'ESTRUCTURA',
-        descripcion: 'Estructura',
-        minimo: 280,
-        percentil_25: 310,
-        mediana: 334.67,
-        percentil_75: 350,
-        maximo: 450,
-        desviacion_std: 45.3,
-        cantidad_datos: 8,
-        estado_confiabilidad: 'solido',
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      headers: {
+        get: (name: string) =>
+          name === 'content-type' ? 'application/json' : name === 'content-length' ? '233' : null,
       },
-    ]);
+      text: async () =>
+        JSON.stringify([
+          {
+            capitulo: 'ESTRUCTURA',
+            descripcion: 'Estructura',
+            minimo: 280,
+            percentil_25: 310,
+            mediana: 334.67,
+            percentil_75: 350,
+            maximo: 450,
+            desviacion_std: 45.3,
+            cantidad_datos: 8,
+            estado_confiabilidad: 'solido',
+          },
+        ]),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   test('carga capitulos al montar', async () => {
@@ -35,6 +54,15 @@ describe('Visuales Integration', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/Selecciona un capitulo/i)).toBeInTheDocument();
     });
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/ratios/chapters', {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+    expect(logSpy).toHaveBeenCalled();
   });
 
   test('muestra Tab 0 (Rango) por defecto', async () => {
@@ -100,12 +128,21 @@ describe('Visuales Integration', () => {
   });
 
   test('muestra error si API falla', async () => {
-    vi.mocked(visualesAPI.getCapitulosRatios).mockRejectedValue(new Error('Network error'));
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      headers: {
+        get: () => 'text/html',
+      },
+      text: async () => '<!doctype html><html></html>',
+    });
 
     render(<Visuales />);
 
     await waitFor(() => {
-      expect(screen.getByText(/conexion con la API/i)).toBeInTheDocument();
+      expect(screen.getByText(/HTTP 404: Not Found/i)).toBeInTheDocument();
     });
+    expect(errorSpy).toHaveBeenCalled();
   });
 });

@@ -44,6 +44,11 @@ Construir un sistema robusto que alimente progresivamente un master de ratios de
 
 ## Estado actual
 
+- Pausa operativa documentada: 2026-05-28.
+- Estado de sesion al pausar: snapshot documental creada en `PROJECT_STATUS.md` para la linea Backend FASE 1-3 + Frontend FASE 4 (`/visuales`).
+- Nota de pausa: backend API en `localhost:8000` verificado por curl, frontend `/visuales` pendiente de validacion final en navegador y puede requerir hard-refresh de Vite.
+- Condicion funcional de datos de ratios en esta linea: 49 capitulos consolidados, todos con `N=1` (`MUY_DEBIL`), por lo que la solidez estadistica sigue bloqueada por falta de mas presupuestos importados.
+- Proxima reanudacion sugerida para esta linea: validar conexion frontend API, confirmar carga correcta de las 3 tabs visuales e incrementar volumen de presupuestos reales antes de evaluar solidez.
 - Fecha de consolidacion documental: 2026-05-21.
 - Fase 8: cerrada tecnicamente.
 - Fase 9.0: iniciada y vigente.
