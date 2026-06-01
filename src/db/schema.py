@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from enum import Enum as PyEnum
 
 from sqlalchemy import (
     Boolean,
@@ -16,6 +17,24 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
+
+
+class Categoria(str, PyEnum):
+    """Categoría de gama LUV Studio."""
+
+    MEDIUM = "MEDIUM"
+    PREMIUM = "PREMIUM"
+    LUXURY = "LUXURY"
+    LUXURY_PLUS = "LUXURY_PLUS"
+
+
+class Confianza(str, PyEnum):
+    """Nivel de confianza del ratio basado en muestras."""
+
+    MUY_DEBIL = "MUY_DÉBIL"   # N < 2
+    DEBIL = "DÉBIL"            # 2 ≤ N < 5
+    SOLIDO = "SÓLIDO"          # 5 ≤ N < 10
+    MUY_SOLIDO = "MUY_SÓLIDO"  # N ≥ 10
 
 
 def _utcnow() -> datetime:
@@ -154,12 +173,50 @@ class ItemMaster(Base):
     ultima_fecha = Column(DateTime, nullable=True)
     ultima_actualizacion = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
+    categoria_asignada = Column(String(20), nullable=False, default="MEDIUM")
+
     instances = relationship(
         "ItemInstance", back_populates="item_master", cascade="all, delete-orphan"
+    )
+    ratios_por_categoria = relationship(
+        "ItemMasterRatio",
+        back_populates="item_master",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:
         return f"<ItemMaster key={self.item_key!r} cat={self.categoria!r} n={self.muestras_count}>"
+
+
+class ItemMasterRatio(Base):
+    """Ratio histórico de un item para una categoría específica."""
+
+    __tablename__ = "item_master_ratios"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    item_master_id = Column(Integer, ForeignKey("item_master.id"), nullable=False)
+    categoria = Column(String(20), nullable=False)
+
+    ratio_actual = Column(Float, nullable=True)
+    mediana = Column(Float, nullable=True)
+    min_valor = Column(Float, nullable=True)
+    max_valor = Column(Float, nullable=True)
+    desv_std = Column(Float, nullable=True)
+    percentil_25 = Column(Float, nullable=True)
+    percentil_75 = Column(Float, nullable=True)
+
+    muestras_count = Column(Integer, default=0)
+    confianza = Column(String(20), default="MUY_DÉBIL")
+    ultima_actualizacion = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    item_master = relationship("ItemMaster", back_populates="ratios_por_categoria")
+
+    __table_args__ = (
+        UniqueConstraint("item_master_id", "categoria", name="uq_item_cat_ratio"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ItemMasterRatio item={self.item_master_id} cat={self.categoria} ratio={self.ratio_actual} n={self.muestras_count}>"
 
 
 class ItemInstance(Base):
@@ -183,6 +240,9 @@ class ItemInstance(Base):
     confianza_clasificacion = Column(Float, nullable=True)
     desviacion_vs_historico = Column(Float, nullable=True)
     clasificacion_precio = Column(String(50), nullable=True)
+
+    categoria_asignada = Column(String(20), nullable=False, default="MEDIUM")
+    ratio_comparativa = Column(Float, nullable=True)
 
     validation_status = Column(String(20), nullable=False, default="VALID")
     created_at = Column(DateTime, default=_utcnow, nullable=False)
