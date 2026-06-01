@@ -1,307 +1,236 @@
-﻿# ADRs.md
+# ADRs: Architecture Decision Records
 
 Registro de decisiones arquitectonicas del proyecto.
 
-## Estado operativo de referencia (consistencia documental)
+**Proyecto:** LUV Ratios
+**Actualizado:** 1 de junio de 2026
+**Estado del producto:** funcional, con doble linea activa:
 
-- Pausa documental registrada el 2026-05-28: se crea `PROJECT_STATUS.md` como snapshot de pausa para la linea Backend FASE 1-3 + Frontend FASE 4 (`/visuales`), sin sustituir el estado canonico del roadmap multi-fase del Excel maestro.
-- Estado de pausa asociado: API backend verificada en `localhost:8000`, frontend pendiente de validacion final en navegador, 49 capitulos consolidados con `N=1` y necesidad de ampliar importaciones reales antes de reclamar solidez estadistica.
-- Referencia vigente: Fase 8 cerrada tecnicamente, Fase 9.0 iniciada, Fase 9.1 cerrada documentalmente, Fase 9.2 cerrada tecnicamente, Fase 9.3 cerrada tecnicamente, Fase 9.4 cerrada tecnicamente, Fase 9.5 cerrada tecnicamente, Fase 9.6-preview ejecutada, Fase 9.6-preview-fix ejecutada, Fase 9.6 formal cerrada documentalmente, Fase 9.7 cerrada documentalmente, Fase 9.8 cerrada tecnicamente, Fase 9.9 cerrada tecnicamente, Fase 9.10 cerrada tecnicamente, Fase 9.11 cerrada documentalmente, Fase 9.12 cerrada tecnicamente, Fase 9.13 cerrada tecnicamente, Fase 9.14 cerrada tecnicamente, Fase 9.15 cerrada tecnicamente, Fase 9.16 cerrada tecnicamente, Fase 9.17 cerrada tecnicamente, Fase 9.18 cerrada tecnicamente y Fase 9.19 iniciada para traduccion adaptativa de formulas/navegacion/evaluacion semantica.
-- Decision vigente principal: ADR-019 (Excel maestro vivo como salida principal).
-- Proxima fase recomendada: Fase 9.20 (consolidacion de formulas avanzadas y no-regresion semantica ampliada antes de decidir apertura BC3 preservado).
-- Esta seccion es solo de consistencia de estado; no introduce nuevas ADR.
+- Linea canonica: Excel maestro vivo y trazable.
+- Linea complementaria: backend/frontend de visuales para consulta y comparativa.
+
+## Estado operativo de referencia
+
+- El estado canonico del producto sigue anclado en el roadmap multi-fase del Excel maestro vivo.
+- La Fase 9.20 sigue vigente como fase principal del producto.
+- El 1 de junio de 2026 se verifico ademas el subsistema `visuales`:
+  - backend local operativo;
+  - frontend Vite operativo;
+  - `pytest`: 528 tests pasando;
+  - `npm test` en frontend: 6 tests pasando.
+- Este snapshot funcional no sustituye el roadmap principal; lo complementa.
 
 ## Indice ADR
 
-- ADR-001: Adaptacion de roles multi-modelo (Aprobado inicial)
-- ADR-002: El dato bruto nunca se sobrescribe (Aprobado inicial)
-- ADR-003: Separacion entre RAW, normalizado, validacion, calculo y exportacion (Aprobado inicial)
-- ADR-004: No se actualizan ratios sin validacion (Aprobado inicial)
-- ADR-005: Prioridad de fuentes (Aprobado inicial)
-- ADR-006: Trazabilidad obligatoria (Aprobado inicial)
-- ADR-007: Exclusion sin borrado (Aprobado inicial)
-- ADR-008: Superficie base pendiente de definicion (Aprobado inicial)
-- ADR-009: Diseno preliminar del master de ratios (PROPUESTA, ver `docs/adr/ADR-009-master-schema-preliminar.md`)
-- ADR-010: Politica preliminar de duplicados y versionado de presupuestos (PROPUESTA, ver `docs/adr/ADR-010-duplicates-and-budget-versions.md`)
-- ADR-011: Politica preliminar de validacion matematica y consistencia (PROPUESTA, ver `docs/adr/ADR-011-validation-rules.md`)
-- ADR-012: Congelacion parcial metodologica antes del analisis de datos reales (PROPUESTA, ver `docs/adr/ADR-012-freeze-methodology-before-real-data.md`)
-- ADR-013: Extractor diagnostico BC3 antes de parser definitivo (Aprobado fase 3)
-- ADR-014: Diseno preliminar de parser BC3 antes de importacion al master (Aprobado fase 4.0)
-- ADR-015: Normalizacion intermedia BC3 antes de importacion al master (Aprobado fase 5.0)
-- ADR-016: Estrategia multi-formato con prioridad Excel y Presto/PZH (Aprobado fase 5.3)
-- ADR-017: Contrato comun multi-formato para lectura y normalizacion intermedia (Aprobado fase 7.2)
-- ADR-018: Soporte obligatorio Presto/PZH mediante ruta tecnica evidenciada (Aprobado fase 8)
-- ADR-019: Excel maestro vivo como salida principal del sistema (Aprobado fase 9.0)
+- ADR-001 a ADR-008: principios fundacionales de trazabilidad y gobierno del dato.
+- ADR-013 a ADR-018: decisiones de parsing/normalizacion multi-formato y soporte Presto/PZH.
+- ADR-019: Excel maestro vivo como salida principal del sistema.
+- ADR-020: identidad inequivoca del artefacto XLSX entregado para revision humana.
+- ADR-021: backend stateless con cache in-memory para visuales.
+- ADR-022: calculo de estadisticas y comparativas en backend.
+- ADR-023: confiabilidad determinada por numero de muestras.
+- ADR-024: proxy de Vite para desarrollo local de `/api/*`.
+- ADR-025: hook custom `useVisuales` y estado local para la UI de visuales.
 
-## ADR-001: Adaptacion de roles multi-modelo
+## ADR-001 a ADR-008: Principios fundacionales
 
-**Estado:** Aprobado (inicial)
+**Estado:** vigentes
 
-**Decision**
+**Resumen**
 
-- ChatGPT coordina y razona.
-- Codex implementa backend, parsers, validaciones, tests y auditoria.
-- Gemini CLI desarrolla frontend y prototipos visuales.
-- Claude no forma parte de la suite actual del estudio.
+- ADR-001: reparto de responsabilidades por herramientas.
+- ADR-002: el dato bruto nunca se sobrescribe.
+- ADR-003: separacion entre RAW, normalizado, validacion, calculo y exportacion.
+- ADR-004: no se actualizan ratios sin validacion.
+- ADR-005: prioridad de fuentes estructuradas sobre PDF.
+- ADR-006: trazabilidad obligatoria extremo a extremo.
+- ADR-007: exclusion sin borrado del historico.
+- ADR-008: no calcular ratios definitivos sin superficie base definida.
 
-**Racional**
+**Impacto**
 
-Separacion explicita de responsabilidades para reducir friccion y mejorar trazabilidad de decisiones.
+- Siguen condicionando cualquier cambio posterior del producto.
+- Ninguna fase nueva puede ignorar estos principios sin ADR de reemplazo.
 
-## ADR-002: El dato bruto nunca se sobrescribe
+## ADR-013 a ADR-018: Parsing, normalizacion y estrategia multi-formato
 
-**Estado:** Aprobado (inicial)
+**Estado:** vigentes
 
-**Decision**
+**Resumen**
 
-- Todo archivo importado debe conservarse.
-- La normalizacion no sustituye al dato original.
-- Las correcciones se registran como capas adicionales, no como destruccion del dato fuente.
+- ADR-013: extractor diagnostico BC3 antes de parser definitivo.
+- ADR-014: diseno preliminar de parser BC3 antes de importar al master.
+- ADR-015: normalizacion intermedia BC3 en capa separada.
+- ADR-016: estrategia multi-formato con prioridad operativa para Excel y Presto/PZH.
+- ADR-017: contrato comun multi-formato para lectura y normalizacion intermedia.
+- ADR-018: soporte obligatorio Presto/PZH solo mediante ruta tecnica evidenciada.
 
-**Racional**
+**Impacto**
 
-Garantiza auditoria retroactiva, reproducibilidad y control de cambios de interpretacion.
-
-## ADR-003: Separacion entre RAW, normalizado, validacion, calculo y exportacion
-
-**Estado:** Aprobado (inicial)
-
-**Decision**
-
-El sistema debe separar claramente:
-
-- dato bruto;
-- dato normalizado;
-- mapeos;
-- validaciones;
-- ratios calculados;
-- logs de importacion;
-- exportaciones.
-
-**Racional**
-
-Permite aislar errores por etapa y evita contaminacion de datos entre capas.
-
-## ADR-004: No se actualizan ratios sin validacion
-
-**Estado:** Aprobado (inicial)
-
-**Decision**
-
-- Una importacion solo puede afectar a ratios agregados si supera controles minimos.
-- Si faltan datos criticos, la importacion queda pendiente de revision.
-
-**Racional**
-
-Evita introducir ruido sistemico y protege la fiabilidad del master.
-
-## ADR-005: Prioridad de fuentes
-
-**Estado:** Aprobado (inicial)
-
-**Decision inicial**
-
-- BC3 y Excel son fuentes preferentes.
-- PDF es respaldo documental o fuente manual, no fuente automatica principal.
-- Archivos Presto nativos o PZH requieren analisis antes de considerarse fuente fiable.
-
-**Racional**
-
-Minimiza perdida semantica y reduce errores de extraccion no estructurada.
-
-## ADR-006: Trazabilidad obligatoria
-
-**Estado:** Aprobado (inicial)
-
-**Decision**
-
-Cada dato importado debe poder vincularse a:
-
-- archivo origen;
-- hash del archivo;
-- fecha de importacion;
-- tipo de archivo;
-- proyecto;
-- linea, hoja, partida o capitulo de origen cuando sea posible.
-
-**Racional**
-
-Habilita auditoria extremo a extremo y depuracion precisa de discrepancias.
-
-## ADR-007: Exclusion sin borrado
-
-**Estado:** Aprobado (inicial)
-
-**Decision**
-
-- Si un dato es incorrecto, dudoso o no comparable, se marca como excluido.
-- No se elimina fisicamente del historico.
-
-**Racional**
-
-Mantiene evidencia historica y evita perdida irreversible de contexto.
-
-## ADR-008: Superficie base pendiente de definicion
-
-**Estado:** Aprobado (inicial)
-
-**Decision**
-
-- No se calcularan ratios definitivos si no esta definida la superficie base aplicable.
-- La superficie base debe decidirse explicitamente antes de consolidar ratios.
-
-**Racional**
-
-Sin superficie base estable no hay comparabilidad confiable entre proyectos.
-
-## ADR-013: Extractor diagnostico BC3 antes de parser definitivo
-
-**Estado:** Aprobado (fase 3)
-
-**Decision**
-
-- Fase 3 implementa solo un extractor diagnostico BC3.
-- Fase 3 no crea parser definitivo BC3.
-- Fase 3 no alimenta el master.
-- Fase 3 no calcula ratios.
-- Fase 3 no decide categorias finales.
-- Fase 3 no consolida importes.
-- Fase 3 se enfoca en estructura, encoding, tipos de registro y riesgos antes del parser real.
-
-**Racional**
-
-La evidencia de Fase 2.2 muestra variabilidad real de fuentes y necesidad de inspeccion controlada previa. Un extractor diagnostico reduce riesgo de disenar un parser definitivo sobre supuestos incorrectos y preserva la separacion entre diagnostico e integracion al master.
-
-## ADR-014: Diseno preliminar de parser BC3 antes de importacion al master
-
-**Estado:** Aprobado (fase 4.0)
-
-**Decision**
-
-- Antes de implementar parser BC3, se realiza diseno documental preliminar.
-- El parser BC3 preliminar no alimenta directamente el master.
-- El parser BC3 preliminar produce estructura intermedia trazable.
-- Parsing, validacion, normalizacion e importacion se mantienen como fases separadas.
-- Los datos ambiguos se marcan para revision humana y no se fuerzan.
-- Los registros desconocidos no rompen el proceso salvo bloqueo estructural minimo.
-- El calculo de ratios queda explicitamente fuera de alcance en esta fase.
-
-**Racional**
-
-Tras Fase 3.5 hay readiness positivo para diseno preliminar, pero persiste variabilidad de variantes FIEBDC y ambiguedad de senales economicas/unidades. Congelar esta separacion en ADR evita acoplar prematuramente parsing con decisiones de negocio, protege trazabilidad y reduce riesgo de contaminar el master con interpretaciones no consolidadas.
-
-## ADR-015: Normalizacion intermedia BC3 antes de importacion al master
-
-**Estado:** Aprobado (fase 5.0)
-
-**Decision**
-
-- La normalizacion intermedia BC3 se disena e implementa en capa separada y no importa datos al master en esta fase.
-- La normalizacion intermedia no calcula ratios.
-- La normalizacion intermedia no consolida importes finales.
-- La normalizacion intermedia no decide categorias finales.
-- La normalizacion intermedia preserva trazabilidad a BC3 (archivo, registro y contexto de origen cuando aplique).
-- Los datos ambiguos se marcan y quedan para revision humana; no se fuerzan interpretaciones.
-- `CATEGORY_MAPPING` se define en una fase posterior.
-- La importacion al master se define en una fase posterior con contrato y validaciones propias.
-
-**Racional**
-
-Con Fase 4 cerrada tecnicamente (parser y validador estrictos operativos, avance permitido sobre subconjunto valido con exclusiones controladas), el siguiente paso requiere estructurar datos sin mezclar decisiones de negocio final. Esta separacion reduce riesgo de sobreinterpretacion, protege auditabilidad y mantiene control de alcance antes de mapping final y carga al master.
-
-## ADR-016: Estrategia multi-formato con prioridad Excel y Presto/PZH
-
-**Estado:** Aprobado (fase 5.3)
-
-**Decision**
-
-- BC3 se mantiene como modulo avanzado disponible, pero deja de ser prioridad unica del roadmap.
-- Se pausa el endurecimiento adicional de schema BC3 previsto tras Fase 5.2.
-- Excel y Presto/PZH pasan a prioridad alta por frecuencia real de uso en fuentes del negocio.
-- El siguiente bloque de trabajo se centra en diagnostico tecnico por formato (Excel y Presto/PZH) antes de nuevas implementaciones de extraccion/normalizacion.
-- Se mantiene el marco de restricciones: sin importacion al master, sin calculo de ratios, sin consolidacion final de importes, sin normalizacion final de categorias y sin UX en esta etapa.
-
-**Racional**
-
-La evidencia operativa indica que BC3 no sera siempre la fuente principal y que Excel/Presto/PZH tendran mayor presencia. Continuar invirtiendo solo en BC3 incrementa riesgo de desalineacion con la realidad de entrada. La estrategia multi-formato reduce ese riesgo, preserva el trabajo ya consolidado de BC3 y reequilibra esfuerzo hacia las fuentes con mayor impacto esperado.
-
-## ADR-017: Contrato comun multi-formato para lectura y normalizacion intermedia
-
-**Estado:** Aprobado (fase 7.2)
-
-**Decision**
-
-- El sistema debe converger a un contrato comun de lectura y diagnostico para Excel, Presto/PZH y BC3.
-- Excel requiere lector integral y una normalizacion intermedia antes de cualquier mapping final.
-- Presto/PZH se investigan primero con diagnostico tecnico para decidir si existe lectura directa o si requiere exportacion externa.
-- BC3 permanece como modulo avanzado ya operativo y no debe bloquear la consolidacion multi-formato.
-- Ningun formato debe importar al master ni calcular ratios en esta fase.
-
-**Racional**
-
-La realidad operativa mezcla formatos con frecuencias distintas. Un contrato comun evita desarrollar silos incompatibles, mantiene trazabilidad comparativa entre formatos y permite decidir por evidencia tecnica si Presto/PZH puede leerse nativamente o solo via exportacion.
-
-## ADR-018: Soporte obligatorio Presto/PZH mediante ruta tecnica evidenciada
-
-**Estado:** Aprobado (fase 8)
-
-**Decision**
-
-- Presto/PZH es un objetivo obligatorio del proyecto y no puede omitirse del roadmap sin permiso explicito.
-- El estado tecnico actual no justifica un parser nativo improvisado.
-- La via de soporte debe basarse en evidencia tecnica y puede ser una de estas rutas:
-  - exportacion desde Presto a BC3;
-  - exportacion desde Presto a Excel;
-  - herramienta externa especializada;
-  - libreria especializada si demuestra viabilidad real;
-  - investigacion tecnica adicional;
-  - flujo alternativo documentado.
-- Mientras no exista evidencia adicional, los archivos Presto-like clasificados como `NEEDS_VENDOR_EXPORT` permanecen como referencia tecnica y no se fuerzan a lectura nativa.
-
-**Racional**
-
-Presto/PZH forma parte del corpus real del proyecto y no debe desaparecer del roadmap por conveniencia tecnica. A la vez, el diagnostico actual muestra ausencia de lectura nativa directa utilizable, por lo que la opcion segura es sostener el soporte por una ruta evidenciada y trazable, no inventar un parser sin base suficiente.
+- El sistema no debe forzar lectura nativa no evidenciada.
+- BC3 sigue soportado, pero no monopoliza el roadmap.
+- Excel y artefactos derivados siguen siendo primera clase en el producto.
 
 ## ADR-019: Excel maestro vivo como salida principal del sistema
 
-**Estado:** Aprobado (fase 9.0)
+**Status:** CONGELADA
+**Fecha:** 18 de mayo de 2026
+**Actualizada:** 1 de junio de 2026
 
 **Decision**
 
-- La salida principal del sistema sera un Excel maestro vivo.
-- El Excel maestro vivo sera un archivo iterativo y actualizable.
-- El mismo archivo podra sobrescribirse de forma controlada en cada iteracion.
-- El Excel maestro podra incorporar nuevas hojas internas segun evolucione el corpus procesado.
-- El Excel maestro acumulera presupuestos procesados, validaciones, exclusiones, trazabilidad y ratios progresivos.
-- El Excel maestro sera el producto operativo final del sistema.
-- No se sustituye por una base de datos externa salvo decision humana futura documentada.
-- No se sustituye por un informe estatico.
-- Cualquier base de datos futura, si aparece, sera auxiliar salvo nueva ADR.
-- El calculo de ratios debera estar documentado y trazado.
-- El Excel maestro no debe alimentarse con datos no validados.
-- El Excel maestro debe distinguir datos usados, excluidos y pendientes de revision.
+- La salida principal del sistema es un Excel maestro vivo.
+- Ese Excel es iterativo, actualizable y trazable.
+- No se sustituye por una base de datos externa ni por un informe estatico salvo nueva ADR.
+- Cualquier API o UI interna es complementaria al Excel maestro, no su reemplazo.
 
-**Racional**
+**Por que**
 
-El proyecto no necesita solo una capa de calculo o un report puntual, sino un artefacto operativo vivo que acumule conocimiento y mejore con el volumen procesado. Fijar el master como Excel vivo mantiene la trazabilidad, encaja con la realidad de trabajo del dominio y evita separar el producto final en una base de datos abstracta que no sea el objeto operativo principal de la organizacion.
+- El artefacto operativo del dominio es el workbook vivo.
+- La trazabilidad y la revision manual encajan mejor en ese formato.
+- El negocio necesita un producto manipulable y auditable, no solo almacenamiento.
+
+**Impacto**
+
+- Toda nueva funcionalidad debe respetar el contrato del workbook.
+- La linea `/visuales` sirve para consulta y apoyo, no redefine el producto principal.
 
 ## ADR-020: Identidad inequivoca del artefacto XLSX entregado para revision humana
 
-**Estado:** Aprobado (fase 9.20)
-
-**Contexto**
-
-Durante 9.16-9.19 se detecto de forma repetida una discrepancia entre lo que el pipeline reportaba generar y lo que el usuario abria manualmente. La auditoria forense de 9.20 demostro que los artefactos reales en disco eran correctos, pero el usuario abria copias obsoletas: los nombres de salida (`xlsx_generalization_00N_preview.xlsx`) se reutilizaban entre fases, conviviendo decenas de XLSX homonimos de distintas edades bajo `outputs/`, ademas de posible lag de sincronizacion de la carpeta de trabajo.
+**Status:** CONGELADA
+**Fecha:** 28 de mayo de 2026
+**Actualizada:** 1 de junio de 2026
 
 **Decision**
 
-- Toda entrega para revision humana debe garantizar identidad: archivo generado = validado = exportado = revisado = abierto.
-- Las entregas de revision se generan en una carpeta nueva e inequivoca por fase (p.ej. `manual_review_phase_9_20/`), nunca reutilizando carpetas de fases previas.
-- Los archivos de revision usan nombres versionados por fase (`phase_9_XX_review_###.xlsx`), no nombres genericos reutilizables.
-- Cada entrega se acompana de un manifest que vincula nombre <-> SHA-256 <-> fase <-> hoja activa <-> hojas presentes.
-- La validacion se realiza reabriendo el archivo desde disco tras guardarlo; se comprueba que el SHA-256 no cambia a traves de la validacion (no se acepta validacion de workbook solo en memoria).
-- Los outputs generados no se anaden a git.
+- Archivo generado = archivo validado = archivo exportado = archivo revisado.
+- Las entregas de revision deben usar carpeta nueva por fase y nombres no reutilizables.
+- Cada entrega debe ir acompanada de manifest con SHA-256 y metadatos minimos.
+- La validacion debe reabrir el archivo desde disco, no solo validar el workbook en memoria.
 
-**Racional**
+**Por que**
 
-La calidad del Excel es irrelevante si el usuario no esta abriendo el archivo correcto. Romper la reutilizacion de nombres y exigir un manifest con hash hace imposible confundir un artefacto de la fase actual con una copia antigua, y convierte la trazabilidad del artefacto final en una propiedad verificable, no en una afirmacion.
+- Se detectaron confusiones por reutilizacion de nombres de salida entre fases.
+- La trazabilidad del artefacto final tiene que ser verificable y no depender de memoria humana.
+
+**Impacto**
+
+- La entrega humana de outputs XLSX queda gobernada por hashes y manifests.
+- Los outputs siguen fuera de Git.
+
+## ADR-021: Backend stateless con cache in-memory para visuales
+
+**Status:** CONGELADA
+**Fecha:** 27 de mayo de 2026
+**Actualizada:** 1 de junio de 2026
+
+**Decision**
+
+- El endpoint `GET /api/ratios/chapters` usa cache in-memory con TTL de 1 hora.
+- El backend de visuales se mantiene stateless en lo funcional; no persiste sesiones de UI.
+- La cache se invalida cuando una importacion recalcula ratios.
+
+**Por que**
+
+- Reduce latencia para consultas repetidas.
+- Mantiene el backend simple para entorno local y despliegue ligero.
+- Evita introducir Redis u otra infraestructura que hoy no aporta valor proporcional.
+
+**Impacto**
+
+- La coherencia del dato depende de invalidar cache tras importaciones.
+- La UI no necesita coordinar cache de negocio compleja.
+
+## ADR-022: Calculo de estadisticas y comparativas en backend
+
+**Status:** CONGELADA
+**Fecha:** 27 de mayo de 2026
+**Actualizada:** 1 de junio de 2026
+
+**Decision**
+
+- El backend calcula min, max, mediana, percentiles, desviacion y comparativa economica.
+- El frontend solo renderiza y orquesta interaccion.
+- Las reglas de confiabilidad y analisis viven del lado servidor.
+
+**Por que**
+
+- Hay una unica fuente de verdad.
+- La logica queda cubierta por Pytest.
+- Se reduce el riesgo de divergencia entre UI y API.
+
+**Impacto**
+
+- `GET /api/ratios/chapters` devuelve datos listos para visualizacion.
+- `POST /api/analyze/comparativa` devuelve analisis cerrado para la UI.
+
+## ADR-023: Confiabilidad determinada por numero de muestras
+
+**Status:** CONGELADA
+**Fecha:** 27 de mayo de 2026
+**Actualizada:** 1 de junio de 2026
+
+**Decision**
+
+- La solidez del ratio se determina por el numero de muestras disponibles.
+- La UI expresa ese estado como confiabilidad legible para usuario interno.
+- Un sistema funcional con `N=1` sigue siendo util para exploracion, pero no implica referencia estadistica fuerte.
+
+**Por que**
+
+- La interpretacion depende mas del volumen de evidencia que de la presentacion visual.
+- Evita sobrerreclamar precision cuando el corpus aun es pequeno.
+
+**Impacto**
+
+- La mejora real del sistema requiere importar mas presupuestos, no solo mas interfaz.
+- La documentacion debe recordar siempre el limite actual de solidez.
+
+## ADR-024: Proxy de Vite para desarrollo local de `/api/*`
+
+**Status:** CONGELADA
+**Fecha:** 28 de mayo de 2026
+**Actualizada:** 1 de junio de 2026
+
+**Decision**
+
+- En desarrollo, Vite proxea `/api/*` al backend local.
+- El frontend trabaja con rutas relativas en lugar de URLs backend hardcodeadas.
+
+**Por que**
+
+- Reduce friccion de CORS y configuracion local.
+- Mantiene una experiencia uniforme entre componentes y tests de integracion.
+
+**Impacto**
+
+- Si cambia el destino del backend local, hay que revisar `frontend/vite.config.ts`.
+- La validacion manual en navegador debe considerar cache/restart de Vite cuando se cambia el proxy.
+
+## ADR-025: Hook custom `useVisuales` y estado local para la UI de visuales
+
+**Status:** CONGELADA
+**Fecha:** 28 de mayo de 2026
+**Actualizada:** 1 de junio de 2026
+
+**Decision**
+
+- La UI de visuales usa un hook custom `useVisuales`.
+- El estado se resuelve de forma local en React para esta feature; no se congelo un store global adicional.
+- La capa API se mantiene separada en `frontend/src/api/visuales.ts`.
+
+**Por que**
+
+- La complejidad actual de la pantalla no justifica introducir otra capa de estado.
+- El patron hook + cliente API es suficiente, testeable y facil de seguir.
+
+**Impacto**
+
+- La feature puede evolucionar sin acoplarse a un store global prematuro.
+- Si la superficie funcional crece, se podra abrir una ADR futura para estado compartido mas amplio.
+
+## Como proponer cambios a ADRs
+
+1. No cambiar una ADR congelada sin documentar una ADR de reemplazo o supersesion.
+2. Si la realidad del codigo cambia, actualizar primero la implementacion y luego la ADR correspondiente.
+3. Mantener `CONTEXT.md`, `PROJECT_STATUS.md` y `README.md` sincronizados con estas decisiones.
