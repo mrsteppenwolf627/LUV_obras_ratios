@@ -269,6 +269,20 @@ class TestAnalyzeComparativa:
         resp = self._post(api_client, {"items": [], "area_total": 100.0})
         assert resp.status_code == 422
 
+    def test_validation_error_blank_chapter(self, api_client):
+        resp = self._post(api_client, {
+            "items": [{"capitulo": "   ", "valor_unitario": 300.0}],
+            "area_total": 100.0,
+        })
+        assert resp.status_code == 422
+
+    def test_validation_error_blank_unit(self, api_client):
+        resp = self._post(api_client, {
+            "items": [{"capitulo": "ESTRUCTURA", "valor_unitario": 300.0, "unidad": "   "}],
+            "area_total": 100.0,
+        })
+        assert resp.status_code == 422
+
     def test_multiple_chapters_totals(self, api_client):
         data = self._post(api_client, {
             "items": [
@@ -280,3 +294,23 @@ class TestAnalyzeComparativa:
         # User matches ratios exactly → diferencia_monetaria ≈ 0
         assert abs(data["resumen"]["diferencia_monetaria"]) < 1.0
         assert len(data["capitulos"]) == 2
+
+    def test_quantity_is_used_as_weight_in_chapter_average(self, api_client):
+        data = self._post(api_client, {
+            "items": [
+                {"capitulo": "ESTRUCTURA", "valor_unitario": 300.0, "cantidad": 1},
+                {"capitulo": "ESTRUCTURA", "valor_unitario": 450.0, "cantidad": 3},
+            ],
+            "area_total": 100.0,
+        }).json()
+        assert len(data["capitulos"]) == 1
+        assert data["capitulos"][0]["valor_mio"] == 412.5
+        assert data["capitulos"][0]["desviacion_pct"] == 37.5
+
+    def test_building_type_is_trimmed_in_lookup(self, api_client):
+        data = self._post(api_client, {
+            "items": [{"capitulo": "ESTRUCTURA", "valor_unitario": 300.0}],
+            "area_total": 100.0,
+            "building_type": " residential ",
+        }).json()
+        assert len(data["capitulos"]) == 1

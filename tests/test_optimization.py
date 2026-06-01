@@ -158,6 +158,21 @@ def test_normalization_mixed_case(opt_session):
     assert len(result.capitulos) == 1
 
 
+def test_quantity_weighting_is_applied(opt_session):
+    """Repeated quantities must weight the €/m² average inside a chapter."""
+    presupuesto = PresupuestoAnalisis(
+        items=[
+            ItemPresupuesto(capitulo="ESTRUCTURA", valor_unitario=300.0, cantidad=1),
+            ItemPresupuesto(capitulo="ESTRUCTURA", valor_unitario=450.0, cantidad=3),
+        ],
+        area_total=100.0,
+    )
+    result = analizar_comparativa(opt_session, presupuesto)
+    assert len(result.capitulos) == 1
+    assert result.capitulos[0].valor_mio == 412.5
+    assert result.capitulos[0].desviacion_pct == 37.5
+
+
 def test_unknown_chapter_not_matched(opt_session):
     """Unknown chapters go to capitulos_sin_ratio."""
     presupuesto = PresupuestoAnalisis(
@@ -167,6 +182,17 @@ def test_unknown_chapter_not_matched(opt_session):
     result = analizar_comparativa(opt_session, presupuesto)
     assert len(result.capitulos) == 0
     assert "CAPITULO_QUE_NO_EXISTE_XYZ" in result.capitulos_sin_ratio
+
+
+def test_building_type_with_spaces_is_normalized(opt_session):
+    """Surrounding spaces in building_type must not break matching."""
+    presupuesto = PresupuestoAnalisis(
+        items=[ItemPresupuesto(capitulo="ESTRUCTURA", valor_unitario=300.0)],
+        area_total=100.0,
+        building_type=" residential ",
+    )
+    result = analizar_comparativa(opt_session, presupuesto)
+    assert len(result.capitulos) == 1
 
 
 # ---------------------------------------------------------------------------

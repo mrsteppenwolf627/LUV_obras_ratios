@@ -2,29 +2,32 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from collections import defaultdict
+from typing import DefaultDict, List, Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from src.db.schema import Ratio
 from app.schemas.visuales import (
     CapituloRatioResponse,
     ComparativaCapitulo,
     ComparativaResponse,
+    ItemPresupuesto,
     PresupuestoAnalisis,
     ResumenComparativa,
 )
+from src.db.schema import Ratio
 
 _CONFIABILIDAD_ORDEN = {"muy_solido": 4, "solido": 3, "debil": 2, "muy_debil": 1}
 
 
 def calcular_estado_confiabilidad(cantidad_datos: int) -> str:
-    if cantidad_datos >= 10:
+    cantidad_normalizada = max(int(cantidad_datos or 0), 0)
+    if cantidad_normalizada >= 10:
         return "muy_solido"
-    if cantidad_datos >= 5:
+    if cantidad_normalizada >= 5:
         return "solido"
-    if cantidad_datos >= 2:
+    if cantidad_normalizada >= 2:
         return "debil"
     return "muy_debil"
 
@@ -35,8 +38,9 @@ def obtener_capitulos_ratios(
 ) -> List[CapituloRatioResponse]:
     """Return all chapters that have a computed median ratio."""
     q = session.query(Ratio).filter(Ratio.median.isnot(None))
-    if building_type:
-        q = q.filter(func.upper(Ratio.building_type) == building_type.upper())
+    normalized_building_type = _normalize_text(building_type)
+    if normalized_building_type:
+        q = q.filter(func.upper(Ratio.building_type) == normalized_building_type)
 
     resultado: List[CapituloRatioResponse] = []
     for ratio in q.order_by(Ratio.chapter_code).all():
@@ -50,8 +54,8 @@ def obtener_capitulos_ratios(
                 percentil_75=ratio.percentil_75,
                 maximo=ratio.max_value,
                 desviacion_std=ratio.std_dev,
-                cantidad_datos=ratio.sample_count,
-                estado_confiabilidad=calcular_estado_confiabilidad(ratio.sample_count),
+                cantidad_datos=int(ratio.sample_count or 0),
+                estado_confiabilidad=calcular_estado_confiabilidad(ratio.sample_count or 0),
                 building_type=ratio.building_type,
             )
         )
@@ -69,31 +73,30 @@ def analizar_comparativa(
     total_ratio = 0.0
     confiabilidades: List[str] = []
 
-    # Group items by chapter (uppercase-normalized)
-    items_por_capitulo: dict = {}
+    items_por_capitulo: DefaultDict[str, List[ItemPresupuesto]] = defaultdict(list)
     for item in presupuesto.items:
-        key = item.capitulo.upper().strip()
-        items_por_capitulo.setdefault(key, []).append(item)
+        items_por_capitulo[_normalize_text(item.capitulo)].append(item)
+
+    ratios_por_capitulo = _cargar_ratios_por_capitulo(
+        session=session,
+        chapter_codes=list(items_por_capitulo.keys()),
+        building_type=presupuesto.building_type,
+    )
 
     for capitulo_norm, items in items_por_capitulo.items():
-        # Look up historical ratio: prefer building_type match, fall back to any
-        ratio_db = _buscar_ratio(session, capitulo_norm, presupuesto.building_type)
+        ratio_db = ratios_por_capitulo.get(capitulo_norm)
 
         if ratio_db is None or ratio_db.median is None:
             capitulos_sin_ratio.append(capitulo_norm)
             continue
 
-        # Average value across items in this chapter (€/m²)
-        valor_mio = (
-            sum(i.valor_unitario * i.cantidad for i in items) / len(items)
-        )
+        total_cantidad = sum(item.cantidad for item in items)
+        valor_mio = sum(item.valor_unitario * item.cantidad for item in items) / total_cantidad
         valor_ratio = ratio_db.median
-        desviacion_pct = (
-            ((valor_mio - valor_ratio) / valor_ratio * 100) if valor_ratio else 0.0
-        )
+        desviacion_pct = ((valor_mio - valor_ratio) / valor_ratio * 100) if valor_ratio else 0.0
         impacto_monetario = (desviacion_pct / 100) * valor_ratio * presupuesto.area_total
 
-        confiabilidad = calcular_estado_confiabilidad(ratio_db.sample_count)
+        confiabilidad = calcular_estado_confiabilidad(ratio_db.sample_count or 0)
         confiabilidades.append(confiabilidad)
 
         capitulos_resultado.append(
@@ -112,15 +115,13 @@ def analizar_comparativa(
         total_ratio += valor_ratio * presupuesto.area_total
 
     confiabilidad_global = (
-        min(confiabilidades, key=lambda x: _CONFIABILIDAD_ORDEN.get(x, 0))
+        min(confiabilidades, key=lambda value: _CONFIABILIDAD_ORDEN.get(value, 0))
         if confiabilidades
         else "muy_debil"
     )
 
     diferencia_monetaria = total_presupuesto - total_ratio
-    diferencia_pct = (
-        (diferencia_monetaria / total_ratio * 100) if total_ratio else 0.0
-    )
+    diferencia_pct = (diferencia_monetaria / total_ratio * 100) if total_ratio else 0.0
 
     return ComparativaResponse(
         capitulos=capitulos_resultado,
@@ -136,24 +137,60 @@ def analizar_comparativa(
     )
 
 
+def _normalize_text(value: Optional[str]) -> str:
+    return (value or "").strip().upper()
+
+
+def _cargar_ratios_por_capitulo(
+    session: Session,
+    chapter_codes: List[str],
+    building_type: Optional[str],
+) -> dict[str, Ratio]:
+    if not chapter_codes:
+        return {}
+
+    rows = (
+        session.query(Ratio)
+        .filter(
+            func.upper(Ratio.chapter_code).in_(chapter_codes),
+            Ratio.median.isnot(None),
+        )
+        .all()
+    )
+
+    normalized_building_type = _normalize_text(building_type)
+    ratios_por_capitulo: dict[str, Ratio] = {}
+    for row in rows:
+        chapter_code = _normalize_text(row.chapter_code)
+        if not chapter_code:
+            continue
+        if chapter_code not in ratios_por_capitulo:
+            ratios_por_capitulo[chapter_code] = row
+        if normalized_building_type and _normalize_text(row.building_type) == normalized_building_type:
+            ratios_por_capitulo[chapter_code] = row
+
+    return ratios_por_capitulo
+
+
 def _buscar_ratio(
     session: Session, chapter_code: str, building_type: Optional[str]
 ) -> Optional[Ratio]:
     """Find a Ratio row for a given chapter, preferring building_type match."""
-    if building_type:
+    normalized_chapter_code = _normalize_text(chapter_code)
+    normalized_building_type = _normalize_text(building_type)
+    if normalized_building_type:
         ratio = (
             session.query(Ratio)
             .filter(
-                func.upper(Ratio.chapter_code) == chapter_code,
-                func.upper(Ratio.building_type) == building_type.upper(),
+                func.upper(Ratio.chapter_code) == normalized_chapter_code,
+                func.upper(Ratio.building_type) == normalized_building_type,
             )
             .first()
         )
         if ratio:
             return ratio
-    # Fall back: any ratio for this chapter
     return (
         session.query(Ratio)
-        .filter(func.upper(Ratio.chapter_code) == chapter_code)
+        .filter(func.upper(Ratio.chapter_code) == normalized_chapter_code)
         .first()
     )

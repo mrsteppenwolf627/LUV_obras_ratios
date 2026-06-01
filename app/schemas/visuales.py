@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CapituloRatioResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     capitulo: str
     descripcion: Optional[str]
     minimo: Optional[float]
@@ -22,30 +24,54 @@ class CapituloRatioResponse(BaseModel):
 
 
 class ItemPresupuesto(BaseModel):
-    capitulo: str = Field(..., description="Código de capítulo")
-    valor_unitario: float = Field(..., gt=0, description="Precio unitario (€/m2)")
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    capitulo: str = Field(..., description="Codigo de capitulo")
+    valor_unitario: float = Field(..., gt=0, description="Precio unitario (EUR/m2)")
     cantidad: int = Field(default=1, ge=1, description="Cantidad")
     unidad: str = Field(default="m2", description="Unidad")
 
+    @field_validator("capitulo", "unidad")
+    @classmethod
+    def validate_non_empty_string(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("no puede estar vacio")
+        return normalized
+
 
 class PresupuestoAnalisis(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
     items: List[ItemPresupuesto] = Field(..., min_length=1)
-    area_total: float = Field(..., gt=0, description="Área total en m2")
+    area_total: float = Field(..., gt=0, description="Area total en m2")
     building_type: Optional[str] = None
+
+    @field_validator("building_type")
+    @classmethod
+    def normalize_building_type(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
 
 
 class ComparativaCapitulo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     capitulo: str
     descripcion: Optional[str]
-    valor_mio: float = Field(..., description="Valor usuario (€/m2)")
-    valor_ratio: float = Field(..., description="Mediana histórica (€/m2)")
-    desviacion_pct: float = Field(..., description="Desviación en %")
-    impacto_monetario: float = Field(..., description="Impacto total en €")
+    valor_mio: float = Field(..., description="Valor usuario (EUR/m2)")
+    valor_ratio: float = Field(..., description="Mediana historica (EUR/m2)")
+    desviacion_pct: float = Field(..., description="Desviacion en %")
+    impacto_monetario: float = Field(..., description="Impacto total en EUR")
     estado_confiabilidad: Literal["muy_solido", "solido", "debil", "muy_debil"]
     ratio_encontrado: bool = True
 
 
 class ResumenComparativa(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     total_presupuesto: float
     total_ratio: float
     diferencia_pct: float
@@ -55,6 +81,8 @@ class ResumenComparativa(BaseModel):
 
 
 class ComparativaResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     capitulos: List[ComparativaCapitulo]
     capitulos_sin_ratio: List[str] = Field(default_factory=list)
     resumen: ResumenComparativa

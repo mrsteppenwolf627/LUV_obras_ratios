@@ -15,6 +15,7 @@ interface RangoValidacionProps {
   unidad: string;
   estado_confiabilidad: EstadoConfiabilidad;
   desviacion_std?: number | null;
+  hasMiValor?: boolean;
 }
 
 const formatMetric = (value: number | null | undefined) =>
@@ -33,6 +34,7 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
   unidad,
   estado_confiabilidad,
   desviacion_std,
+  hasMiValor = true,
 }) => {
   const getBadgeColor = () => {
     switch (estado_confiabilidad) {
@@ -50,6 +52,7 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
   };
 
   const dentroRango =
+    hasMiValor &&
     minimo !== null &&
     maximo !== null &&
     Number.isFinite(mi_valor) &&
@@ -90,7 +93,13 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
       </div>
 
       <div className={`text-lg font-bold ${dentroRango ? 'text-green-700' : 'text-red-700'}`}>
-        Mi valor: {mi_valor.toFixed(2)} {unidad} {dentroRango ? 'Dentro de rango' : 'Fuera de rango'}
+        {hasMiValor ? (
+          <>
+            Mi valor: {mi_valor.toFixed(2)} {unidad} {dentroRango ? 'Dentro de rango' : 'Fuera de rango'}
+          </>
+        ) : (
+          'Introduce tu valor para validar el rango.'
+        )}
       </div>
     </div>
   );

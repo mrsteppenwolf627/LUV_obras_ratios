@@ -27,7 +27,12 @@ const TablaConfiabilidad: React.FC<TablaConfiabilidadProps> = ({ capitulos }) =>
   return (
     <div className="overflow-x-auto rounded-lg border border-[#E0D5C7] bg-white p-4 font-inter">
       <h2 className="mb-4 text-lg font-bold text-[#2D5016]">Solidez por capitulo</h2>
-      <table className="w-full text-left">
+      {sortedCapitulos.length === 0 && (
+        <p className="rounded-lg border border-dashed border-[#D4C7B8] bg-[#FAF7F2] px-4 py-6 text-sm text-[#6B5D4D]">
+          No hay capitulos disponibles para evaluar la solidez.
+        </p>
+      )}
+      {sortedCapitulos.length > 0 && <table className="w-full text-left">
         <thead>
           <tr className="bg-[#2D5016] text-white">
             <th className="p-3">Capitulo</th>
@@ -52,7 +57,7 @@ const TablaConfiabilidad: React.FC<TablaConfiabilidadProps> = ({ capitulos }) =>
             </tr>
           ))}
         </tbody>
-      </table>
+      </table>}
     </div>
   );
 };

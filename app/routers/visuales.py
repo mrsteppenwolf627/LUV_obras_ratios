@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import List, Optional
 
@@ -12,6 +13,7 @@ from app.schemas.visuales import CapituloRatioResponse, ComparativaResponse, Pre
 from app.services.comparativa_service import analizar_comparativa, obtener_capitulos_ratios
 
 router = APIRouter(prefix="/api", tags=["visuales"])
+logger = logging.getLogger(__name__)
 
 # In-memory cache for GET /api/ratios/chapters (invalidated on each import)
 _chapters_cache: dict = {"data": None, "timestamp": 0.0, "ttl": 3600.0}
@@ -24,7 +26,7 @@ def invalidar_cache_chapters() -> None:
 
 
 @router.get("/ratios/chapters", response_model=List[CapituloRatioResponse])
-def get_ratios_chapters(building_type: Optional[str] = None):
+def get_ratios_chapters(building_type: Optional[str] = None) -> List[CapituloRatioResponse]:
     """
     List all chapters with consolidated statistics.
 
@@ -44,6 +46,9 @@ def get_ratios_chapters(building_type: Optional[str] = None):
     session = _db.get_db()
     try:
         resultado = obtener_capitulos_ratios(session, building_type)
+    except Exception:
+        logger.exception("Error fetching ratios chapters", extra={"building_type": building_type})
+        raise
     finally:
         session.close()
 
@@ -55,7 +60,7 @@ def get_ratios_chapters(building_type: Optional[str] = None):
 
 
 @router.post("/analyze/comparativa", response_model=ComparativaResponse)
-def analyze_comparativa(presupuesto: PresupuestoAnalisis):
+def analyze_comparativa(presupuesto: PresupuestoAnalisis) -> ComparativaResponse:
     """
     Compare user budget against historical chapter ratios.
 
@@ -70,5 +75,15 @@ def analyze_comparativa(presupuesto: PresupuestoAnalisis):
     session = _db.get_db()
     try:
         return analizar_comparativa(session, presupuesto)
+    except Exception:
+        logger.exception(
+            "Error analyzing comparativa",
+            extra={
+                "building_type": presupuesto.building_type,
+                "items_count": len(presupuesto.items),
+                "area_total": presupuesto.area_total,
+            },
+        )
+        raise
     finally:
         session.close()

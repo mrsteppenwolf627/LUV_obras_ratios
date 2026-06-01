@@ -5,14 +5,16 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import * as visualesAPI from '@/api/visuales';
 import Visuales from '@/pages/Visuales';
 
-vi.mock('@/api/visuales', () => ({
-  analizarComparativa: vi.fn(),
-}));
+vi.mock('@/api/visuales', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/visuales')>();
+  return {
+    ...actual,
+    analizarComparativa: vi.fn(),
+  };
+});
 
 describe('Visuales Integration', () => {
   const fetchMock = vi.fn();
-  const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -49,7 +51,6 @@ describe('Visuales Integration', () => {
 
   test('carga capitulos al montar', async () => {
     render(<Visuales />);
-    expect(screen.getByText(/Cargando/i)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByLabelText(/Selecciona un capitulo/i)).toBeInTheDocument();
@@ -61,8 +62,8 @@ describe('Visuales Integration', () => {
         Accept: 'application/json',
         'Content-Type': 'application/json',
       },
+      signal: expect.any(AbortSignal),
     });
-    expect(logSpy).toHaveBeenCalled();
   });
 
   test('muestra Tab 0 (Rango) por defecto', async () => {
@@ -143,6 +144,54 @@ describe('Visuales Integration', () => {
     await waitFor(() => {
       expect(screen.getByText(/HTTP 404: Not Found/i)).toBeInTheDocument();
     });
-    expect(errorSpy).toHaveBeenCalled();
+  });
+
+  test('muestra mensaje amigable en timeout de API', async () => {
+    fetchMock.mockRejectedValue(new Error('La peticion ha excedido el tiempo de espera.'));
+
+    render(<Visuales />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/La API ha tardado demasiado en responder/i)).toBeInTheDocument();
+    });
+  });
+
+  test('valida area total negativa sin llamar a la API de comparativa', async () => {
+    render(<Visuales />);
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /Comparativa/i })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: /Comparativa/i }));
+    await user.type(screen.getByPlaceholderText(/Area total/i), '-5');
+    await user.type(screen.getByLabelText(/Valor unitario 1/i), '334.67');
+    await user.click(screen.getByRole('button', { name: /Analizar comparativa/i }));
+
+    expect(visualesAPI.analizarComparativa).not.toHaveBeenCalled();
+    expect(screen.getByText(/Introduce un area total mayor que 0/i)).toBeInTheDocument();
+  });
+
+  test('muestra estados vacios cuando la API devuelve cero capitulos', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      headers: {
+        get: () => 'application/json',
+      },
+      text: async () => JSON.stringify([]),
+    });
+
+    render(<Visuales />);
+    const user = userEvent.setup();
+
+    await waitFor(() => {
+      expect(screen.getByText(/No hay capitulos disponibles para mostrar el rango/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('tab', { name: /Solidez/i }));
+    expect(screen.getByText(/No hay capitulos disponibles para evaluar la solidez/i)).toBeInTheDocument();
   });
 });

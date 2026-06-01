@@ -40,6 +40,9 @@ const humanizeError = (error: string | null) => {
   if (error.includes('Network')) {
     return 'La conexion con la API ha fallado. Reintenta en unos segundos.';
   }
+  if (error.includes('tiempo de espera')) {
+    return 'La API ha tardado demasiado en responder. Reintenta en unos segundos.';
+  }
   return error;
 };
 
@@ -171,6 +174,7 @@ const Visuales = () => {
         descripcion={capitulo.descripcion ?? 'Sin descripcion disponible'}
         desviacion_std={capitulo.desviacion_std ?? null}
         estado_confiabilidad={capitulo.estado_confiabilidad}
+        hasMiValor={hasMiValor}
         maximo={capitulo.maximo ?? null}
         mediana={capitulo.mediana ?? null}
         mi_valor={hasMiValor ? miValorNumerico : 0}
@@ -179,7 +183,6 @@ const Visuales = () => {
         percentil_75={capitulo.percentil_75 ?? null}
         unidad="EUR/m2"
       />
-      {!hasMiValor && <p className="text-sm text-[#7A6A58]">Introduce tu valor para validar el rango.</p>}
     </div>
   );
 
@@ -290,7 +293,7 @@ const Visuales = () => {
         </button>
         <button
           className="rounded-lg bg-[#2D5016] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#9AAF92]"
-          disabled={analyzing}
+          disabled={analyzing || capitulos.length === 0}
           type="button"
           onClick={() => void handleAnalizarComparativa()}
         >
