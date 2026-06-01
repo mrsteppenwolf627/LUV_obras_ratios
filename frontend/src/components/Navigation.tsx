@@ -1,11 +1,6 @@
 import { Archive, Home, PieChart, Table, Upload } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: (string | undefined | null | boolean | { [key: string]: boolean })[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from '@/lib/utils';
 
 const Navigation = () => {
   const location = useLocation();

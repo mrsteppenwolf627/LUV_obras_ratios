@@ -13,16 +13,20 @@ interface ItemComboboxProps {
   items: ItemOption[];
   value: string;
   onSelect: (item: ItemOption) => void;
+  onTextChange?: (text: string) => void;
   placeholder?: string;
   loading?: boolean;
+  'aria-label'?: string;
 }
 
 export function ItemCombobox({
   items,
   value,
   onSelect,
+  onTextChange,
   placeholder = 'Selecciona un item...',
   loading = false,
+  'aria-label': ariaLabel,
 }: ItemComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -59,12 +63,14 @@ export function ItemCombobox({
         value={searchText}
         onChange={(e) => {
           setSearchText(e.target.value);
+          onTextChange?.(e.target.value);
           setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
         placeholder={placeholder}
         className="w-full rounded-lg border border-[#D4C7B8] bg-white px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-[#2D5016] disabled:opacity-50"
         disabled={loading}
+        aria-label={ariaLabel}
         aria-autocomplete="list"
         aria-expanded={isOpen}
       />
