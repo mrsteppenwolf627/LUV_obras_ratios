@@ -67,6 +67,29 @@ Como objetivo complementario ya implementado, el sistema expone visuales interna
 
 ## Estado actual
 
+### Snapshot sesión 1 de junio de 2026 — FASE C + Tab Items × Categorías
+
+- Rama de trabajo actual: `feature/FASE-C-schema`.
+- Backend: `pytest` 625 tests pasando (528 previos + 97 nuevos FASE C).
+- Frontend: `vitest` 50/50 tests pasando.
+- Backend respondiendo en `http://localhost:8000`.
+- Frontend Vite respondiendo en `http://localhost:5173`.
+
+#### Nuevas funcionalidades FASE C
+
+- Schema extendido: enums `Categoria` (MEDIUM/PREMIUM/LUXURY/LUXURY_PLUS) y `Confianza`; nueva tabla `item_master_ratios` con constraint único (item_master_id, categoria); columnas `categoria_asignada` y `ratio_comparativa` en `ItemMaster` / `ItemInstance`.
+- Migration Alembic `b3c4d5e6f7a8` aplicada y reversible.
+- `app/utils/keywords_mapping.py`: clasificación por keywords (4 tiers, 40+ keywords).
+- `app/services/clasificacion_service.py`: clasificar por keywords + fallback por precio + nivel de confianza por N.
+- `app/crud/item_master_ratios.py`: get/create, actualización incremental (running average), queries, medianas por categoría.
+- `GET /api/items/list`: lista de ItemMaster para autocomplete con ratio_actual y confianza via outerjoin.
+- `POST /api/items/analisis`: análisis por items con clasificación automática, comparación histórica y actualización incremental de ratios.
+- Frontend tab 4 "Items × Categorías": `ItemsAnalisisTab`, `AnalisisForm` con `ItemCombobox` nativo (sin shadcn/ui), `ItemsTable`, `ResumenPorCategoria`, `GraficosAnalisis`, `DetalleItemModal`, `AnalisisHistorico`.
+
+#### Bug fix
+
+- `diff_pct` → `diferencia_pct` en tipos, componentes y fixtures de tests (crash `undefined.toFixed()` al recibir respuesta del API).
+
 ### Snapshot funcional verificado el 1 de junio de 2026
 
 - Rama de trabajo actual: `main`.
@@ -138,9 +161,8 @@ Decisiones vigentes del roadmap principal:
 
 ### P0
 
-- Hacer la verificacion manual final de `/visuales` en navegador sobre `http://localhost:5173/visuales`.
-- Confirmar en DevTools que la llamada a `/api/ratios/chapters` responde correctamente desde la UI.
-- Mantener sincronizada la documentacion del snapshot funcional con la linea canonica del Excel maestro.
+- Solicitar acceso a presupuestos historicos para ingesta masiva (N > 5 → confianza SOLIDO/MUY_SOLIDO).
+- Validar tab "Items × Categorias" en navegador: modal, autocomplete, analisis, graficos.
 
 ### P1
 
