@@ -159,6 +159,12 @@ Decisiones vigentes del roadmap principal:
 
 ## Backlog priorizado
 
+| Tarea | Impacto | Dependencia | Riesgo | Esfuerzo | Prioridad |
+|---|:---:|:---:|:---:|:---:|:---:|
+| REFACTOR-RANGO-001: Input autónomo en RangoValidacion | Alto | — | Bajo | 2h | 🔴 P0 |
+| TASK 5: Ingesta masiva presupuestos | Alto | Acceso BD histórica | Medio | 8h | 🔴 P0 |
+| TASK 6: Refactor ingesta automática | Medio | TASK 5 | Bajo | 3h | 🟠 P1 |
+
 ### P0
 
 - Solicitar acceso a presupuestos historicos para ingesta masiva (N > 5 → confianza SOLIDO/MUY_SOLIDO).
@@ -192,3 +198,31 @@ Decisiones vigentes del roadmap principal:
 - `PROJECT_STATUS.md` debe reflejar snapshots operativos concretos con fecha y evidencia.
 - No se deben cerrar tareas sin evidencia verificable en codigo, tests, logs o documentacion.
 - La linea canonica de Fase 9.x prevalece sobre snapshots auxiliares salvo cambio documentado explicito.
+
+## 🔐 ADRs: Decisiones Arquitectónicas
+
+### ADR-16: Input Autónomo en RangoValidacion
+
+**Status:** ✅ CONGELADA  
+**Fecha:** 2026-06-02  
+**Propuesto por:** Aitor + Claude  
+
+**Decisión:**
+Refactorizar `RangoValidacion.tsx` para incluir input local autónomo. Usuario entra número → valida → ve resultado, todo en el mismo componente.
+
+**Por qué:**
+- Componente independiente, reutilizable
+- Arquitectura clara (sin acoplamiento padre-hijo)
+- UX intuitiva: input + gráfico + validación en mismo lugar
+- Fácil para arquitecto/equipo obras
+
+**Alternativa rechazada:**
+- Input en página padre = confusión de responsabilidades, acoplamiento innecesario
+
+**Impacto:**
+- Afecta: `frontend/src/components/Visuales/RangoValidacion.tsx`
+- Props: remover `miValor` si viene del padre
+- Riesgo: BAJO (cambio UI puro)
+- Sin impacto en: Backend, BD, lógica validación (ya existe)
+
+**Status de cambio:** Congelada. Solo revisar si falla validación manual.
