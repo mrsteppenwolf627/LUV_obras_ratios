@@ -257,6 +257,24 @@ class ItemInstance(Base):
         )
 
 
+class BudgetImport(Base):
+    """Metadata record for each JSON-API budget import."""
+
+    __tablename__ = "budget_imports"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    filename = Column(String(255), nullable=False)
+    file_hash = Column(String(64), unique=True, nullable=False)
+    building_type = Column(String(100), nullable=True)
+    import_date = Column(DateTime, default=_utcnow, nullable=False)
+    status = Column(String(50), nullable=False, default="success")  # success | partial | error
+    items_count = Column(Integer, nullable=True)
+    error_message = Column(String(1000), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<BudgetImport id={self.id} hash={self.file_hash[:8]} status={self.status!r}>"
+
+
 class ValidationLog(Base):
     """One validation event tied to a budget or a specific line item."""
 
