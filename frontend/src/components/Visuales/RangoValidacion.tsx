@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import type { EstadoConfiabilidad } from '@/types/visuales';
 
@@ -10,12 +10,10 @@ interface RangoValidacionProps {
   mediana: number | null;
   percentil_75: number | null;
   maximo: number | null;
-  mi_valor: number;
   cantidad_datos: number;
   unidad: string;
   estado_confiabilidad: EstadoConfiabilidad;
   desviacion_std?: number | null;
-  hasMiValor?: boolean;
 }
 
 const formatMetric = (value: number | null | undefined) =>
@@ -29,13 +27,13 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
   mediana,
   percentil_75,
   maximo,
-  mi_valor,
   cantidad_datos,
   unidad,
   estado_confiabilidad,
   desviacion_std,
-  hasMiValor = true,
 }) => {
+  const [miValor, setMiValor] = useState<string>('');
+
   const getBadgeColor = () => {
     switch (estado_confiabilidad) {
       case 'muy_solido':
@@ -51,13 +49,15 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
     }
   };
 
+  const miValorNumerico = miValor !== '' ? Number(miValor) : null;
+  const hasMiValor = miValorNumerico !== null && !isNaN(miValorNumerico);
+
   const dentroRango =
     hasMiValor &&
     minimo !== null &&
     maximo !== null &&
-    Number.isFinite(mi_valor) &&
-    mi_valor >= minimo &&
-    mi_valor <= maximo;
+    miValorNumerico >= minimo &&
+    miValorNumerico <= maximo;
 
   return (
     <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter">
@@ -69,6 +69,21 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
         <span className={`${getBadgeColor()} rounded px-3 py-1 text-sm uppercase text-white`}>
           {estado_confiabilidad.replace('_', ' ')}
         </span>
+      </div>
+
+      <div className="mb-6">
+        <label className="flex flex-col gap-2 text-sm font-medium text-[#4A4034]">
+          Mi valor ({unidad})
+          <input
+            type="number"
+            value={miValor}
+            onChange={(e) => setMiValor(e.target.value)}
+            placeholder="Ej: 245.50"
+            min="0"
+            step="0.01"
+            className="rounded-lg border border-[#D4C788] bg-white px-4 py-2 text-base outline-none focus:ring-2 focus:ring-[#D4C788]/50"
+          />
+        </label>
       </div>
 
       <div className="my-6">
@@ -92,10 +107,10 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
         <p>Muestras: {cantidad_datos}</p>
       </div>
 
-      <div className={`text-lg font-bold ${dentroRango ? 'text-green-700' : 'text-red-700'}`}>
+      <div className={`text-lg font-bold ${hasMiValor ? (dentroRango ? 'text-green-700' : 'text-red-700') : 'text-[#6B5D4D]'}`}>
         {hasMiValor ? (
           <>
-            Mi valor: {mi_valor.toFixed(2)} {unidad} {dentroRango ? 'Dentro de rango' : 'Fuera de rango'}
+            Mi valor: {miValorNumerico?.toFixed(2)} {unidad} — {dentroRango ? '✅ Dentro de rango' : '❌ Fuera de rango'}
           </>
         ) : (
           'Introduce tu valor para validar el rango.'

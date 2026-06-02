@@ -56,7 +56,6 @@ const Visuales = () => {
   const { capitulos, loading, analyzing, error, setError, analizarPresupuesto } = useVisuales();
   const [indiceTab, setIndiceTab] = useState(0);
   const [capituloSeleccionado, setCapituloSeleccionado] = useState('');
-  const [miValor, setMiValor] = useState('');
   const [areaTotal, setAreaTotal] = useState('');
   const [comparativaItems, setComparativaItems] = useState<ComparativaDraftItem[]>([createDraftItem()]);
   const [comparativaData, setComparativaData] = useState<ComparativaResponse | null>(null);
@@ -74,8 +73,6 @@ const Visuales = () => {
     [capituloSeleccionado, capitulos],
   );
 
-  const miValorNumerico = Number(miValor);
-  const hasMiValor = Number.isFinite(miValorNumerico) && miValorNumerico > 0;
   const displayError = humanizeError(formError ?? error);
 
   const updateComparativaItem = (
@@ -137,7 +134,7 @@ const Visuales = () => {
 
   const renderRango = (capitulo: CapituloRatioResponse) => (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 items-end gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="flex flex-col gap-4">
         <label className="flex flex-col gap-2 text-sm font-medium text-primary">
           Selecciona un capitulo
           <select
@@ -153,20 +150,6 @@ const Visuales = () => {
             ))}
           </select>
         </label>
-
-        <label className="flex flex-col gap-2 text-sm font-medium text-primary">
-          Mi valor (EUR/m2)
-          <input
-            aria-label="Mi valor"
-            className="rounded-lg border border-[#D4C7B8] bg-white px-4 py-3 text-base"
-            min="0"
-            placeholder="Mi valor (EUR/m2)"
-            step="0.01"
-            type="number"
-            value={miValor}
-            onChange={(event) => setMiValor(event.target.value)}
-          />
-        </label>
       </div>
 
       <RangoValidacion
@@ -175,10 +158,8 @@ const Visuales = () => {
         descripcion={capitulo.descripcion ?? 'Sin descripcion disponible'}
         desviacion_std={capitulo.desviacion_std ?? null}
         estado_confiabilidad={capitulo.estado_confiabilidad}
-        hasMiValor={hasMiValor}
         maximo={capitulo.maximo ?? null}
         mediana={capitulo.mediana ?? null}
-        mi_valor={hasMiValor ? miValorNumerico : 0}
         minimo={capitulo.minimo ?? null}
         percentil_25={capitulo.percentil_25 ?? null}
         percentil_75={capitulo.percentil_75 ?? null}
