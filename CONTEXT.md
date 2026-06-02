@@ -1,10 +1,10 @@
 # CONTEXT: LUV Ratios
 
 **Proyecto:** Sistema de consolidacion y validacion de ratios de construccion
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Estado:** FUNCIONAL (en desarrollo activo)
-**Fecha actualizacion:** 1 de junio de 2026
-**Ultima sesion relevante:** snapshot funcional Backend FASE 1-3 + Frontend FASE 4 verificado localmente, manteniendo la linea canonica del Excel maestro vivo
+**Fecha actualizacion:** 2 de junio de 2026
+**Ultima sesion relevante:** TASK 5A+5B+5C completado — deduplicación automática + endpoint POST /api/import/budgets + 658/658 tests verdes
 
 ## Arquitectura
 
@@ -66,6 +66,43 @@ Como objetivo complementario ya implementado, el sistema expone visuales interna
 17. La linea FASE 1-4 de `visuales` no sustituye el roadmap canonico del Excel maestro vivo.
 
 ## Estado actual
+
+### Snapshot sesión 2 de junio de 2026 — TASK 5A+5B+5C: Deduplicación + Import
+
+- Rama de trabajo actual: `feature/FASE-C-schema`.
+- Backend: `pytest` **658 tests pasando** (625 previos + 33 nuevos TASK 5A+5B+5C).
+- Frontend: `vitest` 4/4 tests pasando (RangoValidacion refactor).
+- Backend verificado en `http://localhost:8000`.
+- Frontend Vite respondiendo en `http://localhost:5173`.
+
+#### Nuevas funcionalidades TASK 5A+5B+5C
+
+- `app/utils/normalize.py`: `normalize_item_key()` — NFKD+lowercase+colapso de espacios+strip+max500, idempotente.
+- `src/db/schema.py`: tabla `BudgetImport` (file_hash único, status, items_count, error_message).
+- `app/crud/budgets.py`: `create/get/update_budget_import()` para trazabilidad de cada importación API.
+- `app/schemas/import_budgets.py`: `BudgetImportRequest` + `BudgetImportResponse` (Pydantic v2).
+- `POST /api/import/budgets`: importación JSON con deduplicación automática — 409 si hash existe, skip de líneas inválidas, contadores `items_creados`/`items_duplicados`/`muestras_actualizadas`.
+- Migración Alembic `c4d5e6f7a8b9` aplicada y en HEAD.
+- `tests/test_normalize.py`: 11 unit tests (normalize puro).
+- `tests/test_import.py`: 16 integration tests (5 suites: valid, dedup, 409, inválidas, validación).
+
+#### Refactor UX RangoValidacion (REFACTOR-RANGO-002)
+
+- `RangoValidacion.tsx`: 3 estados según `cantidad_datos` — SIN_DATOS (N=0), MUESTRA_INSUFICIENTE (N<2), VALIDACION_COMPLETA (N≥2).
+- Constante `MUESTRAS_MINIMAS_PARA_RANGO=2` centraliza el umbral.
+
+#### Validación manual en vivo (2026-06-02)
+
+```
+Test A — Importación válida:
+  POST /api/import/budgets → 200 {"items_creados":1,"status":"success"}  ✅
+
+Test B — Re-importar mismo file_hash:
+  POST /api/import/budgets (mismo hash) → 409 "Ya importado"  ✅
+
+Test C — 3 variantes del mismo item en un payload:
+  POST /api/import/budgets → {"items_creados":1,"items_duplicados":2}  ✅
+```
 
 ### Snapshot sesión 1 de junio de 2026 — FASE C + Tab Items × Categorías
 
@@ -161,12 +198,12 @@ Decisiones vigentes del roadmap principal:
 
 | Tarea | Impacto | Dependencia | Riesgo | Esfuerzo | Prioridad |
 |---|:---:|:---:|:---:|:---:|:---:|
-| ADR-17: Estrategia de deduplicación | Alto | — | Bajo | 1h | 🔴 P0 |
-| TASK 5A: Función normalize_item_key() | Alto | ADR-17 | Bajo | 2h | 🔴 P0 |
-| TASK 5B: Endpoint POST /api/import/budgets | Alto | TASK 5A | Medio | 3h | 🔴 P0 |
-| TASK 5C: Tests unitarios + integración | Alto | TASK 5B | Bajo | 2h | 🔴 P0 |
-| TASK 5D: Validación duplicados archivo | Medio | TASK 5B | Bajo | 1h | 🟠 P1 |
-| TASK 6: Refactor ingesta automática | Medio | TASK 5 | Bajo | 3h | 🟠 P1 |
+| ADR-17: Estrategia de deduplicación | Alto | — | Bajo | 1h | ✅ COMPLETADO |
+| TASK 5A: Función normalize_item_key() | Alto | ADR-17 | Bajo | 2h | ✅ COMPLETADO |
+| TASK 5B: Endpoint POST /api/import/budgets | Alto | TASK 5A | Medio | 3h | ✅ COMPLETADO |
+| TASK 5C: Tests unitarios + integración | Alto | TASK 5B | Bajo | 2h | ✅ COMPLETADO |
+| TASK 5D: Validación duplicados archivo | Medio | TASK 5B | Bajo | 1h | ⏳ PENDIENTE |
+| TASK 6: Refactor ingesta automática | Medio | TASK 5 | Bajo | 3h | ⏳ PENDIENTE |
 
 ### P0
 
@@ -278,3 +315,30 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
 - (-) Normalización es irreversible (item_key normalizado ≠ descripción original)
 
 **Status cambio:** Congelada. Cambios solo con consensus arquitectónico.
+
+---
+
+## 🔐 ÚLTIMA ACTUALIZACIÓN
+
+- **Fecha:** 2026-06-02
+- **Modelo:** Claude Code (Sonnet 4.6)
+- **Cambios:**
+  - ✅ `app/utils/normalize.py` — `normalize_item_key()` determinístico e idempotente
+  - ✅ `app/routers/import_budgets.py` — endpoint `POST /api/import/budgets`
+  - ✅ `app/crud/budgets.py` — CRUD `BudgetImport` (create/get/update)
+  - ✅ `app/schemas/import_budgets.py` — schemas Pydantic v2
+  - ✅ `src/db/schema.py` — tabla `budget_imports`
+  - ✅ `migrations/versions/c4d5e6f7a8b9` — CREATE TABLE budget_imports (HEAD)
+  - ✅ `tests/test_normalize.py` — 11 unit tests normalize
+  - ✅ `tests/test_import.py` — 16 integration tests import
+  - ✅ `frontend/src/components/Visuales/RangoValidacion.tsx` — 3 estados UX
+
+- **Checklist:**
+  - [x] 658/658 tests pasando
+  - [x] Endpoint `/api/import/budgets` funcional (validado en vivo)
+  - [x] Deduplicación automática por `normalize_item_key()` verificada
+  - [x] Prevención de re-importar (`file_hash` único → 409) verificada
+  - [x] RangoValidacion 3 estados (N=0 / N<2 / N≥2) funcional
+  - [x] Sin breaking changes en tests existentes
+  - [x] BD en estado HEAD (Alembic `c4d5e6f7a8b9`)
+  - [x] Documentado en CONTEXT.md + ADR-17
