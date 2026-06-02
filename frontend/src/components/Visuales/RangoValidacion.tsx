@@ -16,16 +16,34 @@ interface RangoValidacionProps {
   desviacion_std?: number | null;
 }
 
+const MUESTRAS_MINIMAS_PARA_RANGO = 2;
+
 const formatMetric = (value: number | null | undefined) =>
   value === null || value === undefined ? 'N/D' : value.toFixed(2);
+
+const getEstadoValidacion = (cantidad: number) => {
+  if (cantidad === 0) return 'SIN_DATOS';
+  if (cantidad < MUESTRAS_MINIMAS_PARA_RANGO) return 'MUESTRA_INSUFICIENTE';
+  return 'VALIDACION_COMPLETA';
+};
+
+const getBadgeColor = (estado: EstadoConfiabilidad) => {
+  switch (estado) {
+    case 'muy_solido': return 'bg-[#2D5016]';
+    case 'solido':     return 'bg-[#4CAF50]';
+    case 'debil':      return 'bg-[#FBC02D]';
+    case 'muy_debil':  return 'bg-[#D32F2F]';
+    default:           return 'bg-gray-500';
+  }
+};
 
 const RangoValidacion: React.FC<RangoValidacionProps> = ({
   capitulo,
   descripcion,
   minimo,
   percentil_25,
-  mediana,
   percentil_75,
+  mediana,
   maximo,
   cantidad_datos,
   unidad,
@@ -34,31 +52,87 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
 }) => {
   const [miValor, setMiValor] = useState<string>('');
 
-  const getBadgeColor = () => {
-    switch (estado_confiabilidad) {
-      case 'muy_solido':
-        return 'bg-[#2D5016]';
-      case 'solido':
-        return 'bg-[#4CAF50]';
-      case 'debil':
-        return 'bg-[#FBC02D]';
-      case 'muy_debil':
-        return 'bg-[#D32F2F]';
-      default:
-        return 'bg-gray-500';
-    }
-  };
+  const estado = getEstadoValidacion(cantidad_datos);
 
   const miValorNumerico = miValor !== '' ? Number(miValor) : null;
   const hasMiValor = miValorNumerico !== null && !isNaN(miValorNumerico);
 
+  const puedeValidar = estado === 'VALIDACION_COMPLETA';
+
   const dentroRango =
+    puedeValidar &&
     hasMiValor &&
     minimo !== null &&
     maximo !== null &&
-    miValorNumerico >= minimo &&
-    miValorNumerico <= maximo;
+    Number.isFinite(miValorNumerico!) &&
+    miValorNumerico! >= minimo &&
+    miValorNumerico! <= maximo;
 
+  // ── Estado: SIN DATOS ──────────────────────────────────────────────────────
+  if (estado === 'SIN_DATOS') {
+    return (
+      <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter">
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="font-playfair text-xl font-bold">{capitulo}</h2>
+            <p className="mt-1 text-sm text-[#6B5D4D]">{descripcion}</p>
+          </div>
+        </div>
+        <div className="rounded-lg border border-[#D4C788] bg-gray-100 p-6 text-center">
+          <p className="text-gray-600">
+            No hay datos históricos para <strong>{descripcion}</strong> aún.
+          </p>
+          <p className="mt-2 text-sm text-gray-500">
+            Importa presupuestos para ver análisis comparativos.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Estado: MUESTRA INSUFICIENTE (N=1) ────────────────────────────────────
+  if (estado === 'MUESTRA_INSUFICIENTE') {
+    return (
+      <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter">
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="font-playfair text-xl font-bold">{capitulo}</h2>
+            <p className="mt-1 text-sm text-[#6B5D4D]">{descripcion}</p>
+          </div>
+        </div>
+        <div className="rounded-lg border border-orange-300 bg-orange-50 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="inline-block rounded bg-orange-600 px-2 py-1 text-xs font-bold text-white">
+              MUY_DÉBIL
+            </span>
+            <p className="text-sm font-semibold text-orange-800">
+              Muestra insuficiente ({cantidad_datos}/{MUESTRAS_MINIMAS_PARA_RANGO})
+            </p>
+          </div>
+          <p className="text-xs text-orange-700">
+            Solo hay {cantidad_datos} dato. Importa más presupuestos para validar rangos confiables.
+          </p>
+          <label className="mt-3 flex flex-col gap-2">
+            <span className="text-sm">Valor comparativo ({unidad}) (referencia):</span>
+            <input
+              type="number"
+              value={miValor}
+              onChange={(e) => setMiValor(e.target.value)}
+              placeholder="Ej: 245.50"
+              min="0"
+              step="0.01"
+              className="rounded border border-orange-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-300/50"
+            />
+          </label>
+          <p className="mt-2 text-xs text-orange-700">
+            Referencia: {formatMetric(mediana)} {unidad} (único dato)
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Estado: VALIDACION COMPLETA (N>=2) ────────────────────────────────────
   return (
     <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter">
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -66,7 +140,7 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
           <h2 className="font-playfair text-xl font-bold">{capitulo}</h2>
           <p className="mt-1 text-sm text-[#6B5D4D]">{descripcion}</p>
         </div>
-        <span className={`${getBadgeColor()} rounded px-3 py-1 text-sm uppercase text-white`}>
+        <span className={`${getBadgeColor(estado_confiabilidad)} rounded px-3 py-1 text-sm uppercase text-white`}>
           {estado_confiabilidad.replace('_', ' ')}
         </span>
       </div>
@@ -110,7 +184,8 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
       <div className={`text-lg font-bold ${hasMiValor ? (dentroRango ? 'text-green-700' : 'text-red-700') : 'text-[#6B5D4D]'}`}>
         {hasMiValor ? (
           <>
-            Mi valor: {miValorNumerico?.toFixed(2)} {unidad} — {dentroRango ? '✅ Dentro de rango' : '❌ Fuera de rango'}
+            Mi valor: {miValorNumerico?.toFixed(2)} {unidad} —{' '}
+            {dentroRango ? '✅ Dentro de rango' : '❌ Fuera de rango'}
           </>
         ) : (
           'Introduce tu valor para validar el rango.'
