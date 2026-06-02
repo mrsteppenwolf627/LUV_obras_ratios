@@ -161,8 +161,11 @@ Decisiones vigentes del roadmap principal:
 
 | Tarea | Impacto | Dependencia | Riesgo | Esfuerzo | Prioridad |
 |---|:---:|:---:|:---:|:---:|:---:|
-| REFACTOR-RANGO-001: Input autónomo en RangoValidacion | Alto | — | Bajo | 2h | 🔴 P0 |
-| TASK 5: Ingesta masiva presupuestos | Alto | Acceso BD histórica | Medio | 8h | 🔴 P0 |
+| ADR-17: Estrategia de deduplicación | Alto | — | Bajo | 1h | 🔴 P0 |
+| TASK 5A: Función normalize_item_key() | Alto | ADR-17 | Bajo | 2h | 🔴 P0 |
+| TASK 5B: Endpoint POST /api/import/budgets | Alto | TASK 5A | Medio | 3h | 🔴 P0 |
+| TASK 5C: Tests unitarios + integración | Alto | TASK 5B | Bajo | 2h | 🔴 P0 |
+| TASK 5D: Validación duplicados archivo | Medio | TASK 5B | Bajo | 1h | 🟠 P1 |
 | TASK 6: Refactor ingesta automática | Medio | TASK 5 | Bajo | 3h | 🟠 P1 |
 
 ### P0
@@ -226,3 +229,52 @@ Refactorizar `RangoValidacion.tsx` para incluir input local autónomo. Usuario e
 - Sin impacto en: Backend, BD, lógica validación (ya existe)
 
 **Status de cambio:** Congelada. Solo revisar si falla validación manual.
+
+### ADR-17: Estrategia de Deduplicación en Ingesta Masiva
+
+**Status:** ✅ CONGELADA  
+**Fecha:** 2026-06-02  
+**Propuesto por:** Claude + Aitor  
+
+**Decisión:**
+Implementar deduplicación mediante normalización determinística de `item_key` + reutilización de `get_or_create_item_master()` existente.
+
+**Problema:**
+Sin normalización, 1000 partidas históricas = 1000 ItemMaster (N=1 cada uno) = sistema permanentemente "MUY_DÉBIL".
+Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silenciosa.
+
+**Solución:**
+1. Función `normalize_item_key(descripcion)` → determinística, idempotente
+2. Endpoint `POST /api/import/budgets` que usa `get_or_create_item_master(item_key_normalizado)`
+3. Validación de hash para evitar re-importar mismo presupuesto
+4. Incremento automático de `muestras_count` en ItemMaster
+
+**Componentes:**
+- `app/utils/normalize.py` → función normalización
+- `app/routers/import_budgets.py` → endpoint importación
+- `app/crud/budgets.py` → CRUD para BudgetImport (metadatos)
+- Tests: `tests/test_normalize.py`, `tests/test_import.py`
+
+**Normalización rules:**
+- Lowercase
+- Remover espacios múltiples
+- Remover acentos/diacríticos
+- Remover caracteres especiales (excepto guiones/espacios internos)
+- Máximo 500 caracteres
+- Idempotente: `normalize(normalize(x)) == normalize(x)`
+
+**Validación duplicados:**
+- Tabla `budget_import` con (filename_hash, import_date, status)
+- Si `filename_hash` existe → rechazar "Ya importado el 2026-06-01"
+
+**Impacto:**
+- Nuevos archivos: `normalize.py`, `import_budgets.py`, `budgets.py` (crud)
+- Nueva tabla: `budget_import` (metadatos importación)
+- Nueva migración Alembic
+- Sin cambios en ItemMaster, ItemInstance (compatible)
+
+**Trade-offs:**
+- (+) Deduplicación automática, trazabilidad de importaciones
+- (-) Normalización es irreversible (item_key normalizado ≠ descripción original)
+
+**Status cambio:** Congelada. Cambios solo con consensus arquitectónico.
