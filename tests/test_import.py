@@ -1,6 +1,8 @@
-"""Integration tests for POST /api/import/budgets (TASK 5B)."""
+"""Integration tests for POST /api/import/budgets (TASK 5B + 5D)."""
 
 from __future__ import annotations
+
+import hashlib
 
 import pytest
 from fastapi.testclient import TestClient
@@ -62,9 +64,8 @@ def _post(client, payload):
 
 
 def _make_hash(seed: str) -> str:
-    """Return a deterministic 64-char hash-like string for testing."""
-    base = seed.replace(" ", "_")
-    return (base * 64)[:64]
+    """Return a deterministic SHA256 hex string (64 chars) for testing."""
+    return hashlib.sha256(seed.encode()).hexdigest()
 
 
 # ---------------------------------------------------------------------------
@@ -314,3 +315,79 @@ class TestRequestValidation:
             "lineas": [{"numero": 1, "descripcion": "Algo", "cantidad": 1.0, "precio_unitario": 10.0}],
         })
         assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Suite 6: TASK 5D — Validaciones mejoradas y edge cases
+# ---------------------------------------------------------------------------
+
+class TestTask5DEdgeCases:
+    def test_hash_no_hex_devuelve_422(self, client_and_session):
+        """Hash con caracteres no hexadecimales rechazado en Pydantic."""
+        client, _ = client_and_session
+        resp = _post(client, {
+            "file_hash": "not_a_valid_hash_not_a_valid_hash_not_a_valid_hash_not_a_valid_ha",
+            "lineas": [{"numero": 1, "descripcion": "Algo", "cantidad": 1.0, "precio_unitario": 10.0}],
+        })
+        assert resp.status_code == 422
+
+    def test_hash_63_chars_devuelve_422(self, client_and_session):
+        """Hash hex de 63 caracteres (un carácter corto) → 422."""
+        client, _ = client_and_session
+        resp = _post(client, {
+            "file_hash": "a" * 63,
+            "lineas": [{"numero": 1, "descripcion": "Algo", "cantidad": 1.0, "precio_unitario": 10.0}],
+        })
+        assert resp.status_code == 422
+
+    def test_hash_65_chars_devuelve_422(self, client_and_session):
+        """Hash hex de 65 caracteres (uno de más) → 422."""
+        client, _ = client_and_session
+        resp = _post(client, {
+            "file_hash": "a" * 65,
+            "lineas": [{"numero": 1, "descripcion": "Algo", "cantidad": 1.0, "precio_unitario": 10.0}],
+        })
+        assert resp.status_code == 422
+
+    def test_cantidad_negativa_linea_omitida(self, client_and_session):
+        """Una línea con cantidad negativa se omite; la válida se procesa → partial."""
+        client, _ = client_and_session
+        payload = {
+            "file_hash": _make_hash("task5d_neg_qty_017"),
+            "lineas": [
+                {"numero": 1, "descripcion": "Partida válida task5d", "cantidad": 10.0, "precio_unitario": 100.0},
+                {"numero": 2, "descripcion": "Partida negativa task5d", "cantidad": -5.0, "precio_unitario": 100.0},
+            ],
+        }
+        data = _post(client, payload).json()
+        assert data["status"] == "partial"
+        assert data["items_creados"] == 1
+
+    def test_todas_invalidas_negativas_devuelve_error(self, client_and_session):
+        """Todas las líneas con cantidad negativa → status error."""
+        client, _ = client_and_session
+        payload = {
+            "file_hash": _make_hash("task5d_all_neg_018"),
+            "lineas": [
+                {"numero": 1, "descripcion": "Solo negativas A", "cantidad": -1.0, "precio_unitario": 100.0},
+                {"numero": 2, "descripcion": "Solo negativas B", "cantidad": -2.0, "precio_unitario": 50.0},
+            ],
+        }
+        data = _post(client, payload).json()
+        assert data["status"] == "error"
+        assert data["items_creados"] == 0
+
+    def test_partial_mezcla_validas_e_invalidas(self, client_and_session):
+        """Mix: 2 válidas + 1 con desc vacía → partial con items_creados >= 2."""
+        client, _ = client_and_session
+        payload = {
+            "file_hash": _make_hash("task5d_partial_mix_019"),
+            "lineas": [
+                {"numero": 1, "descripcion": "Partida mix A task5d", "cantidad": 10.0, "precio_unitario": 100.0},
+                {"numero": 2, "descripcion": "", "cantidad": 5.0, "precio_unitario": 50.0},
+                {"numero": 3, "descripcion": "Partida mix B task5d", "cantidad": 8.0, "precio_unitario": 75.0},
+            ],
+        }
+        data = _post(client, payload).json()
+        assert data["status"] == "partial"
+        assert data["items_creados"] == 2

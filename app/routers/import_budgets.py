@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import uuid
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, HTTPException
@@ -31,6 +33,14 @@ def import_budgets(request: BudgetImportRequest) -> BudgetImportResponse:
     - Misma descripción normalizada en un mismo payload → un solo ItemMaster.
     """
     from src.db.schema import Budget, ItemInstance, ItemMaster
+
+    log_id = str(uuid.uuid4())[:8]
+    start_time = datetime.now(timezone.utc)
+
+    logger.info(
+        "[Import %s] INICIADO: archivo=%s, lineas=%d, building_type=%s",
+        log_id, request.filename, len(request.lineas), request.building_type,
+    )
 
     session = _db.get_db()
     try:
@@ -69,27 +79,33 @@ def import_budgets(request: BudgetImportRequest) -> BudgetImportResponse:
         seen_keys: set[str] = set()
         items_creados = 0
         items_duplicados = 0
+        items_errores = 0
         muestras_actualizadas = 0
         detalles: List[str] = []
 
         for linea in request.lineas:
             desc = (linea.descripcion or "").strip()
             if not desc:
+                items_errores += 1
                 detalles.append(f"Línea {linea.numero}: descripción vacía, omitida")
+                logger.warning("[Import %s] Línea %d omitida: descripción vacía", log_id, linea.numero)
                 continue
 
             if linea.cantidad is None or linea.cantidad <= 0:
+                items_errores += 1
                 detalles.append(f"Línea {linea.numero} ({desc!r}): cantidad inválida, omitida")
-                logger.warning("Línea %d omitida: cantidad=%s", linea.numero, linea.cantidad)
+                logger.warning("[Import %s] Línea %d omitida: cantidad=%s", log_id, linea.numero, linea.cantidad)
                 continue
 
             if linea.precio_unitario is None or linea.precio_unitario <= 0:
+                items_errores += 1
                 detalles.append(f"Línea {linea.numero} ({desc!r}): precio_unitario inválido, omitida")
-                logger.warning("Línea %d omitida: precio_unitario=%s", linea.numero, linea.precio_unitario)
+                logger.warning("[Import %s] Línea %d omitida: precio_unitario=%s", log_id, linea.numero, linea.precio_unitario)
                 continue
 
             item_key = normalize_item_key(desc)
             if not item_key:
+                items_errores += 1
                 detalles.append(f"Línea {linea.numero}: item_key vacío tras normalizar, omitida")
                 continue
 
@@ -111,8 +127,10 @@ def import_budgets(request: BudgetImportRequest) -> BudgetImportResponse:
             if is_new_in_db and is_new_in_batch:
                 items_creados += 1
                 detalles.append(f"ItemMaster creado: {item_key!r}")
+                logger.debug("[Import %s] Item nuevo: %s", log_id, item_key)
             else:
                 items_duplicados += 1
+                logger.debug("[Import %s] Item duplicado (reutilizado): %s", log_id, item_key)
 
             seen_keys.add(item_key)
             master.muestras_count = (master.muestras_count or 0) + 1
@@ -150,6 +168,12 @@ def import_budgets(request: BudgetImportRequest) -> BudgetImportResponse:
 
         session.commit()
 
+        elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
+        logger.info(
+            "[Import %s] COMPLETADO en %.2fs: creados=%d, duplicados=%d, errores=%d, status=%s",
+            log_id, elapsed, items_creados, items_duplicados, items_errores, final_status,
+        )
+
         return BudgetImportResponse(
             import_id=str(import_record.id),
             items_creados=items_creados,
@@ -163,8 +187,11 @@ def import_budgets(request: BudgetImportRequest) -> BudgetImportResponse:
         session.rollback()
         raise
     except Exception as exc:
+        elapsed = (datetime.now(timezone.utc) - start_time).total_seconds()
         session.rollback()
-        logger.exception("Error crítico en import_budgets: %s", exc)
+        logger.error(
+            "[Import %s] ERROR después de %.2fs: %s", log_id, elapsed, exc, exc_info=True
+        )
         raise HTTPException(status_code=500, detail=f"Error al importar: {exc}") from exc
     finally:
         session.close()

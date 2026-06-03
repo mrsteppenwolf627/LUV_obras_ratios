@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import List, Optional
 
 from pydantic import BaseModel, field_validator
@@ -25,9 +26,10 @@ class BudgetImportRequest(BaseModel):
     @field_validator("file_hash")
     @classmethod
     def hash_no_vacio(cls, v: str) -> str:
-        if not v or len(v.strip()) < 8:
-            raise ValueError("file_hash debe tener al menos 8 caracteres")
-        return v.strip()
+        v = v.strip()
+        if not re.match(r"^[a-f0-9]{64}$", v):
+            raise ValueError("file_hash debe ser SHA256 hex (exactamente 64 caracteres [a-f0-9])")
+        return v
 
     @field_validator("lineas")
     @classmethod
