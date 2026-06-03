@@ -151,37 +151,40 @@ const ItemsAnalisisTab: React.FC = () => {
         </>
       )}
 
-      <div className="mt-8 border-t border-[#D4C788] pt-4">
+      <div className="mt-6 border-t border-[#D4C788] pt-4">
         <button
           onClick={() => setShowTutorial(!showTutorial)}
-          className="flex items-center gap-2 text-sm font-medium text-primary hover:text-[#2D5016] transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-primary hover:text-secondary transition-colors"
         >
-          {showTutorial ? '📖 Cerrar guía' : '📖 Cómo usar esta herramienta'}
-          <span className="text-xs">{showTutorial ? '▼' : '▶'}</span>
+          📖 Cómo usar esta herramienta
+          <span>{showTutorial ? '▼' : '▶'}</span>
         </button>
 
         {showTutorial && (
-          <div className="mt-3 bg-[#E8F1FF] p-5 rounded-lg border border-[#B8D4FF] shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
-            <h3 className="font-bold text-primary mb-3">Analizar partidas por categoría</h3>
-            <ol className="space-y-3 text-sm text-[#4A4034] list-decimal pl-5">
-              <li>Haz clic en <strong>"Analizar Presupuesto Nuevo"</strong>.</li>
-              <li>Se abre un formulario:
+          <div className="mt-3 bg-blue-50 p-4 rounded border border-blue-200 shadow-sm">
+            <h3 className="font-bold text-gray-800 mb-2">Analizar partidas por categoría</h3>
+            <ol className="space-y-2 text-sm text-gray-700 list-decimal pl-5">
+              <li>Haz clic en <strong>"Analizar Presupuesto Nuevo"</strong> (botón verde).</li>
+              <li>Se abre un formulario con campos:
                 <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li><strong>Busca/selecciona un item</strong> del dropdown (ej: "Carpintería Aluminio").</li>
-                  <li>El precio se pre-rellena automáticamente (puedes cambiarlo si necesitas).</li>
+                  <li><strong>Busca un item</strong> en el dropdown (empieza a escribir "Carpintería").</li>
+                  <li>El precio se pre-rellena automáticamente.</li>
+                  <li>Puedes cambiar el precio si lo necesitas.</li>
                 </ul>
               </li>
-              <li>Haz clic <strong>"Añadir"</strong> → el item se agrega a la lista inferior.</li>
-              <li>Repite con más items para completar tu presupuesto.</li>
-              <li>Haz clic <strong>"Analizar"</strong> → ves resultados por categoría:
+              <li>Haz clic <strong>"Añadir"</strong> → el item aparece en la lista debajo.</li>
+              <li>Repite pasos 1-3 con más items de tu presupuesto.</li>
+              <li>Haz clic <strong>"Analizar"</strong> → ves resultados:
                 <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li>Tu total vs Ratio histórico.</li>
-                  <li>Diferencia % por categoría y confiabilidad de los datos.</li>
+                  <li>Tabla por categoría (MEDIUM, PREMIUM, LUXURY, etc).</li>
+                  <li>Tu total vs Ratio histórico por cada categoría.</li>
+                  <li>Diferencia % (<span className="text-red-700 font-bold">rojo</span> = caro, <span className="text-green-700 font-bold">verde</span> = barato).</li>
+                  <li>Confiabilidad de cada categoría.</li>
                 </ul>
               </li>
-              <li>Haz clic en <strong>un item de la tabla</strong> para ver su detalle (rango, muestras, etc).</li>
+              <li>Haz clic en <strong>un item de la tabla</strong> para ver detalle completo (rango, gráficos).</li>
             </ol>
-            <p className="mt-4 text-xs font-semibold text-primary border-t border-[#B8D4FF] pt-2 italic">
+            <p className="mt-3 text-xs font-semibold text-gray-600 border-t border-blue-200 pt-2 italic">
               Cuándo usarlo: Para desglosar y validar cada partida individual de tu presupuesto.
             </p>
           </div>
