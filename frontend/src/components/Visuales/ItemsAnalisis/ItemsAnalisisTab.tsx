@@ -23,6 +23,7 @@ const ItemsAnalisisTab: React.FC = () => {
   const [filtroCategoria, setFiltroCategoria] = useState<string | null>(null);
   const [vistaHistorico, setVistaHistorico] = useState(false);
   const [itemParaDetalle, setItemParaDetalle] = useState<ItemAnalisisResultado | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -149,6 +150,43 @@ const ItemsAnalisisTab: React.FC = () => {
           )}
         </>
       )}
+
+      <div className="mt-8 border-t border-[#D4C788] pt-4">
+        <button
+          onClick={() => setShowTutorial(!showTutorial)}
+          className="flex items-center gap-2 text-sm font-medium text-primary hover:text-[#2D5016] transition-colors"
+        >
+          {showTutorial ? '📖 Cerrar guía' : '📖 Cómo usar esta herramienta'}
+          <span className="text-xs">{showTutorial ? '▼' : '▶'}</span>
+        </button>
+
+        {showTutorial && (
+          <div className="mt-3 bg-[#E8F1FF] p-5 rounded-lg border border-[#B8D4FF] shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+            <h3 className="font-bold text-primary mb-3">Analizar partidas por categoría</h3>
+            <ol className="space-y-3 text-sm text-[#4A4034] list-decimal pl-5">
+              <li>Haz clic en <strong>"Analizar Presupuesto Nuevo"</strong>.</li>
+              <li>Se abre un formulario:
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li><strong>Busca/selecciona un item</strong> del dropdown (ej: "Carpintería Aluminio").</li>
+                  <li>El precio se pre-rellena automáticamente (puedes cambiarlo si necesitas).</li>
+                </ul>
+              </li>
+              <li>Haz clic <strong>"Añadir"</strong> → el item se agrega a la lista inferior.</li>
+              <li>Repite con más items para completar tu presupuesto.</li>
+              <li>Haz clic <strong>"Analizar"</strong> → ves resultados por categoría:
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>Tu total vs Ratio histórico.</li>
+                  <li>Diferencia % por categoría y confiabilidad de los datos.</li>
+                </ul>
+              </li>
+              <li>Haz clic en <strong>un item de la tabla</strong> para ver su detalle (rango, muestras, etc).</li>
+            </ol>
+            <p className="mt-4 text-xs font-semibold text-primary border-t border-[#B8D4FF] pt-2 italic">
+              Cuándo usarlo: Para desglosar y validar cada partida individual de tu presupuesto.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

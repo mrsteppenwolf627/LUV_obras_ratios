@@ -51,6 +51,7 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
   desviacion_std,
 }) => {
   const [miValor, setMiValor] = useState<string>('');
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const estado = getEstadoValidacion(cantidad_datos);
 
@@ -68,10 +69,47 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
     miValorNumerico! >= minimo &&
     miValorNumerico! <= maximo;
 
+  const renderTutorial = () => (
+    <div className="mt-8 border-t border-[#D4C788] pt-4">
+      <button
+        onClick={() => setShowTutorial(!showTutorial)}
+        className="flex items-center gap-2 text-sm font-medium text-primary hover:text-[#2D5016] transition-colors"
+      >
+        {showTutorial ? '📖 Cerrar guía' : '📖 Cómo usar esta herramienta'}
+        <span className="text-xs">{showTutorial ? '▼' : '▶'}</span>
+      </button>
+
+      {showTutorial && (
+        <div className="mt-3 bg-[#E8F1FF] p-5 rounded-lg border border-[#B8D4FF] shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+          <h3 className="font-bold text-primary mb-3">Validar si tu precio está en rango</h3>
+          <ol className="space-y-3 text-sm text-[#4A4034] list-decimal pl-5">
+            <li><strong>Selecciona un capítulo</strong> en el desplegable superior (ej: AMENITIES).</li>
+            <li><strong>Entra el precio unitario</strong> en EUR/m2 que quieres validar (ej: 250).</li>
+            <li>El sistema compara tu precio contra todos los históricos:
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li><span className="text-green-700 font-bold">VERDE</span> = Tu precio está dentro del rango normal.</li>
+                <li><span className="text-red-700 font-bold">ROJO</span> = Tu precio está fuera (muy alto o muy bajo).</li>
+              </ul>
+            </li>
+            <li><strong>Lee la confiabilidad</strong> (badge arriba a la derecha):
+              <ul className="list-disc pl-5 mt-1 space-y-1">
+                <li><span className="font-bold uppercase text-red-700">MUY DÉBIL</span> = Solo 1 dato histórico (poco fiable).</li>
+                <li><span className="font-bold uppercase text-green-700">SÓLIDO / MUY SÓLIDO</span> = Muchos datos (muy fiable).</li>
+              </ul>
+            </li>
+          </ol>
+          <p className="mt-4 text-xs font-semibold text-primary border-t border-[#B8D4FF] pt-2 italic">
+            Cuándo usarlo: Para revisar si tus precios de construcción son razonables.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
   // ── Estado: SIN DATOS ──────────────────────────────────────────────────────
   if (estado === 'SIN_DATOS') {
     return (
-      <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter">
+      <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter text-left">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="font-playfair text-xl font-bold">{capitulo}</h2>
@@ -86,6 +124,7 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
             Importa presupuestos para ver análisis comparativos.
           </p>
         </div>
+        {renderTutorial()}
       </div>
     );
   }
@@ -93,7 +132,7 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
   // ── Estado: MUESTRA INSUFICIENTE (N=1) ────────────────────────────────────
   if (estado === 'MUESTRA_INSUFICIENTE') {
     return (
-      <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter">
+      <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter text-left">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="font-playfair text-xl font-bold">{capitulo}</h2>
@@ -128,13 +167,14 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
             Referencia: {formatMetric(mediana)} {unidad} (único dato)
           </p>
         </div>
+        {renderTutorial()}
       </div>
     );
   }
 
   // ── Estado: VALIDACION COMPLETA (N>=2) ────────────────────────────────────
   return (
-    <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter">
+    <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter text-left">
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="font-playfair text-xl font-bold">{capitulo}</h2>
@@ -184,13 +224,14 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
       <div className={`text-lg font-bold ${hasMiValor ? (dentroRango ? 'text-green-700' : 'text-red-700') : 'text-[#6B5D4D]'}`}>
         {hasMiValor ? (
           <>
-            Mi valor: {miValorNumerico?.toFixed(2)} {unidad} —{' '}
-            {dentroRango ? '✅ Dentro de rango' : '❌ Fuera de rango'}
+            Mi valor: {miValorNumerico?.toFixed(2)} {unidad} — {dentroRango ? '✅ Dentro de rango' : '❌ Fuera de rango'}
           </>
         ) : (
           'Introduce tu valor para validar el rango.'
         )}
       </div>
+
+      {renderTutorial()}
     </div>
   );
 };

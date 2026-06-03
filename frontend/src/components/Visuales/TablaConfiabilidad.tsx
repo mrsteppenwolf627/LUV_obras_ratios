@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import type { CapituloRatioResponse } from '@/types/visuales';
 
@@ -7,6 +7,7 @@ interface TablaConfiabilidadProps {
 }
 
 const TablaConfiabilidad: React.FC<TablaConfiabilidadProps> = ({ capitulos }) => {
+  const [showTutorial, setShowTutorial] = useState(false);
   const sortedCapitulos = [...capitulos].sort((a, b) => b.cantidad_datos - a.cantidad_datos);
 
   const getSolidezBarColor = (estado: string) => {
@@ -58,6 +59,37 @@ const TablaConfiabilidad: React.FC<TablaConfiabilidadProps> = ({ capitulos }) =>
           ))}
         </tbody>
       </table>}
+
+      <div className="mt-8 border-t border-[#D4C788] pt-4">
+        <button
+          onClick={() => setShowTutorial(!showTutorial)}
+          className="flex items-center gap-2 text-sm font-medium text-primary hover:text-[#2D5016] transition-colors"
+        >
+          {showTutorial ? '📖 Cerrar guía' : '📖 Cómo usar esta herramienta'}
+          <span className="text-xs">{showTutorial ? '▼' : '▶'}</span>
+        </button>
+
+        {showTutorial && (
+          <div className="mt-3 bg-[#E8F1FF] p-5 rounded-lg border border-[#B8D4FF] shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+            <h3 className="font-bold text-primary mb-3">Ver la confiabilidad de cada capítulo</h3>
+            <ol className="space-y-3 text-sm text-[#4A4034] list-decimal pl-5">
+              <li><strong>Mira la tabla</strong>: cada fila es un capítulo (AMENITIES, CARPINTERÍA, etc).</li>
+              <li><strong>Lee las columnas</strong>:
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li><strong>Capítulo</strong>: nombre de la partida.</li>
+                  <li><strong>Datos</strong>: cuántos presupuestos tenemos de esta partida.</li>
+                  <li><strong>Solidez</strong>: barra de color (rojo/naranja/verde). Más datos = más verde.</li>
+                </ul>
+              </li>
+              <li>Haz clic en <strong>"Ver detalle"</strong> (si está disponible) para expandir estadísticas (mediana, rango, etc).</li>
+              <li>Un capítulo con <strong>muchas muestras (>10)</strong> es más fiable que uno con pocas (<3).</li>
+            </ol>
+            <p className="mt-4 text-xs font-semibold text-primary border-t border-[#B8D4FF] pt-2 italic">
+              Cuándo usarlo: Para saber qué capítulos tienen datos buenos vs pobres.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

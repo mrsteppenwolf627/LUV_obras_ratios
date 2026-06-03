@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import type { ComparativaCapitulo, ResumenComparativa } from '@/types/visuales';
 
@@ -8,6 +8,7 @@ interface ComparativaDesviacionProps {
 }
 
 const ComparativaDesviacion: React.FC<ComparativaDesviacionProps> = ({ capitulos, resumen }) => {
+  const [showTutorial, setShowTutorial] = useState(false);
   return (
     <div className="space-y-6 font-inter">
       <div className="overflow-x-auto rounded-lg border border-[#E0D5C7] bg-white p-4">
@@ -58,6 +59,37 @@ const ComparativaDesviacion: React.FC<ComparativaDesviacionProps> = ({ capitulos
           </p>
           <p>Confiabilidad: {resumen.confiabilidad_global.toUpperCase()}</p>
         </div>
+      </div>
+
+      <div className="mt-8 border-t border-[#D4C788] pt-4">
+        <button
+          onClick={() => setShowTutorial(!showTutorial)}
+          className="flex items-center gap-2 text-sm font-medium text-primary hover:text-[#2D5016] transition-colors"
+        >
+          {showTutorial ? '📖 Cerrar guía' : '📖 Cómo usar esta herramienta'}
+          <span className="text-xs">{showTutorial ? '▼' : '▶'}</span>
+        </button>
+
+        {showTutorial && (
+          <div className="mt-3 bg-[#E8F1FF] p-5 rounded-lg border border-[#B8D4FF] shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+            <h3 className="font-bold text-primary mb-3">Comparar tu presupuesto vs el histórico</h3>
+            <ol className="space-y-3 text-sm text-[#4A4034] list-decimal pl-5">
+              <li><strong>Selecciona un capítulo</strong> en el desplegable superior.</li>
+              <li><strong>Entra el precio total</strong> de TU presupuesto para ese capítulo.</li>
+              <li>El sistema muestra:
+                <ul className="list-disc pl-5 mt-1 space-y-1">
+                  <li>Tu precio vs Precio histórico promedio.</li>
+                  <li>Diferencia en % (<span className="text-red-700 font-bold">ROJO</span> = más caro, <span className="text-green-700 font-bold">VERDE</span> = más barato).</li>
+                </ul>
+              </li>
+              <li><strong>Lee el gráfico</strong> (si está disponible): barras azules = rango histórico, roja = tu precio.</li>
+              <li>Si tu precio está <strong>dentro de la barra azul</strong>: está en rango normal.</li>
+            </ol>
+            <p className="mt-4 text-xs font-semibold text-primary border-t border-[#B8D4FF] pt-2 italic">
+              Cuándo usarlo: Para revisar si todo tu presupuesto es competitivo vs datos históricos.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
