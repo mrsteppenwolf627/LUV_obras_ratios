@@ -391,3 +391,126 @@ class TestTask5DEdgeCases:
         data = _post(client, payload).json()
         assert data["status"] == "partial"
         assert data["items_creados"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Suite 7: TASK 6 — ImportService directo (sin HTTP)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def direct_session():
+    """Sesión SQLite aislada para tests del servicio sin FastAPI."""
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def fk_on(conn, _):
+        conn.execute("PRAGMA foreign_keys=ON")
+
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    yield session
+    session.close()
+
+
+def _linea(descripcion: str, cantidad: float = 10.0, precio: float = 100.0, numero: int = 1):
+    from app.schemas.import_budgets import LineaPresupuesto
+    return LineaPresupuesto(numero=numero, descripcion=descripcion, cantidad=cantidad, precio_unitario=precio)
+
+
+class TestImportService:
+    def test_service_importar_returns_response(self, direct_session):
+        from app.services.import_service import ImportService
+        service = ImportService(direct_session)
+        result = service.importar(
+            filename="test.xlsx",
+            file_hash="a" * 64,
+            building_type="residencial",
+            lineas=[_linea("Solería porcelánica 60x60")],
+        )
+        assert result.status == "success"
+        assert result.items_creados == 1
+        assert result.muestras_actualizadas == 1
+
+    def test_service_dedup_mismo_payload(self, direct_session):
+        from app.services.import_service import ImportService
+        service = ImportService(direct_session)
+        result = service.importar(
+            filename="test.xlsx",
+            file_hash="b" * 64,
+            building_type="residencial",
+            lineas=[
+                _linea("PINTURA PLÁSTICA BLANCA", numero=1),
+                _linea("Pintura Plástica Blanca", numero=2),
+            ],
+        )
+        assert result.items_creados == 1
+        assert result.items_duplicados == 1
+
+    def test_service_duplicate_hash_raises(self, direct_session):
+        from app.services.import_service import DuplicateImportError, ImportService
+        svc1 = ImportService(direct_session)
+        svc1.importar(
+            filename="presupuesto.xlsx",
+            file_hash="c" * 64,
+            building_type="residencial",
+            lineas=[_linea("Hormigón HA-25")],
+        )
+        svc2 = ImportService(direct_session)
+        with pytest.raises(DuplicateImportError) as exc_info:
+            svc2.importar(
+                filename="presupuesto.xlsx",
+                file_hash="c" * 64,
+                building_type="residencial",
+                lineas=[_linea("Hormigón HA-25")],
+            )
+        assert exc_info.value.file_hash == "c" * 64
+
+    def test_service_lineas_invalidas_status_error(self, direct_session):
+        from app.services.import_service import ImportService
+        service = ImportService(direct_session)
+        result = service.importar(
+            filename="vacio.xlsx",
+            file_hash="d" * 64,
+            building_type="residencial",
+            lineas=[_linea("Algo", cantidad=-1.0)],
+        )
+        assert result.status == "error"
+        assert result.items_creados == 0
+
+    def test_service_partial_mix(self, direct_session):
+        from app.services.import_service import ImportService
+        service = ImportService(direct_session)
+        result = service.importar(
+            filename="mix.xlsx",
+            file_hash="e" * 64,
+            building_type="residencial",
+            lineas=[
+                _linea("Baldosa hidráulica", numero=1),
+                _linea("Sin cantidad", cantidad=-5.0, numero=2),
+            ],
+        )
+        assert result.status == "partial"
+        assert result.items_creados == 1
+
+    def test_service_muestras_count_acumulado(self, direct_session):
+        from app.services.import_service import ImportService
+        from src.db.schema import ItemMaster
+        svc1 = ImportService(direct_session)
+        svc1.importar(
+            filename="a.xlsx", file_hash="f" * 64, building_type="residencial",
+            lineas=[_linea("Aplacado pétreo mármol")],
+        )
+        svc2 = ImportService(direct_session)
+        svc2.importar(
+            filename="b.xlsx", file_hash="1" * 64, building_type="residencial",
+            lineas=[_linea("Aplacado pétreo mármol")],
+        )
+        master = direct_session.query(ItemMaster).filter_by(
+            item_key="aplacado petreo marmol"
+        ).first()
+        assert master.muestras_count == 2
