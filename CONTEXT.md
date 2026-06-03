@@ -4,7 +4,7 @@
 **Version:** 1.2.0
 **Estado:** FUNCIONAL (en desarrollo activo)
 **Fecha actualizacion:** 2 de junio de 2026
-**Ultima sesion relevante:** TASK 5A+5B+5C completado — deduplicación automática + endpoint POST /api/import/budgets + 658/658 tests verdes
+**Ultima sesion relevante:** TASK 5D + TASK 6 completados — validaciones enterprise + ImportService reutilizable + 670/670 tests verdes
 
 ## Arquitectura
 
@@ -65,7 +65,47 @@ Como objetivo complementario ya implementado, el sistema expone visuales interna
 16. No subir a Git outputs reales, Excels generados ni reportes sensibles.
 17. La linea FASE 1-4 de `visuales` no sustituye el roadmap canonico del Excel maestro vivo.
 
-## Estado actual
+## Estado actual - v1.2.0 (3 de junio de 2026)
+
+### Snapshot funcional verificado 3 de junio de 2026
+
+**Frontend:**
+- ✅ Logo LUV Studio actualizado en top nav
+- ✅ 4/4 tutoriales interactivos en tabs visuales:
+  - Tab "Rango": validar precio vs histórico
+  - Tab "Solidez": ver confiabilidad por capítulo
+  - Tab "Comparativa": comparar presupuesto vs histórico
+  - Tab "Items×Categorías": desglosar análisis por item
+- ✅ RangoValidacion con 3 estados (N=0, N=1, N≥2)
+
+**Backend:**
+- ✅ POST /api/import/budgets (deduplicación automática)
+- ✅ normalize_item_key() (determinístico, idempotente)
+- ✅ ImportService (reutilizable, sin acoplamiento HTTP)
+- ✅ Validaciones rigurosas (regex SHA256, tipos, rangos)
+- ✅ Logging enterprise-grade (INFO/DEBUG/WARNING/ERROR + UUID traza)
+- ✅ DuplicateImportError (contrato limpio entre capas)
+- ✅ BudgetImport table (prevención re-importar por file_hash)
+
+**Testing:**
+- ✅ 670/670 tests pasando
+- ✅ Cobertura: unitarios + integración + edge cases
+- ✅ ImportService testeable sin HTTP (fixture direct_session)
+
+**Arquitectura:**
+- ✅ Separación clara: Router (HTTP) ↔ Service (negocio)
+- ✅ Reutilizable desde jobs/scripts/CLI
+- ✅ 0 breaking changes
+- ✅ ADR-16, ADR-17 congeladas
+
+**Commits últimas sesiones (2–3 junio):**
+- Logo + tutoriales frontend
+- REFACTOR-RANGO-002: UX por cantidad muestras
+- TASK 5A–5C: deduplicación + import + tests
+- TASK 5D: validaciones + logging + edge cases
+- TASK 6: refactor ingesta → ImportService
+
+---
 
 ### Snapshot sesión 2 de junio de 2026 — TASK 5A+5B+5C: Deduplicación + Import
 
@@ -196,14 +236,31 @@ Decisiones vigentes del roadmap principal:
 
 ## Backlog priorizado
 
-| Tarea | Impacto | Dependencia | Riesgo | Esfuerzo | Prioridad |
-|---|:---:|:---:|:---:|:---:|:---:|
-| ADR-17: Estrategia de deduplicación | Alto | — | Bajo | 1h | ✅ COMPLETADO |
-| TASK 5A: Función normalize_item_key() | Alto | ADR-17 | Bajo | 2h | ✅ COMPLETADO |
-| TASK 5B: Endpoint POST /api/import/budgets | Alto | TASK 5A | Medio | 3h | ✅ COMPLETADO |
-| TASK 5C: Tests unitarios + integración | Alto | TASK 5B | Bajo | 2h | ✅ COMPLETADO |
-| TASK 5D: Validación duplicados archivo | Medio | TASK 5B | Bajo | 1h | ⏳ PENDIENTE |
-| TASK 6: Refactor ingesta automática | Medio | TASK 5 | Bajo | 3h | ⏳ PENDIENTE |
+### ✅ COMPLETADO
+
+| Tarea | Descripción |
+|---|---|
+| REFACTOR-RANGO-001/002 | UX por cantidad muestras (N=0 / N<2 / N≥2) |
+| ADR-16 | Input autónomo en RangoValidacion |
+| ADR-17 | Estrategia deduplicación |
+| TASK 5A | normalize_item_key() determinístico |
+| TASK 5B | POST /api/import/budgets |
+| TASK 5C | Tests unitarios + integración (16 tests) |
+| TASK 5D | Validaciones + logging + edge cases (6 tests nuevos) |
+| TASK 6 | Refactor ingesta → ImportService reutilizable |
+
+### ⏳ BLOQUEADO (Esperando datos)
+
+- **TASK 7:** Importar presupuestos históricos reales
+  - Necesita: archivos de presupuestos de LUV Studio
+  - Resultado esperado: N converge 1→5→10→20+
+  - Impacto: Tab "Rango" mostrará validaciones con confianza real (SÓLIDO/MUY_SÓLIDO)
+
+### 🟡 OPCIONAL (Próximas fases)
+
+- TASK 8: Dashboard de importaciones
+- TASK 9: Reportes de ratios por período
+- TASK 10: Exportación de análisis
 
 ### P0
 
@@ -220,6 +277,73 @@ Decisiones vigentes del roadmap principal:
 
 - Mejorar cobertura E2E de frontend si la linea `/visuales` gana prioridad operativa.
 - Consolidar validacion manual de artefactos XLSX de Fase 9.20 y preparar Fase 9.21.
+
+---
+
+## Cómo usar el sistema
+
+### Importar presupuestos
+
+1. Obtén el presupuesto en formato JSON o Excel
+2. Convierte a JSON con estructura:
+```json
+{
+  "filename": "presupuesto_ene2026.xlsx",
+  "file_hash": "SHA256_hash_del_archivo_64_hex_chars",
+  "building_type": "residencial",
+  "lineas": [
+    {"descripcion": "Carpintería Aluminio", "cantidad": 10, "precio_unitario": 245.50}
+  ]
+}
+```
+3. `POST http://localhost:8000/api/import/budgets`
+4. Sistema deduplica automáticamente por `normalize_item_key()`
+
+### Usar visuales
+
+- **Tab Rango:** Entra precio unitario, ve si está en rango histórico
+- **Tab Solidez:** Mira qué capítulos tienen datos confiables
+- **Tab Comparativa:** Compara tu presupuesto total vs histórico
+- **Tab Items×Categorías:** Desglosar análisis por categoría
+
+Cada tab tiene tutorial interactivo (botón "📖 Cómo usar")
+
+---
+
+## Setup local (próxima sesión)
+
+```bash
+# Backend
+python -m app.main
+# → localhost:8000
+
+# Frontend
+cd frontend/ && npm run dev
+# → localhost:5173
+
+# Tests
+pytest
+# Esperado: 670/670 verdes
+```
+
+---
+
+## Scripts útiles
+
+```powershell
+# Importar presupuesto
+$json = Get-Content "presupuesto.json" -Raw
+Invoke-RestMethod -Uri "http://localhost:8000/api/import/budgets" `
+    -Method POST -Headers @{"Content-Type"="application/json"} `
+    -Body $json
+
+# Correr solo tests de importación
+pytest tests/test_import.py tests/test_normalize.py -v
+
+# Ver migraciones Alembic
+alembic history
+alembic current
+```
 
 ## Riesgos técnicos
 
@@ -320,25 +444,30 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
 
 ## 🔐 ÚLTIMA ACTUALIZACIÓN
 
-- **Fecha:** 2026-06-02
+- **Fecha:** 2026-06-03
+- **Versión:** 1.2.0
 - **Modelo:** Claude Code (Sonnet 4.6)
-- **Cambios:**
-  - ✅ `app/utils/normalize.py` — `normalize_item_key()` determinístico e idempotente
-  - ✅ `app/routers/import_budgets.py` — endpoint `POST /api/import/budgets`
-  - ✅ `app/crud/budgets.py` — CRUD `BudgetImport` (create/get/update)
-  - ✅ `app/schemas/import_budgets.py` — schemas Pydantic v2
-  - ✅ `src/db/schema.py` — tabla `budget_imports`
-  - ✅ `migrations/versions/c4d5e6f7a8b9` — CREATE TABLE budget_imports (HEAD)
-  - ✅ `tests/test_normalize.py` — 11 unit tests normalize
-  - ✅ `tests/test_import.py` — 16 integration tests import
-  - ✅ `frontend/src/components/Visuales/RangoValidacion.tsx` — 3 estados UX
 
-- **Checklist:**
-  - [x] 658/658 tests pasando
-  - [x] Endpoint `/api/import/budgets` funcional (validado en vivo)
-  - [x] Deduplicación automática por `normalize_item_key()` verificada
-  - [x] Prevención de re-importar (`file_hash` único → 409) verificada
-  - [x] RangoValidacion 3 estados (N=0 / N<2 / N≥2) funcional
-  - [x] Sin breaking changes en tests existentes
-  - [x] BD en estado HEAD (Alembic `c4d5e6f7a8b9`)
-  - [x] Documentado en CONTEXT.md + ADR-17
+**Cambios principales:**
+- ✅ Frontend: Logo actualizado + 4/4 tutoriales interactivos
+- ✅ Backend: TASK 5A–5D + TASK 6 completados
+- ✅ ImportService: lógica desacoplada del router, reutilizable
+- ✅ Validaciones: regex SHA256, tipos, rangos, edge cases
+- ✅ Logging: UUID de traza, INFO/DEBUG/WARNING/ERROR, elapsed time
+- ✅ Tests: 670/670 verdes (28 tests import, 11 normalize, 6 edge cases, 6 service directos)
+- ✅ Documentación: CONTEXT.md + docs/ESTADO_v1.2.0.md
+
+**Checklist:**
+- [x] 670/670 tests pasando
+- [x] Endpoint `/api/import/budgets` funcional (validado en vivo)
+- [x] Deduplicación automática por `normalize_item_key()` verificada
+- [x] ImportService reutilizable (sin acoplamiento HTTP)
+- [x] DuplicateImportError — contrato limpio entre capas
+- [x] Validaciones rigurosas (regex SHA256, tipos, rangos)
+- [x] Logging enterprise-grade (UUID traza + elapsed)
+- [x] RangoValidacion 3 estados (N=0 / N<2 / N≥2) funcional
+- [x] Frontend: Logo + 4/4 tutoriales
+- [x] 0 breaking changes
+- [x] BD en estado HEAD (Alembic `c4d5e6f7a8b9`)
+- [x] ADR-16, ADR-17 congeladas
+- [x] Documentado en CONTEXT.md + docs/ESTADO_v1.2.0.md

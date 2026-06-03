@@ -1,6 +1,7 @@
 import { Archive, Home, PieChart, Table, Upload } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import logoImage from '@/assets/luvstudio-logo.png';
 
 const Navigation = () => {
   const location = useLocation();
@@ -18,9 +19,12 @@ const Navigation = () => {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-20 justify-between">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-3">
-              <img src="/logo.svg" alt="LUV" className="h-8 w-8" />
-              <span className="font-serif text-2xl uppercase tracking-widest text-primary">LUV RATIOS</span>
+            <Link to="/" className="flex items-center">
+              <img 
+                src={logoImage} 
+                alt="LUV Studio Logo" 
+                className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+              />
             </Link>
           </div>
 
