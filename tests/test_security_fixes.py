@@ -140,9 +140,9 @@ class TestBatchSizeProtection:
             "lineas": lineas,
         }
         response = _post(client, payload)
-        assert response.status_code == 422  # Pydantic validation error
+        assert response.status_code == 400  # Adapter validation error
         error_detail = response.json()["detail"]
-        assert "10" in str(error_detail[0]["msg"]).lower() or "máximo" in str(error_detail[0]["msg"]).lower()
+        assert "máximo" in error_detail.lower() or "10" in error_detail.lower()
 
     def test_100k_lines_is_rejected(self, client_and_session):
         """100,000 lines should definitely be rejected."""
@@ -163,7 +163,7 @@ class TestBatchSizeProtection:
             "lineas": lineas,
         }
         response = _post(client, payload)
-        assert response.status_code == 422
+        assert response.status_code == 400  # Adapter validation error
 
 
 # ---------------------------------------------------------------------------

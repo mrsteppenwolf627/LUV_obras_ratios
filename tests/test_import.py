@@ -306,7 +306,7 @@ class TestRequestValidation:
     def test_lineas_vacio_devuelve_422(self, client_and_session):
         client, _ = client_and_session
         resp = _post(client, {"file_hash": _make_hash("empty_lineas_016"), "lineas": []})
-        assert resp.status_code == 422
+        assert resp.status_code == 400  # Adapter validation error
 
     def test_file_hash_muy_corto_devuelve_422(self, client_and_session):
         client, _ = client_and_session
@@ -314,7 +314,7 @@ class TestRequestValidation:
             "file_hash": "abc",
             "lineas": [{"numero": 1, "descripcion": "Algo", "cantidad": 1.0, "precio_unitario": 10.0}],
         })
-        assert resp.status_code == 422
+        assert resp.status_code == 400  # Adapter validation error
 
 
 # ---------------------------------------------------------------------------
@@ -323,31 +323,31 @@ class TestRequestValidation:
 
 class TestTask5DEdgeCases:
     def test_hash_no_hex_devuelve_422(self, client_and_session):
-        """Hash con caracteres no hexadecimales rechazado en Pydantic."""
+        """Hash con caracteres no hexadecimales rechazado en Adapter."""
         client, _ = client_and_session
         resp = _post(client, {
             "file_hash": "not_a_valid_hash_not_a_valid_hash_not_a_valid_hash_not_a_valid_ha",
             "lineas": [{"numero": 1, "descripcion": "Algo", "cantidad": 1.0, "precio_unitario": 10.0}],
         })
-        assert resp.status_code == 422
+        assert resp.status_code == 400  # Adapter validation error
 
     def test_hash_63_chars_devuelve_422(self, client_and_session):
-        """Hash hex de 63 caracteres (un carácter corto) → 422."""
+        """Hash hex de 63 caracteres (un carácter corto) → 400."""
         client, _ = client_and_session
         resp = _post(client, {
             "file_hash": "a" * 63,
             "lineas": [{"numero": 1, "descripcion": "Algo", "cantidad": 1.0, "precio_unitario": 10.0}],
         })
-        assert resp.status_code == 422
+        assert resp.status_code == 400  # Adapter validation error
 
     def test_hash_65_chars_devuelve_422(self, client_and_session):
-        """Hash hex de 65 caracteres (uno de más) → 422."""
+        """Hash hex de 65 caracteres (uno de más) → 400."""
         client, _ = client_and_session
         resp = _post(client, {
             "file_hash": "a" * 65,
             "lineas": [{"numero": 1, "descripcion": "Algo", "cantidad": 1.0, "precio_unitario": 10.0}],
         })
-        assert resp.status_code == 422
+        assert resp.status_code == 400  # Adapter validation error
 
     def test_cantidad_negativa_linea_omitida(self, client_and_session):
         """Una línea con cantidad negativa se omite; la válida se procesa → partial."""
