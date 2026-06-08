@@ -33,9 +33,12 @@ class BudgetImportRequest(BaseModel):
 
     @field_validator("lineas")
     @classmethod
-    def lineas_no_vacias(cls, v: List[LineaPresupuesto]) -> List[LineaPresupuesto]:
+    def lineas_validacion(cls, v: List[LineaPresupuesto]) -> List[LineaPresupuesto]:
         if not v:
             raise ValueError("lineas no puede estar vacío")
+        max_lineas = 10_000
+        if len(v) > max_lineas:
+            raise ValueError(f"Máximo {max_lineas:,} líneas permitidas. Recibidas: {len(v):,}")
         return v
 
 

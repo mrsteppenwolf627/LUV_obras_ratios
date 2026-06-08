@@ -1,4 +1,5 @@
 """FastAPI application — LUV Obras Ratios backend."""
+import logging
 import sys
 from pathlib import Path
 
@@ -14,6 +15,8 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+
+logger = logging.getLogger(__name__)
 
 from .database import get_db
 from .crud.ratios import get_master_data
@@ -165,7 +168,9 @@ async def api_import(file: UploadFile = File(...)):
 
     except Exception as exc:
         session.rollback()
-        return {"success": False, "message": f"Error al importar: {exc}"}
+        # Log full exception server-side, return generic message to client
+        logger.exception("Error en api_import")
+        return {"success": False, "message": "Error al importar el archivo"}
 
     finally:
         session.close()
