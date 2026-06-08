@@ -80,15 +80,15 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
       </button>
 
       {showTutorial && (
-        <div className="mt-3 bg-[#E8F1FF] p-5 rounded-lg border border-[#B8D4FF] shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
-          <h3 className="font-bold text-primary mb-3">Validar si tu precio está en rango</h3>
+        <div className="mt-3 bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+          <h3 className="font-bold text-gray-800 mb-2">Validar si tu precio está en rango</h3>
           <ol className="space-y-3 text-sm text-[#4A4034] list-decimal pl-5">
             <li><strong>Selecciona un capítulo</strong> en el desplegable superior (ej: AMENITIES).</li>
             <li><strong>Entra el precio unitario</strong> en EUR/m2 que quieres validar (ej: 250).</li>
             <li>El sistema compara tu precio contra todos los históricos:
               <ul className="list-disc pl-5 mt-1 space-y-1">
-                <li><span className="text-green-700 font-bold">VERDE</span> = Tu precio está dentro del rango normal.</li>
-                <li><span className="text-red-700 font-bold">ROJO</span> = Tu precio está fuera (muy alto o muy bajo).</li>
+                <li><span className="text-green-700 font-bold">VERDE</span> = Dentro del rango normal (Ej: rango 200-300, pones 250).</li>
+                <li><span className="text-red-700 font-bold">ROJO</span> = Fuera de rango (Ej: pones 350 o 100).</li>
               </ul>
             </li>
             <li><strong>Lee la confiabilidad</strong> (badge arriba a la derecha):
@@ -98,7 +98,7 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
               </ul>
             </li>
           </ol>
-          <p className="mt-4 text-xs font-semibold text-primary border-t border-[#B8D4FF] pt-2 italic">
+          <p className="mt-4 text-xs font-semibold text-gray-600 border-t border-blue-200 pt-2 italic">
             Cuándo usarlo: Para revisar si tus precios de construcción son razonables.
           </p>
         </div>

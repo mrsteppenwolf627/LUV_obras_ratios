@@ -161,31 +161,18 @@ const ItemsAnalisisTab: React.FC = () => {
         </button>
 
         {showTutorial && (
-          <div className="mt-3 bg-blue-50 p-4 rounded border border-blue-200 shadow-sm">
-            <h3 className="font-bold text-gray-800 mb-2">Analizar partidas por categoría</h3>
+          <div className="mt-3 bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+            <h3 className="font-bold text-gray-800 mb-2">Analizar tu presupuesto por categoría de calidades</h3>
+            <p className="text-sm text-gray-700 mb-3">Compara los items de tu obra contra ratios históricos clasificados automáticamente por nivel (MEDIUM, PREMIUM, LUXURY).</p>
             <ol className="space-y-2 text-sm text-gray-700 list-decimal pl-5">
-              <li>Haz clic en <strong>"Analizar Presupuesto Nuevo"</strong> (botón verde).</li>
-              <li>Se abre un formulario con campos:
-                <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li><strong>Busca un item</strong> en el dropdown (empieza a escribir "Carpintería").</li>
-                  <li>El precio se pre-rellena automáticamente.</li>
-                  <li>Puedes cambiar el precio si lo necesitas.</li>
-                </ul>
-              </li>
-              <li>Haz clic <strong>"Añadir"</strong> → el item aparece en la lista debajo.</li>
-              <li>Repite pasos 1-3 con más items de tu presupuesto.</li>
-              <li>Haz clic <strong>"Analizar"</strong> → ves resultados:
-                <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li>Tabla por categoría (MEDIUM, PREMIUM, LUXURY, etc).</li>
-                  <li>Tu total vs Ratio histórico por cada categoría.</li>
-                  <li>Diferencia % (<span className="text-red-700 font-bold">rojo</span> = caro, <span className="text-green-700 font-bold">verde</span> = barato).</li>
-                  <li>Confiabilidad de cada categoría.</li>
-                </ul>
-              </li>
-              <li>Haz clic en <strong>un item de la tabla</strong> para ver detalle completo (rango, gráficos).</li>
+              <li>Haz clic en <strong>"+ Analizar Presupuesto"</strong> e ingresa las partidas de tu obra.</li>
+              <li>El sistema **clasifica automáticamente** cada item según su descripción y precio histórico.</li>
+              <li>Obtienes un **Resumen por Categoría**: verás si tus partidas "Premium" están en precio o desviadas.</li>
+              <li>La tabla muestra la **Desviación %** (<span className="text-red-700 font-bold">rojo</span> = caro, <span className="text-green-700 font-bold">verde</span> = barato) vs el histórico.</li>
+              <li>Haz clic en cualquier fila para ver el **detalle estadístico** y gráficos de ese item específico.</li>
             </ol>
             <p className="mt-3 text-xs font-semibold text-gray-600 border-t border-blue-200 pt-2 italic">
-              Cuándo usarlo: Para desglosar y validar cada partida individual de tu presupuesto.
+              Cuándo usarlo: Para validar la coherencia de precios según el nivel de calidades de tu proyecto.
             </p>
           </div>
         )}

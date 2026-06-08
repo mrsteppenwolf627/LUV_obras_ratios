@@ -71,20 +71,20 @@ const ComparativaDesviacion: React.FC<ComparativaDesviacionProps> = ({ capitulos
         </button>
 
         {showTutorial && (
-          <div className="mt-3 bg-blue-50 p-4 rounded border border-blue-200 shadow-sm">
+          <div className="mt-3 bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
             <h3 className="font-bold text-gray-800 mb-2">Comparar tu presupuesto vs el histórico</h3>
             <ol className="space-y-2 text-sm text-gray-700 list-decimal pl-5">
               <li><strong>Selecciona un capítulo</strong> en el desplegable superior.</li>
               <li><strong>Entra el precio total</strong> de TU presupuesto para ese capítulo.</li>
-              <li>El sistema muestra tres cosas:
+              <li>El sistema muestra una tabla con estas columnas:
                 <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li>Tu precio vs Precio histórico promedio (números arriba).</li>
-                  <li>Diferencia en % (<span className="text-red-700 font-bold">rojo</span> = más caro, <span className="text-green-700 font-bold">verde</span> = más barato).</li>
-                  <li>Gráfico visual: barra azul = rango histórico, punto rojo = tu precio.</li>
+                  <li><strong>MIO</strong>: El valor total de tu presupuesto.</li>
+                  <li><strong>RATIO</strong>: El valor esperado según el histórico.</li>
+                  <li><strong>DESV%</strong>: Desviación porcentual (<span className="text-red-700 font-bold">rojo</span> = más caro, <span className="text-green-700 font-bold">verde</span> = más barato).</li>
+                  <li><strong>IMPACTO</strong>: Cuántos euros de más/menos supone esa desviación.</li>
                 </ul>
               </li>
-              <li>Si tu precio está <strong>DENTRO</strong> de la barra azul: está en rango normal ✅.</li>
-              <li>Si tu precio está <strong>FUERA</strong> (muy arriba/abajo): revisa si es intencional.</li>
+              <li>Revisa el <strong>Resumen final</strong> abajo para ver la diferencia global de tu obra.</li>
               <li>Usa esto para ver si tu presupuesto es competitivo vs el mercado.</li>
             </ol>
             <p className="mt-3 text-xs font-semibold text-gray-600 border-t border-blue-200 pt-2 italic">
