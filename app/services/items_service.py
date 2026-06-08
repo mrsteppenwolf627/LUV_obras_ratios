@@ -55,8 +55,10 @@ def get_or_create_item_master(
     """
     Obtiene o crea un ItemMaster con la clave normalizada.
 
-    Si el item ya existe, retorna el existente.
-    Si no existe, crea uno nuevo con los parámetros proporcionados.
+    Thread-safe: maneja race conditions bajo concurrencia.
+    - Si el item ya existe, retorna el existente.
+    - Si no existe, intenta crear uno nuevo.
+    - Si otro thread lo creó entre la query y el insert, lo recupera.
 
     Args:
         session: SQLAlchemy session
@@ -68,17 +70,33 @@ def get_or_create_item_master(
     Returns:
         ItemMaster: El item existente o recién creado
     """
+    from sqlalchemy.exc import IntegrityError
     from src.db.schema import ItemMaster
 
+    # Query first: optimistic read
     master = session.query(ItemMaster).filter(ItemMaster.item_key == item_key).first()
-    if master is None:
-        master = ItemMaster(
-            item_key=item_key,
-            categoria=categoria,
-            subcategoria=subcategoria,
-            unidad=unidad or "ud",
-            muestras_count=0,
-        )
-        session.add(master)
+    if master is not None:
+        return master
+
+    # Create new master
+    master = ItemMaster(
+        item_key=item_key,
+        categoria=categoria,
+        subcategoria=subcategoria,
+        unidad=unidad or "ud",
+        muestras_count=0,
+    )
+    session.add(master)
+
+    try:
         session.flush()
+    except IntegrityError:
+        # Another thread created the same item_key concurrently
+        # Rollback our insert and fetch the existing one
+        session.rollback()
+        master = session.query(ItemMaster).filter(ItemMaster.item_key == item_key).first()
+        if master is None:
+            # This should never happen, but safety check
+            raise
+
     return master
