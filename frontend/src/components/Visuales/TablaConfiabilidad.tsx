@@ -78,10 +78,12 @@ const TablaConfiabilidad: React.FC<TablaConfiabilidadProps> = ({ capitulos }) =>
                 <ul className="list-disc pl-5 mt-1 space-y-1">
                   <li><strong>Capítulo</strong>: nombre de la partida.</li>
                   <li><strong>Muestras</strong>: cuántos presupuestos tenemos de esta partida.</li>
-              <li><strong>Confiabilidad</strong>: color badge rojo/naranja/verde.
-                <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li><strong>MUY DÉBIL/DÉBIL (Rojo/Naranja)</strong>: Hay pocos presupuestos (N&lt;5). El ratio podría cambiar mucho con un dato nuevo.</li>
-                  <li><strong>SÓLIDO/MUY SÓLIDO (Verde)</strong>: Hay muchos datos (N&gt;10). El ratio es estadísticamente fiable y representativo.</li>
+                  <li><strong>Confiabilidad</strong>: color badge rojo/naranja/verde.
+                    <ul className="list-disc pl-5 mt-1 space-y-1">
+                      <li><strong>MUY DÉBIL/DÉBIL (Rojo/Naranja)</strong>: Hay pocos presupuestos (N&lt;5). El ratio podría cambiar mucho con un dato nuevo.</li>
+                      <li><strong>SÓLIDO/MUY SÓLIDO (Verde)</strong>: Hay muchos datos (N&gt;10). El ratio es estadísticamente fiable y representativo.</li>
+                    </ul>
+                  </li>
                 </ul>
               </li>
               <li>Un capítulo con <strong>muchas muestras (&gt;10)</strong> es más fiable que uno con pocas (&lt;3).</li>
