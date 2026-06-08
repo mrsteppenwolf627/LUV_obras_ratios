@@ -72,11 +72,7 @@ Como objetivo complementario ya implementado, el sistema expone visuales interna
 **Frontend:**
 - ✅ Logo LUV Studio actualizado en top nav
 - ✅ Fix error sintaxis TablaConfiabilidad.tsx (escaped <, >)
-- ✅ 4/4 tutoriales interactivos en tabs visuales:
-  - Tab "Rango": validar precio vs histórico
-  - Tab "Solidez": ver confiabilidad por capítulo
-  - Tab "Comparativa": comparar presupuesto vs histórico
-  - Tab "Items×Categorías": desglosar análisis por item
+- ✅ 4/4 tutoriales interactivos completos y unificados en estilo (Rango, Solidez, Comparativa, Items × Categorías)
 - ✅ RangoValidacion con 3 estados (N=0, N=1, N≥2)
 
 **Backend:**
