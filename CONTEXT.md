@@ -73,6 +73,7 @@ Como objetivo complementario ya implementado, el sistema expone visuales interna
 - ✅ Logo LUV Studio actualizado en top nav
 - ✅ Fix error sintaxis TablaConfiabilidad.tsx (escaped <, >)
 - ✅ Fix error sintaxis JSX TablaConfiabilidad.tsx (tags nesting/closing)
+- ✅ Tutorial completo en Tab Comparativa (instrucciones área, capítulos, valores)
 - ✅ 4/4 tutoriales interactivos completos y unificados en estilo (Rango, Solidez, Comparativa, Items × Categorías)
 - ✅ RangoValidacion con 3 estados (N=0, N=1, N≥2)
 
