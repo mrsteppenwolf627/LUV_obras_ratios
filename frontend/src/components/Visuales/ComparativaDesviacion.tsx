@@ -72,23 +72,23 @@ const ComparativaDesviacion: React.FC<ComparativaDesviacionProps> = ({ capitulos
 
         {showTutorial && (
           <div className="mt-3 bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
-            <h3 className="font-bold text-gray-800 mb-2">Comparar tu presupuesto vs el histórico</h3>
+            <h3 className="font-bold text-gray-800 mb-2">Simular presupuesto vs ratios históricos</h3>
             <ol className="space-y-2 text-sm text-gray-700 list-decimal pl-5">
-              <li><strong>Selecciona un capítulo</strong> en el desplegable superior.</li>
-              <li><strong>Entra el precio total</strong> de TU presupuesto para ese capítulo.</li>
-              <li>El sistema muestra una tabla con estas columnas:
+              <li><strong>Introduce el área total</strong> de tu proyecto en m2.</li>
+              <li><strong>Añade capítulos</strong>: selecciona el nombre de la partida (ej: ESTRUCTURA).</li>
+              <li><strong>Introduce valores</strong>: pon el valor unitario (EUR/m2) y la cantidad de ese capítulo.</li>
+              <li>Haz clic en <strong>"Analizar comparativa"</strong> para ver los resultados:
                 <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li><strong>MIO</strong>: El valor total de tu presupuesto.</li>
-                  <li><strong>RATIO</strong>: El valor esperado según el histórico.</li>
-                  <li><strong>DESV%</strong>: Desviación porcentual (<span className="text-red-700 font-bold">rojo</span> = más caro, <span className="text-green-700 font-bold">verde</span> = más barato).</li>
-                  <li><strong>IMPACTO</strong>: Cuántos euros de más/menos supone esa desviación.</li>
+                  <li><strong>MIO</strong>: Coste total calculado para tu presupuesto.</li>
+                  <li><strong>RATIO</strong>: Coste esperado según la mediana histórica.</li>
+                  <li><strong>DESV%</strong>: Porcentaje de desviación (<span className="text-red-700 font-bold">rojo</span> = caro, <span className="text-green-700 font-bold">verde</span> = barato).</li>
+                  <li><strong>IMPACTO</strong>: Diferencia monetaria total en euros.</li>
                 </ul>
               </li>
-              <li>Revisa el <strong>Resumen final</strong> abajo para ver la diferencia global de tu obra.</li>
-              <li>Usa esto para ver si tu presupuesto es competitivo vs el mercado.</li>
+              <li>Revisa el <strong>Resumen final</strong> para ver si tu obra global está en precio.</li>
             </ol>
             <p className="mt-3 text-xs font-semibold text-gray-600 border-t border-blue-200 pt-2 italic">
-              Cuándo usarlo: Para validar si todo tu presupuesto es razonable vs datos históricos.
+              Cuándo usarlo: Para validar si un presupuesto completo es competitivo vs el mercado histórico.
             </p>
           </div>
         )}
