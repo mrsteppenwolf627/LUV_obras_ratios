@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import unicodedata
 from collections import defaultdict
 from typing import Any, Dict, List
 
@@ -22,6 +21,10 @@ from app.schemas.items_analisis import (
     ResumenPorCategoria,
 )
 from app.services.clasificacion_service import clasificar_item_desde_descripcion
+from app.services.items_service import (
+    get_or_create_item_master as _get_or_create_item_master_service,
+    normalize_item_key,
+)
 from src.db.schema import Confianza, ItemMaster
 
 router = APIRouter(prefix="/api", tags=["items"])
@@ -117,35 +120,26 @@ def analizar_items(presupuesto: PresupuestoParaAnalisis) -> AnalisisItemsRespons
 def normalizar_item_key(descripcion: str) -> str:
     """Normalize a description into a unique, lowercase, ASCII item_key.
 
+    Delegated to centralized service: app.services.items_service.normalize_item_key
+
     "Carpintería Aluminio Doble" → "carpinteria_aluminio_doble"
     """
-    # Decompose accented characters, then drop combining marks
-    nfkd = unicodedata.normalize("NFKD", descripcion.strip().lower())
-    ascii_str = nfkd.encode("ascii", "ignore").decode("ascii")
-    # Replace any non-alphanumeric run with a single underscore
-    result = ""
-    prev_under = False
-    for ch in ascii_str:
-        if ch.isalnum():
-            result += ch
-            prev_under = False
-        elif not prev_under:
-            result += "_"
-            prev_under = True
-    return result.strip("_")
+    return normalize_item_key(descripcion)
 
 
 def _get_or_create_item_master(session: Any, descripcion: str, categoria_asignada: str) -> ItemMaster:
-    item_key = normalizar_item_key(descripcion)
-    master = session.query(ItemMaster).filter(ItemMaster.item_key == item_key).first()
-    if master is None:
-        master = ItemMaster(
-            item_key=item_key,
-            categoria_asignada=categoria_asignada,
-            muestras_count=0,
-        )
-        session.add(master)
-        session.flush()
+    """Get or create ItemMaster using centralized service."""
+    item_key = normalize_item_key(descripcion)
+    master = _get_or_create_item_master_service(
+        session,
+        item_key=item_key,
+        categoria=None,
+        subcategoria=None,
+        unidad=None,
+    )
+    # Set categoria_asignada if it's provided and not already set
+    if categoria_asignada and not master.categoria_asignada:
+        master.categoria_asignada = categoria_asignada
     return master
 
 

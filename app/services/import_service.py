@@ -14,9 +14,8 @@ from app.crud.budgets import (
     get_budget_import_by_hash,
     update_budget_import_status,
 )
-from app.crud.items import get_or_create_item_master
 from app.schemas.import_budgets import BudgetImportResponse, LineaPresupuesto
-from app.utils.normalize import normalize_item_key
+from app.services.items_service import get_or_create_item_master, normalize_item_key
 
 logger = logging.getLogger(__name__)
 

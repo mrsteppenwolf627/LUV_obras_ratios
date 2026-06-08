@@ -76,24 +76,24 @@ class TestNormalizarItemKey:
     def test_accent_removal(self):
         assert normalizar_item_key("Carpintería") == "carpinteria"
 
-    def test_spaces_to_underscore(self):
-        assert normalizar_item_key("doble acristalamiento") == "doble_acristalamiento"
+    def test_spaces_preserved(self):
+        assert normalizar_item_key("doble acristalamiento") == "doble acristalamiento"
 
     def test_special_chars_removed(self):
-        assert normalizar_item_key("Item (especial) / prueba") == "item_especial_prueba"
+        assert normalizar_item_key("Item (especial) / prueba") == "item especial prueba"
 
     def test_full_description(self):
         result = normalizar_item_key("Carpintería Aluminio Doble Acristalamiento")
-        assert result == "carpinteria_aluminio_doble_acristalamiento"
+        assert result == "carpinteria aluminio doble acristalamiento"
 
-    def test_trailing_leading_underscores_removed(self):
+    def test_trailing_leading_spaces_removed(self):
         result = normalizar_item_key(" !item! ")
-        assert not result.startswith("_")
-        assert not result.endswith("_")
+        assert not result.startswith(" ")
+        assert not result.endswith(" ")
 
-    def test_multiple_spaces_single_underscore(self):
+    def test_multiple_spaces_collapsed(self):
         result = normalizar_item_key("item   con   espacios")
-        assert "__" not in result
+        assert "  " not in result
 
 
 # ---------------------------------------------------------------------------

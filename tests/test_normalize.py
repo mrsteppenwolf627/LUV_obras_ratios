@@ -1,7 +1,7 @@
-"""Unit tests for app.utils.normalize.normalize_item_key."""
+"""Unit tests for app.services.items_service.normalize_item_key."""
 
 import pytest
-from app.utils.normalize import normalize_item_key
+from app.services.items_service import normalize_item_key
 
 
 def test_normalize_lowercase():

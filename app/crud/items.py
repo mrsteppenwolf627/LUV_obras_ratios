@@ -6,28 +6,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-
-def get_or_create_item_master(
-    session: Session,
-    item_key: str,
-    categoria: Optional[str],
-    subcategoria: Optional[str],
-    unidad: Optional[str],
-) -> "ItemMaster":  # type: ignore[name-defined]  # noqa: F821
-    from src.db.schema import ItemMaster
-
-    master = session.query(ItemMaster).filter(ItemMaster.item_key == item_key).first()
-    if master is None:
-        master = ItemMaster(
-            item_key=item_key,
-            categoria=categoria,
-            subcategoria=subcategoria,
-            unidad=unidad,
-            muestras_count=0,
-        )
-        session.add(master)
-        session.flush()
-    return master
+from app.services.items_service import get_or_create_item_master
 
 
 def search_items(
