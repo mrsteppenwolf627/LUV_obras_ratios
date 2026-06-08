@@ -71,6 +71,7 @@ Como objetivo complementario ya implementado, el sistema expone visuales interna
 
 **Frontend:**
 - ✅ Logo LUV Studio actualizado en top nav
+- ✅ Fix error sintaxis TablaConfiabilidad.tsx (escaped <, >)
 - ✅ 4/4 tutoriales interactivos en tabs visuales:
   - Tab "Rango": validar precio vs histórico
   - Tab "Solidez": ver confiabilidad por capítulo

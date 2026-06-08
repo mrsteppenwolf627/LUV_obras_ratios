@@ -82,7 +82,7 @@ const TablaConfiabilidad: React.FC<TablaConfiabilidadProps> = ({ capitulos }) =>
                 </ul>
               </li>
               <li>Haz clic en <strong>"Ver detalle"</strong> para expandir estadísticas (mediana, rango, etc).</li>
-              <li>Un capítulo con <strong>muchas muestras (>10)</strong> es más fiable que uno con pocas (<3).</li>
+              <li>Un capítulo con <strong>muchas muestras (&gt;10)</strong> es más fiable que uno con pocas (&lt;3).</li>
               <li>Los badges rojos (<strong>MUY_DÉBIL</strong>) necesitan más presupuestos para ser fiables.</li>
               <li>Los badges verdes (<strong>MUY_SÓLIDO</strong>) son datos que puedes usar con confianza.</li>
             </ol>
