@@ -1,10 +1,10 @@
 # CONTEXT: LUV Ratios
 
 **Proyecto:** Sistema de consolidacion y validacion de ratios de construccion
-**Version:** 1.3.0
-**Estado:** FUNCIONAL (en desarrollo activo)
+**Version:** 1.4.0
+**Estado:** 🟢 PRODUCCIÓN READY
 **Fecha actualizacion:** 9 de junio de 2026
-**Ultima sesion relevante:** TASK 7 completado — Ingesta masiva (36 items, 60% dedup, 27 presupuestos) + Master Excel + backend fix (uvicorn startup) + 718/718 tests verdes
+**Ultima sesion relevante:** TASK 7 FINAL — Ingesta masiva completada (36 items, 60% dedup, 27 presupuestos) + Endpoint /api/ratios/rango + Frontend integrado + Rango + Solidez operativos + 725/725 tests verdes
 
 ## Arquitectura
 
@@ -266,23 +266,35 @@ Decisiones vigentes del roadmap principal:
    - Resultado: 36 items únicos, 54 duplicados (60% tasa)
    - normalize_item_key() + get_or_create_item_master(): FUNCIONAL
 
-4. ✅ **FASE 4: Master descargable + Validación visuales**
+4. ✅ **FASE 4: Master descargable + Validación visuales + Frontend integrado**
    - Master Excel: `data/exports/MASTER_2026-06-09.xlsx`
    - 36 items con ratios consolidados, coloreo por confianza
-   - Visuales validadas: Rango, Solidez, Comparativa, Items×Categorías
+   - **Backend endpoints operativos:**
+     - `GET /api/ratios/chapters` — lista completa de capítulos
+     - `GET /api/ratios/rango?chapter=X` — estadísticas por capítulo (min/max/percentiles)
+     - `POST /api/analyze/comparativa` — comparativa presupuesto vs histórico
+   - **Frontend Tab "Rango" operativo:**
+     - Dropdown de capítulos
+     - Carga de estadísticas via `/api/ratios/rango`
+     - Visualización de rangos con percentiles
+   - **Tab "Solidez" operativo:**
+     - Tabla de confiabilidad por capítulo
+   - **Nota:** Tab "Comparativa" (TASK 8+, bonus) implementado pero no requisito TASK 7
    - Sistema: LISTO PARA PRODUCCIÓN
 
 **Resultados Finales Consolidados:**
-- **Items:** 36 únicos
+- **Items:** 36 únicos con categorías correctas (DEMOLICION, ESTRUCTURA, CARPINTERIA, FONTANERIA, ELECTRICIDAD, PINTURA)
 - **Deduplicación:** 60% (54 duplicados detectados)
 - **Confianza:**
   - SÓLIDO (N≥5): 1 item (2.8%)
   - DÉBIL (N 2-4): 31 items (86.1%)
   - MUY_DÉBIL (N=1): 4 items (11.1%)
   - Items convergentes (N≥2): 32/36 (88.9%)
-- **Presupuestos:** 5 importados + auditados
+- **Presupuestos:** 27 importados + auditados (real production data)
 - **Master Excel:** GENERADO con formato coloreado por confianza
-- **Visuales:** Validadas y funcionales
+- **Visuales:** OPERATIVAS (Rango + Solidez) y funcionales
+- **Tests:** 725/725 verdes (718 core + 7 nuevos stats tests)
+- **Backend:** 5 commits de fixes + optimizaciones (uvicorn startup, categorías, API datos)
 
 **Scripts Entregados:**
 - importar_presupuestos_masivo.ps1 (parsers mejorados)
