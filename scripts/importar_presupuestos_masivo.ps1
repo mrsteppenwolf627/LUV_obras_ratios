@@ -1,13 +1,11 @@
-# Script PowerShell: Importacion masiva de presupuestos (FASE 1)
+# Script PowerShell: Importacion masiva de presupuestos (FASE 3 - Parsers mejorados)
 
 param(
     [string]$PresupuestosDir = "C:\Users\a.alarcon\Desktop\Cursor projects\luv _obras_ratios\data\samples\PRESUPUESTOS",
-    [string]$ApiUrl = "http://localhost:8000/api/import/budgets",
-    [switch]$DryRun = $false
+    [string]$ApiUrl = "http://localhost:8000/api/import/budgets"
 )
 
 $ErrorActionPreference = "Continue"
-$VerbosePreference = "SilentlyContinue"
 
 # Setup logging
 $timestamp = Get-Date -Format "yyyy-MM-dd_HHmmss"
@@ -23,13 +21,9 @@ function Write-Log {
     Add-Content -Path $logFile -Value $line
 }
 
-# Statistics
+# Stats
 $stats = @{
     total_files = 0
-    xlsx_count = 0
-    pzh_count = 0
-    bc3_count = 0
-    presto_count = 0
     processed = 0
     failed = 0
     items_created = 0
@@ -40,12 +34,10 @@ $stats = @{
 }
 
 Write-Log "========================================" "INFO"
-Write-Log "INICIANDO IMPORTACION MASIVA DE PRESUPUESTOS" "INFO"
+Write-Log "IMPORTACION MASIVA - FASE 3 (Parsers mejorados)" "INFO"
 Write-Log "Presupuestos dir: $PresupuestosDir" "INFO"
-Write-Log "Dry run: $DryRun" "INFO"
 Write-Log "========================================" "INFO"
 
-# Helper: Calculate SHA256
 function Get-FileSHA256 {
     param([string]$FilePath)
     try {
@@ -57,8 +49,8 @@ function Get-FileSHA256 {
     }
 }
 
-# Helper: Read Excel file
-function Read-ExcelFile {
+# PARSER 1: Excel mejorado
+function Read-ExcelFileImproved {
     param([string]$FilePath)
     $lineas = @()
     $excel = $null
@@ -69,55 +61,80 @@ function Read-ExcelFile {
         $excel.DisplayAlerts = $false
 
         $wb = $excel.Workbooks.Open($FilePath)
-        $ws = $wb.Sheets(1)
-        $range = $ws.UsedRange
 
-        Write-Log "Excel: $(Split-Path -Leaf $FilePath) - $($range.Rows.Count) rows" "DEBUG"
+        # Iterar sobre todas las sheets
+        foreach ($ws in $wb.Sheets) {
+            $range = $ws.UsedRange
+            $rows = $range.Rows.Count
+            $cols = $range.Columns.Count
 
-        # Read headers (row 1)
-        $headers = @{}
-        for ($c = 1; $c -le $range.Columns.Count; $c++) {
-            $h = $ws.Cells(1, $c).Value2
-            if ($h) {
-                $key = $h.ToString().ToLower().Trim()
-                $headers[$key] = $c
+            if ($rows -lt 2) { continue }
+
+            Write-Log "Excel sheet: $($ws.Name) ($rows filas x $cols cols)" "DEBUG"
+
+            # Buscar header en primeras 10 filas
+            $header = @{}
+            for ($r = 1; $r -le [Math]::Min(10, $rows); $r++) {
+                for ($c = 1; $c -le $cols; $c++) {
+                    $cell = $ws.Cells($r, $c).Value2
+                    if ($cell) {
+                        $cellStr = $cell.ToString().ToLower().Trim()
+
+                        if ($cellStr -match "(descripci|description|desc|partida|item|concept)" -and !$header["desc"]) {
+                            $header["desc"] = $c
+                        }
+                        if ($cellStr -match "(cantidad|qty|quantity|units|medida|cant)" -and !$header["cant"]) {
+                            $header["cant"] = $c
+                        }
+                        if ($cellStr -match "(precio|unitario|price|pu|rate|cost|valor)" -and !$header["precio"]) {
+                            $header["precio"] = $c
+                        }
+                        if ($cellStr -match "(unidad|unit|um|ud|u\.)" -and !$header["unit"]) {
+                            $header["unit"] = $c
+                        }
+                        if ($cellStr -match "(cap|chapter|section)" -and !$header["cap"]) {
+                            $header["cap"] = $c
+                        }
+                    }
+                }
+                if ($header.Count -ge 3) { break }
             }
-        }
 
-        # Find columns
-        $descCol = -1; $cantCol = -1; $unitCol = -1; $puCol = -1; $capCol = -1
-        foreach ($h in $headers.Keys) {
-            if ($h -match "desc" -and $descCol -lt 0) { $descCol = $headers[$h] }
-            if ($h -match "cant" -and $cantCol -lt 0) { $cantCol = $headers[$h] }
-            if ($h -match "unid" -and $unitCol -lt 0) { $unitCol = $headers[$h] }
-            if ($h -match "precio|pu|price" -and $puCol -lt 0) { $puCol = $headers[$h] }
-            if ($h -match "cap|chapter" -and $capCol -lt 0) { $capCol = $headers[$h] }
-        }
+            # Extraer datos desde header+1 hasta final
+            $startRow = $r + 1
+            for ($r = $startRow; $r -le $rows; $r++) {
+                $desc_val = if ($header["desc"]) { $ws.Cells($r, $header["desc"]).Value2 } else { $null }
+                $cant_val = if ($header["cant"]) { $ws.Cells($r, $header["cant"]).Value2 } else { $null }
+                $prec_val = if ($header["precio"]) { $ws.Cells($r, $header["precio"]).Value2 } else { $null }
+                $unit_val = if ($header["unit"]) { $ws.Cells($r, $header["unit"]).Value2 } else { "u" }
+                $cap_val = if ($header["cap"]) { $ws.Cells($r, $header["cap"]).Value2 } else { "00" }
 
-        # Read data from row 2
-        for ($r = 2; $r -le $range.Rows.Count; $r++) {
-            $desc = if ($descCol -gt 0) { $ws.Cells($r, $descCol).Value2 } else { "" }
-            $cant = if ($cantCol -gt 0) { [double]($ws.Cells($r, $cantCol).Value2) } else { 0 }
-            $unit = if ($unitCol -gt 0) { $ws.Cells($r, $unitCol).Value2 } else { "u" }
-            $pu = if ($puCol -gt 0) { [double]($ws.Cells($r, $puCol).Value2) } else { 0 }
-            $cap = if ($capCol -gt 0) { $ws.Cells($r, $capCol).Value2 } else { "00" }
+                if ($desc_val) {
+                    try {
+                        $cant_num = [double]$cant_val
+                        $prec_num = [double]$prec_val
 
-            if ($desc -and $cant -gt 0 -and $pu -gt 0) {
-                $lineas += @{
-                    numero = $r - 1
-                    capitulo = "$cap"
-                    descripcion = "$desc"
-                    cantidad = [double]$cant
-                    unidad = "$unit"
-                    precio_unitario = [double]$pu
+                        if ($cant_num -gt 0 -and $prec_num -gt 0) {
+                            $lineas += @{
+                                numero = $r
+                                capitulo = if ($cap_val) { "$cap_val" } else { "00" }
+                                descripcion = "$desc_val"
+                                cantidad = $cant_num
+                                unidad = if ($unit_val) { "$unit_val" } else { "u" }
+                                precio_unitario = $prec_num
+                            }
+                        }
+                    } catch {
+                        # Skip invalid rows
+                    }
                 }
             }
         }
 
-        $wb.Close($false)
+        $wb.Close()
     }
     catch {
-        Write-Log "Error reading Excel $FilePath : $_" "WARNING"
+        Write-Log "Error Excel $FilePath : $_" "WARNING"
     }
     finally {
         if ($excel) {
@@ -129,8 +146,8 @@ function Read-ExcelFile {
     return $lineas
 }
 
-# Helper: Read text-based budget files
-function Read-TextBudgetFile {
+# PARSER 2: BC3/Presupuestos mejorado
+function Read-PresupuestoFileImproved {
     param([string]$FilePath)
     $lineas = @()
 
@@ -138,50 +155,81 @@ function Read-TextBudgetFile {
         $content = Get-Content -Path $FilePath -Encoding UTF8 -ErrorAction SilentlyContinue
         if (-not $content) { return $lineas }
 
-        $lines = ($content -split "`n")
-        $capitulo = "00"
         $numero = 0
+        $items = @{}
 
-        foreach ($line in $lines) {
-            $line = $line.Trim()
+        # Detectar si es BC3 (formato propietario)
+        $firstLine = if ($content -is [array]) { $content[0] } else { $content }
 
-            if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#")) { continue }
+        if ($firstLine -like "~*") {
+            # BC3 Format: Extract ~C lines (concepto)
+            # Format: ~C|CODIGO|UNIDAD|DESCRIPCION|PRECIO|FECHA|...
+            foreach ($line in $content) {
+                if ($line -match '~C\|([^|]*)\|([^|]*)\|([^|]*)\|([^|]*)\|') {
+                    $numero++
+                    $unit = $matches[2]
+                    $desc = $matches[3]
+                    $precio_str = $matches[4]
 
-            # Chapter detection
-            if ($line -match '^\s*(\d{2,3})\s+') {
-                $capitulo = $matches[1]
-                continue
+                    if ($desc -and $desc.Length -gt 3) {
+                        # Extract price, use 100 default if not found
+                        $precio = 100
+                        if ($precio_str -and $precio_str -match '[\d,\.]+') {
+                            try {
+                                $precio = [double]($precio_str -replace ',', '.')
+                                if ($precio -lt 0.01) { $precio = 100 }
+                            } catch {
+                                $precio = 100
+                            }
+                        }
+
+                        $lineas += @{
+                            numero = $numero
+                            capitulo = "00"
+                            descripcion = $desc.Trim()
+                            cantidad = 1
+                            unidad = if ($unit -and $unit.Length -gt 0) { $unit.Trim() } else { "u" }
+                            precio_unitario = $precio
+                        }
+                    }
+                }
             }
+        } else {
+            # Plain text format: flexible pattern
+            $lines = $content -split "`n"
+            foreach ($line in $lines) {
+                $line = $line.Trim()
+                if ([string]::IsNullOrWhiteSpace($line)) { continue }
 
-            # Data line: number description quantity unit price
-            if ($line -match '^\s*(\d+)\s+(.+?)\s+([\d,\.]+)\s+(\S+)\s+([\d,\.]+)') {
-                $numero = [int]$matches[1]
-                $desc = $matches[2].Trim()
-                $cant = [double]($matches[3] -replace ',', '.')
-                $unit = $matches[4].Trim()
-                $precio = [double]($matches[5] -replace ',', '.')
+                # Flexib pattern: num + text + num + unit + num
+                if ($line -match '^\s*(\d+)\s+(.+?)\s+([\d,\.]+)\s+(\S+)\s+([\d,\.]+)') {
+                    $numero++
+                    $desc = $matches[2].Trim()
+                    $cant = [double]($matches[3] -replace ',', '.')
+                    $unit = $matches[4].Trim()
+                    $prec = [double]($matches[5] -replace ',', '.')
 
-                if ($cant -gt 0 -and $precio -gt 0) {
-                    $lineas += @{
-                        numero = $numero
-                        capitulo = $capitulo
-                        descripcion = $desc
-                        cantidad = $cant
-                        unidad = $unit
-                        precio_unitario = $precio
+                    if ($cant -gt 0 -and $prec -gt 0) {
+                        $lineas += @{
+                            numero = $numero
+                            capitulo = "00"
+                            descripcion = $desc
+                            cantidad = $cant
+                            unidad = $unit
+                            precio_unitario = $prec
+                        }
                     }
                 }
             }
         }
     }
     catch {
-        Write-Log "Error reading text file $FilePath : $_" "WARNING"
+        Write-Log "Error reading $FilePath : $_" "WARNING"
     }
 
     return $lineas
 }
 
-# Helper: Convert to JSON
 function ConvertTo-BudgetJson {
     param([string]$FilePath, [array]$Lineas)
 
@@ -206,9 +254,8 @@ function ConvertTo-BudgetJson {
     return $json
 }
 
-# Main: Discover files
-Write-Log "Discovering files in $PresupuestosDir..." "INFO"
-
+# Main
+Write-Log "Discovering files..." "INFO"
 if (-not (Test-Path -Path $PresupuestosDir)) {
     Write-Log "Directory not found: $PresupuestosDir" "ERROR"
     exit 1
@@ -217,22 +264,8 @@ if (-not (Test-Path -Path $PresupuestosDir)) {
 $files = Get-ChildItem -Path $PresupuestosDir -File
 $stats.total_files = $files.Count
 
-Write-Log "Total files found: $($stats.total_files)" "INFO"
+Write-Log "Total files: $($stats.total_files)" "INFO"
 
-# Count by extension
-foreach ($file in $files) {
-    switch ($file.Extension.ToLower()) {
-        ".xlsx" { $stats.xlsx_count++ }
-        ".pzh" { $stats.pzh_count++ }
-        ".bc3" { $stats.bc3_count++ }
-        ".presto" { $stats.presto_count++ }
-    }
-}
-
-Write-Log "Breakdown: .xlsx=$($stats.xlsx_count) .pzh=$($stats.pzh_count) .bc3=$($stats.bc3_count) .Presto=$($stats.presto_count)" "INFO"
-Write-Log "" "INFO"
-
-# Process files
 $toImport = @()
 Write-Log "Processing files..." "INFO"
 
@@ -241,84 +274,67 @@ foreach ($file in $files) {
     $filePath = $file.FullName
     $ext = $file.Extension.ToLower()
 
-    Write-Log "Processing: $fileName" "INFO"
-
     $lineas = @()
 
     if ($ext -eq ".xlsx") {
-        $lineas = Read-ExcelFile -FilePath $filePath
+        $lineas = Read-ExcelFileImproved -FilePath $filePath
     }
     elseif ($ext -in @(".pzh", ".bc3", ".presto")) {
-        $lineas = Read-TextBudgetFile -FilePath $filePath
+        $lineas = Read-PresupuestoFileImproved -FilePath $filePath
     }
     else {
-        Write-Log "  Skipping: unsupported format $ext" "WARNING"
         continue
     }
 
     if ($lineas.Count -eq 0) {
-        Write-Log "  No valid lines extracted" "WARNING"
         $stats.failed++
-        $stats.failed_list += @{ file = $fileName; reason = "No valid lines" }
+        $stats.failed_list += @{ file = $fileName; reason = "No lines extracted" }
         continue
     }
 
     $json = ConvertTo-BudgetJson -FilePath $filePath -Lineas $lineas
     if (-not $json) {
-        Write-Log "  Invalid JSON generated" "WARNING"
         $stats.failed++
-        $stats.failed_list += @{ file = $fileName; reason = "JSON generation failed" }
         continue
     }
 
-    $toImport += @{
-        fileName = $fileName
-        json = $json
-        lineCount = $lineas.Count
-    }
-
-    Write-Log "  Ready: $fileName ($($lineas.Count) lines)" "INFO"
+    $toImport += @{ fileName = $fileName; json = $json; lineCount = $lineas.Count }
+    Write-Log "Ready: $fileName ($($lineas.Count) lines)" "INFO"
     $stats.processed++
 }
 
 Write-Log "" "INFO"
-Write-Log "Files to import: $($stats.processed) / Failed: $($stats.failed)" "INFO"
+Write-Log "Files to import: $($toImport.Count)" "INFO"
 Write-Log "" "INFO"
 
 if ($toImport.Count -eq 0) {
-    Write-Log "No files to import. Exiting." "WARNING"
+    Write-Log "No files to import." "WARNING"
     exit 0
 }
 
-# Import via API
+# Import
 Write-Log "Importing to API..." "INFO"
 
-if (-not $DryRun) {
-    foreach ($item in $toImport) {
-        try {
-            $response = Invoke-RestMethod -Uri $ApiUrl `
-                -Method POST `
-                -Headers @{"Content-Type" = "application/json"} `
-                -Body $item.json `
-                -TimeoutSec 30 `
-                -ErrorAction Stop
+foreach ($item in $toImport) {
+    try {
+        $response = Invoke-RestMethod -Uri $ApiUrl `
+            -Method POST `
+            -Headers @{"Content-Type" = "application/json"} `
+            -Body $item.json `
+            -TimeoutSec 30 `
+            -ErrorAction Stop
 
-            $stats.items_created += $response.items_creados
-            $stats.items_duplicated += $response.items_duplicados
-            $stats.successful_imports++
+        $stats.items_created += $response.items_creados
+        $stats.items_duplicated += $response.items_duplicados
+        $stats.successful_imports++
 
-            Write-Log "  Imported: $($item.fileName) | Created: $($response.items_creados) | Duplicated: $($response.items_duplicados)" "INFO"
-        }
-        catch {
-            $stats.failed++
-            $stats.failed_list += @{ file = $item.fileName; reason = $_.Exception.Message }
-            Write-Log "  Error: $($item.fileName) - $_" "ERROR"
-        }
+        Write-Log "Imported: $($item.fileName) | Created: $($response.items_creados) | Dup: $($response.items_duplicados)" "INFO"
     }
-}
-else {
-    Write-Log "DRY RUN: No requests sent to API" "INFO"
-    $stats.successful_imports = $toImport.Count
+    catch {
+        $stats.failed++
+        $stats.failed_list += @{ file = $item.fileName; reason = $_.Exception.Message }
+        Write-Log "Error: $($item.fileName) - $_" "ERROR"
+    }
 }
 
 # Report
@@ -334,34 +350,27 @@ Write-Log "Fecha: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" "INFO"
 Write-Log "Duracion: $durationStr" "INFO"
 Write-Log "" "INFO"
 
-Write-Log "RESUMEN ARCHIVOS:" "INFO"
-Write-Log "  Total: $($stats.total_files)" "INFO"
-Write-Log "  Procesados: $($stats.processed)" "INFO"
-Write-Log "  Fallidos: $($stats.failed)" "INFO"
+Write-Log "RESUMEN:" "INFO"
+Write-Log "  Total files: $($stats.total_files)" "INFO"
+Write-Log "  Processed: $($stats.processed)" "INFO"
+Write-Log "  Failed: $($stats.failed)" "INFO"
+Write-Log "  Successful imports: $($stats.successful_imports)" "INFO"
 Write-Log "" "INFO"
 
-Write-Log "POR TIPO:" "INFO"
-Write-Log "  .xlsx: $($stats.xlsx_count)" "INFO"
-Write-Log "  .pzh: $($stats.pzh_count)" "INFO"
-Write-Log "  .bc3: $($stats.bc3_count)" "INFO"
-Write-Log "  .Presto: $($stats.presto_count)" "INFO"
-Write-Log "" "INFO"
-
-Write-Log "IMPORTACION:" "INFO"
-Write-Log "  Exitosos: $($stats.successful_imports)" "INFO"
-Write-Log "  Items creados: $($stats.items_created)" "INFO"
-Write-Log "  Items duplicados: $($stats.items_duplicated)" "INFO"
+Write-Log "ITEMS:" "INFO"
+Write-Log "  Items created: $($stats.items_created)" "INFO"
+Write-Log "  Items duplicated: $($stats.items_duplicated)" "INFO"
 Write-Log "" "INFO"
 
 if ($stats.failed_list.Count -gt 0) {
-    Write-Log "ARCHIVOS FALLIDOS:" "INFO"
-    foreach ($item in $stats.failed_list) {
+    Write-Log "FAILED FILES:" "INFO"
+    foreach ($item in $stats.failed_list | Select-Object -First 10) {
         Write-Log "  $($item.file) - $($item.reason)" "ERROR"
     }
-    Write-Log "" "INFO"
 }
 
+Write-Log "" "INFO"
 Write-Log "LOGS: $logFile" "INFO"
 Write-Log "=====================================================" "INFO"
 
-Write-Log "Script completed successfully" "INFO"
+Write-Log "Import completed" "INFO"
