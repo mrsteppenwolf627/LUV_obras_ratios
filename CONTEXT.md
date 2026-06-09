@@ -1,10 +1,10 @@
 # CONTEXT: LUV Ratios
 
 **Proyecto:** Sistema de consolidacion y validacion de ratios de construccion
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Estado:** FUNCIONAL (en desarrollo activo)
-**Fecha actualizacion:** 2 de junio de 2026
-**Ultima sesion relevante:** TASK 5D + TASK 6 completados — validaciones enterprise + ImportService reutilizable + 670/670 tests verdes
+**Fecha actualizacion:** 9 de junio de 2026
+**Ultima sesion relevante:** TASK 7 completado — Ingesta masiva (36 items, 60% dedup, 27 presupuestos) + Master Excel + backend fix (uvicorn startup) + 718/718 tests verdes
 
 ## Arquitectura
 
@@ -233,16 +233,13 @@ Decisiones vigentes del roadmap principal:
 - El pipeline debe seguir siendo `PREVIEW_ONLY` para trabajo real controlado mientras no exista promocion explicita.
 - BC3 y Presto/PZH siguen en roadmap bajo restricciones documentadas.
 
-## 🎯 BACKLOG PRIORIZADO
+## Backlog priorizado
 
-| Tarea | Impacto | Dependencia | Riesgo | Esfuerzo | Prioridad |
+| Tarea | Estado | Impacto | Riesgo | Esfuerzo | Completada |
 |---|:---:|:---:|:---:|:---:|:---:|
-| **TASK 7 - FASE 1:** Ingesta masiva | Alto | — | Bajo | 2-4h | 🔴 P0 |
-| **TASK 7 - FASE 2:** Auditoría post-import | Alto | FASE 1 | Bajo | 2-3h | 🔴 P0 |
-| **TASK 7 - FASE 3:** Afinación | Medio | FASE 2 | Bajo | 2-3h | 🟠 P1 |
-| **TASK 7 - FASE 4:** Validación final + master | Alto | FASE 3 | Bajo | 1-2h | 🟠 P1 |
-| TASK 8: Dashboard importaciones | Bajo | TASK 7 | Bajo | 3h | 🟡 P2 |
-| TASK 9: Reportes de ratios | Bajo | TASK 7 | Bajo | 3h | 🟡 P2 |
+| **TASK 7:** Ingesta masiva (FASE 1-4) | ✅ COMPLETADA | Alto | Bajo | 8-12h | 9 junio 2026 |
+| **TASK 8:** Dashboard importaciones | ⏳ BACKLOG | Medio | Bajo | 3h | — |
+| **TASK 9:** Reportes de ratios | ⏳ BACKLOG | Medio | Bajo | 3h | — |
 
 ## ✅ TASK 7 COMPLETADA - Ingesta Masiva + Afinación + Master Descargable
 
