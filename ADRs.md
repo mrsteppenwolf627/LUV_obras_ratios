@@ -229,6 +229,62 @@ Registro de decisiones arquitectonicas del proyecto.
 - La feature puede evolucionar sin acoplarse a un store global prematuro.
 - Si la superficie funcional crece, se podra abrir una ADR futura para estado compartido mas amplio.
 
+### ADR-18: Estrategia de Ingesta Masiva + Afinación
+
+**Status:** ✅ CONGELADA  
+**Fecha:** 8 de junio de 2026  
+**Propuesto por:** Aitor + Claude  
+
+**Decisión:**
+Importar presupuestos históricos en lote (Excel + BC3 → JSON → POST /api/import/budgets).
+Afinar el sistema basado en datos reales: N, confianza, ratios, master descargable.
+
+**Problema:**
+Sistema está listo pero sin datos reales:
+- No se sabe si normalize_item_key() deduplica bien con datos variados
+- N converge pero no hay proof con volumen
+- Master no está validado con datos históricos
+
+**Solución - 4 Fases:**
+
+**FASE 1: Ingesta masiva**
+- Carpeta centralizada: `data/samples/PRESUPUESTOS`
+- Script PowerShell: Lee Excel/BC3 → convierte a JSON estándar
+- Importa via POST /api/import/budgets en paralelo
+- Logs de éxito/fallos/duplicados
+
+**FASE 2: Auditoría post-import**
+- Script analiza: N por capítulo, confianza por capítulo
+- Identifica patrones de deduplicación
+- Detecta anomalías/errores recurrentes
+- Genera reporte
+
+**FASE 3: Afinación**
+- Basado en auditoría: ajustar normalize_item_key()
+- Mejorar validaciones si hay errores
+- Documentar reglas de negocio descubiertas
+
+**FASE 4: Validación final**
+- Master descargable (ratios consolidados)
+- Visuales funcionando con confianza real
+- Documentación completa
+
+**Impacto:**
+- Nuevos archivos: scripts importación + auditoría (backend)
+- Cambios en app/services/import_service.py (si se necesitan ajustes)
+- Cambios en app/utils/normalize.py (si se necesitan afinaciones)
+- Sin cambios en BD schema
+- Sin breaking changes esperados
+
+**Trade-offs:**
+- (+) Datos reales, ratios validados, master confiable
+- (-) Tiempo de procesamiento alto (presupuestos en lote)
+- (-) Posibles edge cases en estructuras variables
+
+**Status cambio:** Congelada. Solo revisar si hay errores catastróficos en importación.
+
+---
+
 ## Como proponer cambios a ADRs
 
 1. No cambiar una ADR congelada sin documentar una ADR de reemplazo o supersesion.

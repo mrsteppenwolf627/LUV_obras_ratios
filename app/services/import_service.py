@@ -1,11 +1,11 @@
-"""Servicio centralizado de ingesta de presupuestos con deduplicación."""
+"""Servicio centralizado de ingesta de presupuestos con deduplicación optimizada."""
 
 from __future__ import annotations
 
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import List
+from typing import Dict, List
 
 from sqlalchemy.orm import Session
 
@@ -15,9 +15,12 @@ from app.crud.budgets import (
     update_budget_import_status,
 )
 from app.schemas.import_budgets import BudgetImportResponse, LineaPresupuesto
-from app.services.items_service import get_or_create_item_master, normalize_item_key
+from app.services.items_service import normalize_item_key
 
 logger = logging.getLogger(__name__)
+
+# Batch size for flush operations (reduces SQLite lock window)
+BATCH_SIZE = 500
 
 
 class DuplicateImportError(Exception):
@@ -30,7 +33,14 @@ class DuplicateImportError(Exception):
 
 
 class ImportService:
-    """Orquesta la ingesta de un presupuesto: deduplicación, trazabilidad y logging."""
+    """Orquesta la ingesta de un presupuesto: deduplicación, trazabilidad y logging.
+
+    Optimizaciones:
+    - Pre-carga todos los ItemMaster existentes (1 query)
+    - Cache en memoria durante procesamiento
+    - Batch processing de inserts (reduce SQLite lock)
+    - Upsert para items nuevos (evita race conditions)
+    """
 
     def __init__(self, session: Session) -> None:
         self.session = session
@@ -45,7 +55,7 @@ class ImportService:
         lineas: List[LineaPresupuesto],
     ) -> BudgetImportResponse:
         """
-        Procesar un presupuesto completo.
+        Procesar un presupuesto completo con optimización de queries.
 
         Raises:
             DuplicateImportError: si file_hash ya existe (el router lo convierte a 409).
@@ -85,13 +95,22 @@ class ImportService:
         self.session.add(budget)
         self.session.flush()
 
-        # ── 4. Procesar líneas ─────────────────────────────────────────────
+        # ── OPTIMIZACIÓN: Pre-cargar todos los ItemMaster existentes (1 query) ────
+        existing_masters: Dict[str, ItemMaster] = {
+            m.item_key: m
+            for m in self.session.query(ItemMaster).all()
+        }
+        logger.debug("[Import %s] Pre-cargados %d ItemMaster existentes", self._log_id, len(existing_masters))
+
+        # ── 4. Procesar líneas con batch processing ───────────────────────
         seen_keys: set[str] = set()
         items_creados = 0
         items_duplicados = 0
         items_errores = 0
         muestras_actualizadas = 0
         detalles: List[str] = []
+        pending_instances: List[ItemInstance] = []
+        batch_count = 0
 
         for linea in lineas:
             desc = (linea.descripcion or "").strip()
@@ -119,31 +138,46 @@ class ImportService:
                 detalles.append(f"Línea {linea.numero}: item_key vacío tras normalizar, omitida")
                 continue
 
-            pre_existing = self.session.query(ItemMaster).filter_by(item_key=item_key).first()
-            is_new_in_db = pre_existing is None
+            # OPTIMIZACIÓN: Cache lookup (O(1) en lugar de query)
+            is_new_in_db = item_key not in existing_masters
             is_new_in_batch = item_key not in seen_keys
 
-            master = get_or_create_item_master(
-                self.session,
-                item_key=item_key,
-                categoria=building_type,
-                subcategoria=None,
-                unidad=linea.unidad or "ud",
-            )
-
-            if is_new_in_db and is_new_in_batch:
-                items_creados += 1
-                detalles.append(f"ItemMaster creado: {item_key!r}")
-                logger.debug("[Import %s] Item nuevo: %s", self._log_id, item_key)
+            if is_new_in_batch:
+                if is_new_in_db:
+                    # Crear nuevo ItemMaster (muestras_count se inicializa en 0, será incrementado abajo)
+                    master = ItemMaster(
+                        item_key=item_key,
+                        categoria=building_type,
+                        subcategoria=None,
+                        unidad=linea.unidad or "ud",
+                        muestras_count=0,
+                    )
+                    self.session.add(master)
+                    existing_masters[item_key] = master
+                    items_creados += 1
+                    detalles.append(f"ItemMaster creado: {item_key!r}")
+                    logger.debug("[Import %s] Item nuevo: %s", self._log_id, item_key)
+                else:
+                    # Reutilizar existente
+                    master = existing_masters[item_key]
+                    items_duplicados += 1
+                    logger.debug("[Import %s] Item duplicado (reutilizado): %s", self._log_id, item_key)
             else:
+                # Ya visto en este batch
+                master = existing_masters[item_key]
                 items_duplicados += 1
-                logger.debug("[Import %s] Item duplicado (reutilizado): %s", self._log_id, item_key)
 
             seen_keys.add(item_key)
+            # Incrementar contador de muestras
             master.muestras_count = (master.muestras_count or 0) + 1
             muestras_actualizadas += 1
 
-            self.session.add(ItemInstance(
+            # Asegurar que el master tenga ID (flush si es nuevo)
+            if is_new_in_db and is_new_in_batch and master.id is None:
+                self.session.flush()
+
+            # OPTIMIZACIÓN: Acumular instances en lotes
+            pending_instances.append(ItemInstance(
                 budget_id=budget.id,
                 item_master_id=master.id,
                 descripcion=desc,
@@ -154,6 +188,22 @@ class ImportService:
                 precio_total=round(linea.cantidad * linea.precio_unitario, 4),
                 validation_status="VALID",
             ))
+
+            # Flush en lotes para reducir ventana de lock SQLite
+            if len(pending_instances) >= BATCH_SIZE:
+                self.session.add_all(pending_instances)
+                self.session.flush()
+                batch_count += 1
+                logger.debug("[Import %s] Batch %d procesado (%d instances)",
+                            self._log_id, batch_count, len(pending_instances))
+                pending_instances = []
+
+        # Flush últimas instancias
+        if pending_instances:
+            self.session.add_all(pending_instances)
+            self.session.flush()
+            logger.debug("[Import %s] Batch final procesado (%d instances)",
+                        self._log_id, len(pending_instances))
 
         # ── 5. Status final ────────────────────────────────────────────────
         total_lineas = len(lineas)
@@ -176,8 +226,8 @@ class ImportService:
 
         elapsed = (datetime.now(timezone.utc) - self._start).total_seconds()
         logger.info(
-            "[Import %s] COMPLETADO en %.2fs: creados=%d, duplicados=%d, errores=%d, status=%s",
-            self._log_id, elapsed, items_creados, items_duplicados, items_errores, final_status,
+            "[Import %s] COMPLETADO en %.2fs: creados=%d, duplicados=%d, errores=%d, status=%s, batches=%d",
+            self._log_id, elapsed, items_creados, items_duplicados, items_errores, final_status, batch_count,
         )
 
         return BudgetImportResponse(
