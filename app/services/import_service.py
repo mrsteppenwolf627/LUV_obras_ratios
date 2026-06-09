@@ -23,6 +23,42 @@ logger = logging.getLogger(__name__)
 BATCH_SIZE = 500
 
 
+def extract_categoria_from_item_key(item_key: str) -> str:
+    """
+    Extrae la categoría del item_key.
+
+    Los item_keys tienen formato: "palabra1 palabra2 ... categoria"
+    La categoría es la última palabra (que corresponde al área de construcción).
+    Si no es una categoría conocida, devuelve "SIN_CATEGORIA".
+
+    Ejemplos:
+    - "retirada pavimento demolicion" → "demolicion"
+    - "forjado hormigon estructura" → "estructura"
+    - "puertas exteriores carpinteria" → "carpinteria"
+    """
+    known_categories = {
+        "demolicion", "estructura", "carpinteria",
+        "fontaneria", "electricidad", "pintura"
+    }
+
+    if not item_key or not isinstance(item_key, str):
+        return "SIN_CATEGORIA"
+
+    # Última palabra del item_key
+    palabras = item_key.strip().split()
+    if not palabras:
+        return "SIN_CATEGORIA"
+
+    ultima_palabra = palabras[-1].lower()
+
+    # Si es una categoría conocida, devolverla
+    if ultima_palabra in known_categories:
+        return ultima_palabra.upper()
+
+    # Si no, devolver SIN_CATEGORIA
+    return "SIN_CATEGORIA"
+
+
 class DuplicateImportError(Exception):
     """Raised when file_hash already exists in budget_imports."""
 
@@ -147,7 +183,7 @@ class ImportService:
                     # Crear nuevo ItemMaster (muestras_count se inicializa en 0, será incrementado abajo)
                     master = ItemMaster(
                         item_key=item_key,
-                        categoria=building_type,
+                        categoria=extract_categoria_from_item_key(item_key),
                         subcategoria=None,
                         unidad=linea.unidad or "ud",
                         muestras_count=0,
