@@ -247,7 +247,7 @@ Decisiones vigentes del roadmap principal:
 ## 📊 TASK 7: Ingesta Masiva + Afinación
 
 **Estado:** INICIANDO (FASE 1 pronto)  
-**Presupuestos disponibles:** C:\Users\a.alarcon\Desktop\Cursor projects\luv_obras_ratios\data\samples\PRESUPUESTOS  
+**Presupuestos disponibles:** C:\Users\a.alarcon\Desktop\Cursor projects\luv _obras_ratios\data\samples\PRESUPUESTOS  
 **Formatos:** Excel, BC3, Presto, archivos variados  
 **Objetivo:** Importar datos reales, afinar sistema, generar master confiable
 
