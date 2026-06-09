@@ -146,6 +146,12 @@ async def api_import(file: UploadFile = File(...)):
 
         ratios_created = recalculate_all_ratios(session)
         session.flush()
+
+        # Recalculate ItemMaster stats (mediana_unitario, muestras_count, etc.)
+        from app.services.recalculate_service import recalculate_all_item_master_stats
+        recalculate_all_item_master_stats(session)
+        session.flush()
+
         invalidar_cache_chapters()
 
         generate_master_excel(session)
