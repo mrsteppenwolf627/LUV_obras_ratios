@@ -1,10 +1,10 @@
 # CONTEXT: LUV Ratios
 
 **Proyecto:** Sistema de consolidacion y validacion de ratios de construccion
-**Version:** 1.4.0
+**Version:** 1.4.1
 **Estado:** 🟢 PRODUCCIÓN READY
 **Fecha actualizacion:** 9 de junio de 2026
-**Ultima sesion relevante:** TASK 7 FINAL — Ingesta masiva completada (36 items, 60% dedup, 27 presupuestos) + Endpoint /api/ratios/rango + Frontend integrado + Rango + Solidez operativos + 725/725 tests verdes
+**Ultima sesion relevante:** Tab Comparativa operativo — POST /api/analyze/comparativa calcula desviaciones, impacto monetario y confiabilidad globales + 733/733 tests verdes
 
 ## Arquitectura
 
@@ -279,12 +279,15 @@ Decisiones vigentes del roadmap principal:
      - Visualización de rangos con percentiles
    - **Tab "Solidez" operativo:**
      - Tabla de confiabilidad por capítulo
-   - **Nota:** Tab "Comparativa" (TASK 8+, bonus) implementado pero no requisito TASK 7
+   - **Tab "Comparativa" operativo:**
+     - POST /api/analyze/comparativa devuelve desviación €/%, impacto monetario, confiabilidad
+     - Análisis por capítulo + resumen global
    - Sistema: LISTO PARA PRODUCCIÓN
 
 **Resultados Finales Consolidados:**
 - **Items:** 36 únicos con categorías correctas (DEMOLICION, ESTRUCTURA, CARPINTERIA, FONTANERIA, ELECTRICIDAD, PINTURA)
 - **Deduplicación:** 60% (54 duplicados detectados)
+- **Tests:** 733/733 pasando (718 core + 15 nuevos para visuales)
 - **Confianza:**
   - SÓLIDO (N≥5): 1 item (2.8%)
   - DÉBIL (N 2-4): 31 items (86.1%)
