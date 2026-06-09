@@ -1,0 +1,151 @@
+{
+  "filename": "test_presupuesto_04.json",
+  "file_hash": "5005900c9e2be1293389e784fcc92540ff5cd5f463a54238adf1ef30c22eb132",
+  "building_type": "residencial",
+  "lineas": [
+    {
+      "numero": 1,
+      "capitulo": "04",
+      "descripcion": "Derribo pared divisoria (Demolicion)",
+      "cantidad": 53.8,
+      "unidad": "m2",
+      "precio_unitario": 180.3
+    },
+    {
+      "numero": 2,
+      "capitulo": "04",
+      "descripcion": "Derribo estructura (Demolicion)",
+      "cantidad": 12.7,
+      "unidad": "m2",
+      "precio_unitario": 218.48
+    },
+    {
+      "numero": 3,
+      "capitulo": "04",
+      "descripcion": "Arranque carpinteria (Demolicion)",
+      "cantidad": 43.4,
+      "unidad": "m2",
+      "precio_unitario": 308.14
+    },
+    {
+      "numero": 4,
+      "capitulo": "04",
+      "descripcion": "Apuntalamiento (Estructura)",
+      "cantidad": 5.1,
+      "unidad": "ml",
+      "precio_unitario": 58.13
+    },
+    {
+      "numero": 5,
+      "capitulo": "04",
+      "descripcion": "Andamiaje temporal (Estructura)",
+      "cantidad": 41.5,
+      "unidad": "ml",
+      "precio_unitario": 373.84
+    },
+    {
+      "numero": 6,
+      "capitulo": "04",
+      "descripcion": "Forjado hormigon (Estructura)",
+      "cantidad": 91.2,
+      "unidad": "ml",
+      "precio_unitario": 140.56
+    },
+    {
+      "numero": 7,
+      "capitulo": "04",
+      "descripcion": "Armarios (Carpinteria)",
+      "cantidad": 16.6,
+      "unidad": "m2",
+      "precio_unitario": 176.5
+    },
+    {
+      "numero": 8,
+      "capitulo": "04",
+      "descripcion": "Ventanas aluminio (Carpinteria)",
+      "cantidad": 14.1,
+      "unidad": "m2",
+      "precio_unitario": 381.85
+    },
+    {
+      "numero": 9,
+      "capitulo": "04",
+      "descripcion": "Puertas exteriores (Carpinteria)",
+      "cantidad": 85.9,
+      "unidad": "m2",
+      "precio_unitario": 98.52
+    },
+    {
+      "numero": 10,
+      "capitulo": "04",
+      "descripcion": "Inodoro (Fontaneria)",
+      "cantidad": 71.1,
+      "unidad": "u",
+      "precio_unitario": 163.39
+    },
+    {
+      "numero": 11,
+      "capitulo": "04",
+      "descripcion": "Tuberias cobre (Fontaneria)",
+      "cantidad": 78.5,
+      "unidad": "u",
+      "precio_unitario": 55.26
+    },
+    {
+      "numero": 12,
+      "capitulo": "04",
+      "descripcion": "Tuberias PVC (Fontaneria)",
+      "cantidad": 94.6,
+      "unidad": "u",
+      "precio_unitario": 186.24
+    },
+    {
+      "numero": 13,
+      "capitulo": "04",
+      "descripcion": "Panel electrico (Electricidad)",
+      "cantidad": 77.9,
+      "unidad": "ml",
+      "precio_unitario": 146.37
+    },
+    {
+      "numero": 14,
+      "capitulo": "04",
+      "descripcion": "Toma tierra (Electricidad)",
+      "cantidad": 98.1,
+      "unidad": "ml",
+      "precio_unitario": 421.37
+    },
+    {
+      "numero": 15,
+      "capitulo": "04",
+      "descripcion": "Cableado electrico (Electricidad)",
+      "cantidad": 29.5,
+      "unidad": "ml",
+      "precio_unitario": 300.38
+    },
+    {
+      "numero": 16,
+      "capitulo": "04",
+      "descripcion": "Lacados (Pintura)",
+      "cantidad": 64.3,
+      "unidad": "m2",
+      "precio_unitario": 203.1
+    },
+    {
+      "numero": 17,
+      "capitulo": "04",
+      "descripcion": "Pintura interior plastica (Pintura)",
+      "cantidad": 72.2,
+      "unidad": "m2",
+      "precio_unitario": 433.24
+    },
+    {
+      "numero": 18,
+      "capitulo": "04",
+      "descripcion": "Imprimacion (Pintura)",
+      "cantidad": 93.8,
+      "unidad": "m2",
+      "precio_unitario": 188.56
+    }
+  ]
+}

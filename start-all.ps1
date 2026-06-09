@@ -8,8 +8,8 @@ if (-not (Test-Path $dbPath) -or (Get-Item $dbPath).Length -eq 0) {
     python (Join-Path $projectRoot "scripts/init_db.py")
 }
 
-Write-Host "Lanzando backend en una nueva ventana..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$projectRoot'; python -m uvicorn app.main:app --reload --port 8000"
+Write-Host "Lanzando backend en una nueva ventana (modo estable, sin reload)..." -ForegroundColor Cyan
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$projectRoot'; python -m uvicorn app.main:app --port 8000"
 
 Start-Sleep -Seconds 3
 

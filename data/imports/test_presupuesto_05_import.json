@@ -1,0 +1,151 @@
+{
+  "filename": "test_presupuesto_05.json",
+  "file_hash": "5f00e3f196195c04264183c010cdf99321a6a58e9affb00e1159d3455bead0b9",
+  "building_type": "residencial",
+  "lineas": [
+    {
+      "numero": 1,
+      "capitulo": "05",
+      "descripcion": "Arranque carpinteria (Demolicion)",
+      "cantidad": 89.1,
+      "unidad": "m2",
+      "precio_unitario": 53.03
+    },
+    {
+      "numero": 2,
+      "capitulo": "05",
+      "descripcion": "Derribo pared divisoria (Demolicion)",
+      "cantidad": 51.3,
+      "unidad": "m2",
+      "precio_unitario": 208.83
+    },
+    {
+      "numero": 3,
+      "capitulo": "05",
+      "descripcion": "Retirada pavimento (Demolicion)",
+      "cantidad": 68.8,
+      "unidad": "m2",
+      "precio_unitario": 305.82
+    },
+    {
+      "numero": 4,
+      "capitulo": "05",
+      "descripcion": "Pilares metalicos (Estructura)",
+      "cantidad": 93.4,
+      "unidad": "ml",
+      "precio_unitario": 445.89
+    },
+    {
+      "numero": 5,
+      "capitulo": "05",
+      "descripcion": "Vigas metalicas (Estructura)",
+      "cantidad": 91.0,
+      "unidad": "ml",
+      "precio_unitario": 325.05
+    },
+    {
+      "numero": 6,
+      "capitulo": "05",
+      "descripcion": "Reparacion grietas (Estructura)",
+      "cantidad": 40.3,
+      "unidad": "ml",
+      "precio_unitario": 308.77
+    },
+    {
+      "numero": 7,
+      "capitulo": "05",
+      "descripcion": "Puertas exteriores (Carpinteria)",
+      "cantidad": 62.1,
+      "unidad": "m2",
+      "precio_unitario": 89.46
+    },
+    {
+      "numero": 8,
+      "capitulo": "05",
+      "descripcion": "Carpinteria madera (Carpinteria)",
+      "cantidad": 37.8,
+      "unidad": "m2",
+      "precio_unitario": 324.28
+    },
+    {
+      "numero": 9,
+      "capitulo": "05",
+      "descripcion": "Armarios (Carpinteria)",
+      "cantidad": 97.9,
+      "unidad": "m2",
+      "precio_unitario": 183.91
+    },
+    {
+      "numero": 10,
+      "capitulo": "05",
+      "descripcion": "Fregadero (Fontaneria)",
+      "cantidad": 95.1,
+      "unidad": "u",
+      "precio_unitario": 312.34
+    },
+    {
+      "numero": 11,
+      "capitulo": "05",
+      "descripcion": "Lavabo (Fontaneria)",
+      "cantidad": 69.3,
+      "unidad": "u",
+      "precio_unitario": 405.39
+    },
+    {
+      "numero": 12,
+      "capitulo": "05",
+      "descripcion": "Griferia bano (Fontaneria)",
+      "cantidad": 84.0,
+      "unidad": "u",
+      "precio_unitario": 483.47
+    },
+    {
+      "numero": 13,
+      "capitulo": "05",
+      "descripcion": "Cableado electrico (Electricidad)",
+      "cantidad": 6.1,
+      "unidad": "ml",
+      "precio_unitario": 249.22
+    },
+    {
+      "numero": 14,
+      "capitulo": "05",
+      "descripcion": "Iluminacion LED (Electricidad)",
+      "cantidad": 9.4,
+      "unidad": "ml",
+      "precio_unitario": 425.43
+    },
+    {
+      "numero": 15,
+      "capitulo": "05",
+      "descripcion": "Toma tierra (Electricidad)",
+      "cantidad": 45.4,
+      "unidad": "ml",
+      "precio_unitario": 486.53
+    },
+    {
+      "numero": 16,
+      "capitulo": "05",
+      "descripcion": "Imprimacion (Pintura)",
+      "cantidad": 5.2,
+      "unidad": "m2",
+      "precio_unitario": 91.24
+    },
+    {
+      "numero": 17,
+      "capitulo": "05",
+      "descripcion": "Acabados especiales (Pintura)",
+      "cantidad": 20.8,
+      "unidad": "m2",
+      "precio_unitario": 292.16
+    },
+    {
+      "numero": 18,
+      "capitulo": "05",
+      "descripcion": "Pintura exterior (Pintura)",
+      "cantidad": 49.6,
+      "unidad": "m2",
+      "precio_unitario": 203.28
+    }
+  ]
+}
