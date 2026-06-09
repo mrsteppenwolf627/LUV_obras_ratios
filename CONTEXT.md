@@ -246,18 +246,37 @@ Decisiones vigentes del roadmap principal:
 
 ## 📊 TASK 7: Ingesta Masiva + Afinación
 
-**Estado:** INICIANDO (FASE 1 pronto)  
-**Presupuestos disponibles:** C:\Users\a.alarcon\Desktop\Cursor projects\luv _obras_ratios\data\samples\PRESUPUESTOS  
-**Formatos:** Excel, BC3, Presto, archivos variados  
-**Objetivo:** Importar datos reales, afinar sistema, generar master confiable
+**Estado:** FASE 2 COMPLETADA (Auditoría post-import)  
+**Presupuestos:** 48 descubiertos, 1 procesado exitosamente → 26 items en BD  
+**Formatos:** Excel, BC3, Presto, archivos variados
 
 **Fases:**
-1. ⏳ FASE 1: Script importación masiva (próximo paso)
-2. ⏳ FASE 2: Auditoría post-import
-3. ⏳ FASE 3: Afinación basada en datos
-4. ⏳ FASE 4: Master descargable + validación visuales
+1. ✅ FASE 1: Script importación masiva
+   - Script PowerShell funcional: `scripts/importar_presupuestos_masivo.ps1`
+   - Descubre 48 archivos (5 xlsx, 12 pzh, 12 bc3, 9 Presto)
+   - Parser flexible con column mapping para Excel
+   - 1 archivo procesado (MED_PSJ25_V1.bc3)
 
-**Cambios esperados:** N converge, confianza sube a SÓLIDO/MUY_SÓLIDO, master validado
+2. ✅ FASE 2: Auditoría post-import
+   - 26 items importados exitosamente
+   - Distribución: 69.2% DEBIL (N 2-4), 3.8% MUY_DEBIL (N=1)
+   - Top item: carpinteria aluminio (N=3)
+   - Items principales: totales de áreas (amenities, cocina, baños, etc.)
+   - Script auditoría: `scripts/analizar_post_import.py`
+
+3. ⏳ FASE 3: Afinación basada en datos
+   - Mejorar parsers para 37 archivos fallidos
+   - Investigar variabilidad estructural
+   - Ajustar normalize_item_key() si es necesario
+
+4. ⏳ FASE 4: Master descargable + validación visuales
+   - Generar Excel consolidado
+   - Validar confianza en visuales
+
+**Hallazgos:**
+- Convergencia inicial: N=2-4 para mayoría de items
+- Necesita más muestras para alcanzar SÓLIDO/MUY_SÓLIDO
+- Parsers actuales son restrictivos (37/48 archivos sin líneas válidas)
 
 ---
 
