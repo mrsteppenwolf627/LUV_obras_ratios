@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from src.db.schema import Base, Budget, LineItem, Ratio
+from src.db.schema import Base, Budget, LineItem, Ratio, ItemMaster
 
 
 # ---------------------------------------------------------------------------
@@ -64,21 +64,23 @@ def api_client():
         )
     session.flush()
 
-    # Add pre-computed Ratio rows directly
-    for code, name, median, n in [
-        ("ESTRUCTURA", "Estructura", 300.0, 3),
-        ("INSTALACIONES", "Instalaciones", 150.0, 7),
-        ("CIMENTACION", "Cimentación", 200.0, 12),
+    # Add pre-computed ItemMaster rows with correct muestras_count
+    for categoria, item_key, mediana, muestras in [
+        ("ESTRUCTURA", "estructura", 300.0, 3),
+        ("INSTALACIONES", "instalaciones", 150.0, 7),
+        ("CIMENTACION", "cimentacion", 200.0, 12),
     ]:
         session.add(
-            Ratio(
-                chapter_code=code,
-                chapter_name=name,
-                building_type=None,
-                median=median,
-                min_value=median * 0.8,
-                max_value=median * 1.2,
-                sample_count=n,
+            ItemMaster(
+                item_key=item_key,
+                categoria=categoria,
+                unidad="m2",
+                mediana_unitario=mediana,
+                media_unitario=mediana,
+                min_unitario=mediana * 0.8,
+                max_unitario=mediana * 1.2,
+                desv_std=0.0,
+                muestras_count=muestras,
             )
         )
     session.commit()

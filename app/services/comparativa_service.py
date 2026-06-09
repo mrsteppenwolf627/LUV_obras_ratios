@@ -16,7 +16,7 @@ from app.schemas.visuales import (
     PresupuestoAnalisis,
     ResumenComparativa,
 )
-from src.db.schema import Ratio
+from src.db.schema import Ratio, ItemMaster
 
 _CONFIABILIDAD_ORDEN = {"muy_solido": 4, "solido": 3, "debil": 2, "muy_debil": 1}
 
@@ -36,27 +36,24 @@ def obtener_capitulos_ratios(
     session: Session,
     building_type: Optional[str] = None,
 ) -> List[CapituloRatioResponse]:
-    """Return all chapters that have a computed median ratio."""
-    q = session.query(Ratio).filter(Ratio.median.isnot(None))
-    normalized_building_type = _normalize_text(building_type)
-    if normalized_building_type:
-        q = q.filter(func.upper(Ratio.building_type) == normalized_building_type)
+    """Return all items with consolidated statistics from item_master (not ratios table)."""
+    q = session.query(ItemMaster)
 
     resultado: List[CapituloRatioResponse] = []
-    for ratio in q.order_by(Ratio.chapter_code).all():
+    for item in q.order_by(ItemMaster.item_key).all():
         resultado.append(
             CapituloRatioResponse(
-                capitulo=ratio.chapter_code,
-                descripcion=ratio.chapter_name,
-                minimo=ratio.min_value,
-                percentil_25=ratio.percentil_25,
-                mediana=ratio.median,
-                percentil_75=ratio.percentil_75,
-                maximo=ratio.max_value,
-                desviacion_std=ratio.std_dev,
-                cantidad_datos=int(ratio.sample_count or 0),
-                estado_confiabilidad=calcular_estado_confiabilidad(ratio.sample_count or 0),
-                building_type=ratio.building_type,
+                capitulo=item.categoria or "SIN_CATEGORIA",
+                descripcion=item.item_key or "",
+                minimo=item.min_unitario or 0.0,
+                percentil_25=item.min_unitario or 0.0,
+                mediana=item.mediana_unitario or item.media_unitario or 0.0,
+                percentil_75=item.max_unitario or 0.0,
+                maximo=item.max_unitario or 0.0,
+                desviacion_std=item.desv_std or 0.0,
+                cantidad_datos=int(item.muestras_count or 0),
+                estado_confiabilidad=calcular_estado_confiabilidad(item.muestras_count or 0),
+                building_type=None,
             )
         )
     return resultado
@@ -86,23 +83,23 @@ def analizar_comparativa(
     for capitulo_norm, items in items_por_capitulo.items():
         ratio_db = ratios_por_capitulo.get(capitulo_norm)
 
-        if ratio_db is None or ratio_db.median is None:
+        if ratio_db is None or ratio_db.mediana_unitario is None:
             capitulos_sin_ratio.append(capitulo_norm)
             continue
 
         total_cantidad = sum(item.cantidad for item in items)
         valor_mio = sum(item.valor_unitario * item.cantidad for item in items) / total_cantidad
-        valor_ratio = ratio_db.median
+        valor_ratio = ratio_db.mediana_unitario
         desviacion_pct = ((valor_mio - valor_ratio) / valor_ratio * 100) if valor_ratio else 0.0
         impacto_monetario = (desviacion_pct / 100) * valor_ratio * presupuesto.area_total
 
-        confiabilidad = calcular_estado_confiabilidad(ratio_db.sample_count or 0)
+        confiabilidad = calcular_estado_confiabilidad(ratio_db.muestras_count or 0)
         confiabilidades.append(confiabilidad)
 
         capitulos_resultado.append(
             ComparativaCapitulo(
                 capitulo=capitulo_norm,
-                descripcion=ratio_db.chapter_name,
+                descripcion=ratio_db.item_key,
                 valor_mio=round(valor_mio, 4),
                 valor_ratio=round(valor_ratio, 4),
                 desviacion_pct=round(desviacion_pct, 2),
@@ -145,52 +142,38 @@ def _cargar_ratios_por_capitulo(
     session: Session,
     chapter_codes: List[str],
     building_type: Optional[str],
-) -> dict[str, Ratio]:
+) -> dict[str, ItemMaster]:
     if not chapter_codes:
         return {}
 
+    # Look for items by categoria matching chapter_codes
     rows = (
-        session.query(Ratio)
+        session.query(ItemMaster)
         .filter(
-            func.upper(Ratio.chapter_code).in_(chapter_codes),
-            Ratio.median.isnot(None),
+            func.upper(ItemMaster.categoria).in_(chapter_codes),
+            ItemMaster.mediana_unitario.isnot(None),
         )
         .all()
     )
 
-    normalized_building_type = _normalize_text(building_type)
-    ratios_por_capitulo: dict[str, Ratio] = {}
+    ratios_por_capitulo: dict[str, ItemMaster] = {}
     for row in rows:
-        chapter_code = _normalize_text(row.chapter_code)
-        if not chapter_code:
+        categoria = _normalize_text(row.categoria)
+        if not categoria:
             continue
-        if chapter_code not in ratios_por_capitulo:
-            ratios_por_capitulo[chapter_code] = row
-        if normalized_building_type and _normalize_text(row.building_type) == normalized_building_type:
-            ratios_por_capitulo[chapter_code] = row
+        if categoria not in ratios_por_capitulo:
+            ratios_por_capitulo[categoria] = row
 
     return ratios_por_capitulo
 
 
 def _buscar_ratio(
     session: Session, chapter_code: str, building_type: Optional[str]
-) -> Optional[Ratio]:
-    """Find a Ratio row for a given chapter, preferring building_type match."""
+) -> Optional[ItemMaster]:
+    """Find an ItemMaster row for a given category."""
     normalized_chapter_code = _normalize_text(chapter_code)
-    normalized_building_type = _normalize_text(building_type)
-    if normalized_building_type:
-        ratio = (
-            session.query(Ratio)
-            .filter(
-                func.upper(Ratio.chapter_code) == normalized_chapter_code,
-                func.upper(Ratio.building_type) == normalized_building_type,
-            )
-            .first()
-        )
-        if ratio:
-            return ratio
     return (
-        session.query(Ratio)
-        .filter(func.upper(Ratio.chapter_code) == normalized_chapter_code)
+        session.query(ItemMaster)
+        .filter(func.upper(ItemMaster.categoria) == normalized_chapter_code)
         .first()
     )
