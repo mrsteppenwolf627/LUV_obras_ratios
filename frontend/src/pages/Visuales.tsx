@@ -11,6 +11,7 @@ import type {
   ComparativaResponse,
   ItemPresupuesto,
   PresupuestoAnalisis,
+  RangoResponse,
 } from '@/types/visuales';
 
 type ComparativaDraftItem = {
@@ -60,6 +61,8 @@ const Visuales = () => {
   const [comparativaItems, setComparativaItems] = useState<ComparativaDraftItem[]>([createDraftItem()]);
   const [comparativaData, setComparativaData] = useState<ComparativaResponse | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [rangoData, setRangoData] = useState<RangoResponse | null>(null);
+  const [loadingRango, setLoadingRango] = useState(false);
 
   useEffect(() => {
     if (!capituloSeleccionado && capitulos.length > 0) {
@@ -91,6 +94,24 @@ const Visuales = () => {
 
   const removeComparativaItem = (id: string) => {
     setComparativaItems((current) => (current.length > 1 ? current.filter((item) => item.id !== id) : current));
+  };
+
+  const handleCapituloChange = async (chapter: string) => {
+    setCapituloSeleccionado(chapter);
+    setLoadingRango(true);
+    try {
+      const res = await fetch(`/api/ratios/rango?chapter=${encodeURIComponent(chapter)}`);
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}`);
+      }
+      const data = await res.json() as RangoResponse;
+      setRangoData(data);
+    } catch (error) {
+      console.error('Error cargando rango:', error);
+      setRangoData(null);
+    } finally {
+      setLoadingRango(false);
+    }
   };
 
   const buildPresupuesto = (): PresupuestoAnalisis | null => {
@@ -132,7 +153,7 @@ const Visuales = () => {
     setComparativaData(response);
   };
 
-  const renderRango = (capitulo: CapituloRatioResponse) => (
+  const renderRango = () => (
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <label className="flex flex-col gap-2 text-sm font-medium text-primary">
@@ -141,7 +162,7 @@ const Visuales = () => {
             aria-label="Selecciona un capitulo"
             className="rounded-lg border border-[#D4C7B8] bg-white px-4 py-3 text-base"
             value={capituloSeleccionado}
-            onChange={(event) => setCapituloSeleccionado(event.target.value)}
+            onChange={(event) => void handleCapituloChange(event.target.value)}
           >
             {capitulos.map((item) => (
               <option key={item.capitulo} value={item.capitulo}>
@@ -152,19 +173,41 @@ const Visuales = () => {
         </label>
       </div>
 
-      <RangoValidacion
-        capitulo={capitulo.capitulo}
-        cantidad_datos={capitulo.cantidad_datos}
-        descripcion={capitulo.descripcion ?? 'Sin descripcion disponible'}
-        desviacion_std={capitulo.desviacion_std ?? null}
-        estado_confiabilidad={capitulo.estado_confiabilidad}
-        maximo={capitulo.maximo ?? null}
-        mediana={capitulo.mediana ?? null}
-        minimo={capitulo.minimo ?? null}
-        percentil_25={capitulo.percentil_25 ?? null}
-        percentil_75={capitulo.percentil_75 ?? null}
-        unidad="EUR/m2"
-      />
+      {loadingRango && (
+        <div className="rounded-lg border border-[#E0D5C7] bg-white px-4 py-6 text-sm text-accent text-center">
+          Cargando estadísticas...
+        </div>
+      )}
+
+      {!loadingRango && rangoData && (
+        <>
+          <div className="rounded-lg border border-[#E0D5C7] bg-white p-4 space-y-2">
+            <h3 className="font-semibold text-primary">{rangoData.chapter}</h3>
+            <p className="text-sm text-accent">Muestras totales: {rangoData.muestras_total}</p>
+            <p className="text-sm text-accent">Items únicos: {rangoData.items_count}</p>
+          </div>
+
+          <RangoValidacion
+            capitulo={rangoData.chapter}
+            cantidad_datos={rangoData.muestras_total}
+            descripcion={`${rangoData.items_count} items únicos`}
+            desviacion_std={null}
+            estado_confiabilidad={rangoData.muestras_total >= 5 ? 'solido' : rangoData.muestras_total >= 2 ? 'debil' : 'muy_debil'}
+            maximo={rangoData.max_unitario}
+            mediana={rangoData.median_unitario}
+            minimo={rangoData.min_unitario}
+            percentil_25={rangoData.p25_unitario}
+            percentil_75={rangoData.p75_unitario}
+            unidad="EUR/m2"
+          />
+        </>
+      )}
+
+      {!loadingRango && !rangoData && capituloSeleccionado && (
+        <div className="rounded-lg border border-[#D32F2F] bg-[#FDECEC] px-4 py-3 text-sm text-[#8B1E1E]">
+          No se pudo cargar datos para {capituloSeleccionado}
+        </div>
+      )}
     </div>
   );
 
@@ -370,8 +413,8 @@ const Visuales = () => {
         </div>
       ) : (
         <>
-          {indiceTab === 0 && selectedCapitulo && renderRango(selectedCapitulo)}
-          {indiceTab === 0 && !selectedCapitulo && (
+          {indiceTab === 0 && renderRango()}
+          {indiceTab === 0 && capitulos.length === 0 && (
             <div className="rounded-lg border border-[#E0D5C7] bg-white px-4 py-6 text-sm text-accent">
               No hay capitulos disponibles para mostrar el rango.
             </div>

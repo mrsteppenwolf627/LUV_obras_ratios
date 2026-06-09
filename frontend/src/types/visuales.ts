@@ -56,3 +56,15 @@ export interface ComparativaResponse {
   capitulos_sin_ratio: string[];
   resumen: ResumenComparativa;
 }
+
+export interface RangoResponse {
+  chapter: string;
+  items_count: number;
+  muestras_total: number;
+  min_unitario: number;
+  max_unitario: number;
+  p25_unitario: number;
+  median_unitario: number;
+  p75_unitario: number;
+  avg_unitario: number;
+}
