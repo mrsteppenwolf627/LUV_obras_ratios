@@ -2,6 +2,41 @@
 
 Sistema interno para importacion, parsing, validacion estructural y futura normalizacion de presupuestos, con trazabilidad completa desde las fuentes hasta capas intermedias y salida operativa final.
 
+## Quick Start
+
+### Setup (Primera vez)
+
+```bash
+# 1. Clonar repositorio
+git clone https://github.com/mrsteppenwolf627/LUV_obras_ratios.git
+cd LUV_obras_ratios
+
+# 2. Instalar dependencias
+pip install -r requirements.txt
+npm install
+
+# 3. Inicializar base de datos (restaura desde seed)
+python scripts/setup_db.py
+
+# 4. Correr backend (uvicorn con auto-reload)
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# 5. En otra terminal, correr frontend (Vite)
+cd frontend
+npm run dev
+
+# 6. Aplicación lista en http://localhost:5173
+# API docs disponible en http://localhost:8000/docs
+```
+
+### O usar el script de inicio automático (Windows)
+
+```powershell
+.\start-all.ps1
+```
+
+Este script inicia automáticamente backend, frontend y abre el navegador.
+
 ## Estado operativo actual (2026-05-21)
 
 - Fase 8 cerrada tecnicamente.
