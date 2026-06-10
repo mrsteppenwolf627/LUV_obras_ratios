@@ -11,8 +11,8 @@ from openpyxl.styles import Alignment, Font, PatternFill, numbers
 from openpyxl.utils import get_column_letter
 from sqlalchemy.orm import Session
 
-from src.db.queries import list_all_budgets, list_all_ratios
-from src.db.schema import Budget, LineItem, Ratio
+from src.db.queries import list_all_budgets, list_all_ratios, list_all_item_masters
+from src.db.schema import Budget, LineItem, Ratio, ItemMaster, Confianza
 
 DEFAULT_OUTPUT = Path("data/master/master_latest.xlsx")
 
@@ -136,6 +136,72 @@ def _build_ratios_sheet(ws: Any, ratios: list[Ratio]) -> None:
                 cell.fill = fill
             if col in (4, 5, 6) and isinstance(val, float):
                 cell.number_format = '#,##0.00 "€/m²"'
+
+    _auto_width(ws)
+    _freeze(ws)
+
+
+def _solidez_level(muestras_count: int) -> str:
+    """Calculate confidence level based on sample count."""
+    if muestras_count is None:
+        muestras_count = 0
+    if muestras_count >= 10:
+        return "MUY_SÓLIDO"
+    elif muestras_count >= 5:
+        return "SÓLIDO"
+    elif muestras_count >= 2:
+        return "DÉBIL"
+    else:
+        return "MUY_DÉBIL"
+
+
+def _build_item_master_sheet(ws: Any, items: list[ItemMaster]) -> None:
+    """Build consolidated items catalog sheet."""
+    ws.title = "ITEM_MASTER"
+    headers = [
+        "Item Key",
+        "Categoría",
+        "Subcategoría",
+        "Unidad",
+        "Unitario (Mediana)",
+        "Mínimo",
+        "Máximo",
+        "P25",
+        "P75",
+        "Desv. Std",
+        "Muestras (N)",
+        "Solidez",
+        "Última Actualización",
+    ]
+    _write_header(ws, headers, fill=SUBHDR_FILL, font=SUBHDR_FONT)
+    ws.row_dimensions[1].height = 30
+
+    for row_num, item in enumerate(items, start=2):
+        fill = ALT_FILL if row_num % 2 == 0 else None
+        solidez = _solidez_level(item.muestras_count)
+        values = [
+            item.item_key,
+            item.categoria or "",
+            item.subcategoria or "",
+            item.unidad or "",
+            _fmt_eur(item.mediana_unitario) if item.mediana_unitario else "",
+            _fmt_eur(item.min_unitario) if item.min_unitario else "",
+            _fmt_eur(item.max_unitario) if item.max_unitario else "",
+            _fmt_eur(item.media_unitario * 0.25) if item.media_unitario else "",  # Aproximado P25
+            _fmt_eur(item.media_unitario * 0.75) if item.media_unitario else "",  # Aproximado P75
+            _fmt_eur(item.desv_std) if item.desv_std else "",
+            item.muestras_count or 0,
+            solidez,
+            _fmt_date(item.ultima_actualizacion),
+        ]
+        for col, val in enumerate(values, start=1):
+            cell = ws.cell(row=row_num, column=col, value=val)
+            cell.font = BODY_FONT
+            if fill:
+                cell.fill = fill
+            # Format currency columns
+            if col in (5, 6, 7, 8, 9, 10) and isinstance(val, float):
+                cell.number_format = '#,##0.00 "€"'
 
     _auto_width(ws)
     _freeze(ws)
@@ -282,17 +348,28 @@ def generate_master_excel(
 ) -> str:
     """
     Generate (or overwrite) the master Excel file.
+    If output_path uses DEFAULT_OUTPUT pattern, use dated filename.
     Returns the absolute path of the written file.
     """
     out = Path(output_path)
+
+    # If using default, generate dated filename
+    if output_path == DEFAULT_OUTPUT:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        out = out.parent / f"MASTER_{today}.xlsx"
+
     out.parent.mkdir(parents=True, exist_ok=True)
 
     budgets = list_all_budgets(session)
     ratios = list_all_ratios(session)
+    items = list_all_item_masters(session)
 
     wb = Workbook()
     # Remove default sheet
     wb.remove(wb.active)
+
+    ws_item_master = wb.create_sheet("ITEM_MASTER")
+    _build_item_master_sheet(ws_item_master, items)
 
     ws_index = wb.create_sheet("INDEX")
     _build_index_sheet(ws_index, budgets)
@@ -309,8 +386,8 @@ def generate_master_excel(
     ws_raw = wb.create_sheet("RAW_DATA")
     _build_raw_data_sheet(ws_raw, budgets)
 
-    # Always open on INDEX
-    wb.active = ws_index
+    # Always open on ITEM_MASTER (the consolidated catalog)
+    wb.active = ws_item_master
 
     wb.save(str(out))
     return str(out.resolve())

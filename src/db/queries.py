@@ -6,7 +6,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from src.db.schema import Budget, LineItem, Ratio
+from src.db.schema import Budget, LineItem, Ratio, ItemMaster
 
 
 def get_budget_by_hash(session: Session, file_hash: str) -> Optional[Budget]:
@@ -46,3 +46,7 @@ def list_all_budgets(session: Session) -> list[Budget]:
 
 def list_all_ratios(session: Session) -> list[Ratio]:
     return session.query(Ratio).order_by(Ratio.chapter_code).all()
+
+
+def list_all_item_masters(session: Session) -> list[ItemMaster]:
+    return session.query(ItemMaster).order_by(ItemMaster.categoria, ItemMaster.item_key).all()
