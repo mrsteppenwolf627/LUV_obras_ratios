@@ -302,3 +302,36 @@ class ValidationLog(Base):
 
     def __repr__(self) -> str:
         return f"<ValidationLog rule={self.rule_name!r} status={self.status!r}>"
+
+
+class GamaRange(Base):
+    """Material price ranges organized by luxury tier (medium/premium/luxury/luxury_plus)."""
+
+    __tablename__ = "gama_ranges"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    material_type = Column(String(100), nullable=False)
+    categoria = Column(String(100), nullable=False)
+
+    medium_min = Column(Float, nullable=True)
+    medium_max = Column(Float, nullable=True)
+
+    premium_min = Column(Float, nullable=True)
+    premium_max = Column(Float, nullable=True)
+
+    luxury_min = Column(Float, nullable=True)
+    luxury_max = Column(Float, nullable=True)
+
+    luxury_plus_min = Column(Float, nullable=True)
+    luxury_plus_max = Column(Float, nullable=True)
+
+    fuente = Column(String(255), nullable=True)
+    notas = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("material_type", "categoria", name="uq_gama_material_categoria"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<GamaRange material={self.material_type!r} cat={self.categoria!r}>"

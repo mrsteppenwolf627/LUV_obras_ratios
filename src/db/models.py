@@ -9,12 +9,12 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from src.db.schema import (
     Base, Budget, LineItem, Ratio, SpaceRatio, ValidationLog,
-    ItemMaster, ItemInstance,
+    ItemMaster, ItemInstance, GamaRange,
 )
 
 __all__ = [
     "Budget", "LineItem", "Ratio", "SpaceRatio", "ValidationLog",
-    "ItemMaster", "ItemInstance",
+    "ItemMaster", "ItemInstance", "GamaRange",
     "Base", "get_session", "init_db",
 ]
 
