@@ -110,11 +110,13 @@ class TestHallazgo1TransactionHandling:
 
     def test_assign_gamas_persists_values(self):
         """assign_gamas_to_all_items persists gama_asignada to database."""
+        import time
         session = get_session()
         try:
-            # Insert test item
+            # Insert test item with unique key
+            unique_key = f"test_carpinteria_{int(time.time() * 1000)}"
             item = ItemMaster(
-                item_key="test_carpinteria",
+                item_key=unique_key,
                 categoria="CARPINTERIA",
                 mediana_unitario=208.17,
                 muestras_count=1,
