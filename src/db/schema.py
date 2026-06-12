@@ -16,7 +16,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import DeclarativeBase, relationship
+from sqlalchemy.orm import DeclarativeBase, relationship, validates
 
 
 class Categoria(str, PyEnum):
@@ -333,6 +333,79 @@ class GamaRange(Base):
     __table_args__ = (
         UniqueConstraint("material_type", "categoria", name="uq_gama_material_categoria"),
     )
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._validate_constraints()
+
+    def __setattr__(self, name: str, value) -> None:
+        super().__setattr__(name, value)
+        if name in (
+            "medium_min",
+            "medium_max",
+            "premium_min",
+            "premium_max",
+            "luxury_min",
+            "luxury_max",
+            "luxury_plus_min",
+            "luxury_plus_max",
+        ):
+            self._validate_constraints()
+
+    def _validate_constraints(self) -> None:
+        """Validate all tier constraints."""
+        # MEDIUM tier: min <= max
+        if self.medium_min is not None and self.medium_max is not None:
+            if self.medium_min > self.medium_max:
+                raise ValueError(
+                    f"MEDIUM tier constraint violated: "
+                    f"medium_min ({self.medium_min}) must be <= medium_max ({self.medium_max})"
+                )
+
+        # PREMIUM tier: min <= max, and min >= medium_max (no inversion)
+        if self.premium_min is not None and self.premium_max is not None:
+            if self.premium_min > self.premium_max:
+                raise ValueError(
+                    f"PREMIUM tier constraint violated: "
+                    f"premium_min ({self.premium_min}) must be <= premium_max ({self.premium_max})"
+                )
+        if self.premium_min is not None and self.medium_max is not None:
+            if self.premium_min < self.medium_max:
+                raise ValueError(
+                    f"PREMIUM tier constraint violated: "
+                    f"premium_min ({self.premium_min}) should be >= medium_max ({self.medium_max}) "
+                    f"to avoid tier overlap"
+                )
+
+        # LUXURY tier: min <= max, and min >= premium_max
+        if self.luxury_min is not None and self.luxury_max is not None:
+            if self.luxury_min > self.luxury_max:
+                raise ValueError(
+                    f"LUXURY tier constraint violated: "
+                    f"luxury_min ({self.luxury_min}) must be <= luxury_max ({self.luxury_max})"
+                )
+        if self.luxury_min is not None and self.premium_max is not None:
+            if self.luxury_min < self.premium_max:
+                raise ValueError(
+                    f"LUXURY tier constraint violated: "
+                    f"luxury_min ({self.luxury_min}) should be >= premium_max ({self.premium_max}) "
+                    f"to avoid tier overlap"
+                )
+
+        # LUXURY_PLUS tier: min <= max, and min >= luxury_max
+        if self.luxury_plus_min is not None and self.luxury_plus_max is not None:
+            if self.luxury_plus_min > self.luxury_plus_max:
+                raise ValueError(
+                    f"LUXURY_PLUS tier constraint violated: "
+                    f"luxury_plus_min ({self.luxury_plus_min}) must be <= luxury_plus_max ({self.luxury_plus_max})"
+                )
+        if self.luxury_plus_min is not None and self.luxury_max is not None:
+            if self.luxury_plus_min < self.luxury_max:
+                raise ValueError(
+                    f"LUXURY_PLUS tier constraint violated: "
+                    f"luxury_plus_min ({self.luxury_plus_min}) should be >= luxury_max ({self.luxury_max}) "
+                    f"to avoid tier overlap"
+                )
 
     def __repr__(self) -> str:
         return f"<GamaRange material={self.material_type!r} cat={self.categoria!r}>"
