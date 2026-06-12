@@ -238,8 +238,8 @@ Decisiones vigentes del roadmap principal:
 | Tarea | Estado | Impacto | Riesgo | Esfuerzo | Completada |
 |---|:---:|:---:|:---:|:---:|:---:|
 | **TASK 7:** Ingesta masiva (FASE 1-4) | ✅ COMPLETADA | Alto | Bajo | 8-12h | 9 junio 2026 |
-| **TASK 8:** Dashboard importaciones | ⏳ BACKLOG | Medio | Bajo | 3h | — |
-| **TASK 9:** Reportes de ratios | ⏳ BACKLOG | Medio | Bajo | 3h | — |
+| **TASK 8:** Enriquecimiento Master con Gama Ranges | ✅ COMPLETADA | Alto | Bajo | 6-8h | 12 junio 2026 |
+| **TASK 9:** Dashboard gamas + reportes | ⏳ BACKLOG | Medio | Bajo | 4h | — |
 
 ## ✅ TASK 7 COMPLETADA - Ingesta Masiva + Afinación + Master Descargable
 
@@ -471,32 +471,89 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
 
 ---
 
+## ✅ TASK 8 COMPLETADA - Enriquecimiento Master con Gama Ranges
+
+**Estado:** 🟢 PRODUCCIÓN READY  
+**Fecha completación:** 12 de junio de 2026  
+**Modelo:** Claude Code (Haiku 4.5)
+
+**Componentes Entregados:**
+
+1. ✅ **Tabla gama_ranges + seed data (PROMPT 1)**
+   - Modelo: `src/db/schema.py:GamaRange` (8 columnas: material_type + 4 tiers)
+   - Script: `scripts/seed_gama_ranges.py` (8 materiales base: PORCELANA, PIEDRA, PINTURA, METAL, VIDRIO, MADERA, TEXTIL, ENCIMERA)
+   - Seed: 8 registros insertados con rangos EUR/m² verificados
+
+2. ✅ **Lógica gama + endpoint GET /api/items/with_gamas (PROMPT 2)**
+   - Utilidad: `app/utils/gama_utils.py` (determine_gama, find_gama_range)
+   - Router: `app/routers/items_extended.py` (GET /api/items/with_gamas con filtros q/categoria/limit)
+   - Schema: `app/schemas/items_extended.py` (ItemMasterWithGama + ItemsWithGamasResponse)
+
+3. ✅ **Persistencia gama_asignada en BD (PROMPT 3)**
+   - Columna: `item_master.gama_asignada VARCHAR(20) DEFAULT 'SIN_CLASIFICAR'`
+   - Script: `scripts/assign_gamas_persistent.py` (itera items, calcula gama, persiste en BD)
+   - Integración: init_db.py ejecuta seed + assign_gamas automáticamente
+
+4. ✅ **Transacciones + Constraints + Error Handling (PROMPT 5B)**
+   - Transacciones: rollback en excepciones, commit solo si OK (try/except/finally)
+   - Constraints: GamaRange._validate_constraints() en __init__ y __setattr__
+     * Valida: medium_min <= medium_max para CADA tier
+     * Valida: premium_min >= medium_max (sin solapamiento)
+     * Ejemplo rechazado: medium_min=100 > medium_max=50
+   - Error Handling:
+     * Per-item fallback: si un item falla, asigna SIN_CLASIFICAR
+     * HTTP 500 con JSON descriptivo: {error, message, timestamp}
+     * Logging: exc_info=True, qué falló específicamente
+
+**Archivos Creados:**
+- `src/db/schema.py` (GamaRange model + validators)
+- `scripts/seed_gama_ranges.py` (seed 8 materiales)
+- `scripts/assign_gamas_persistent.py` (persistencia en BD)
+- `app/utils/gama_utils.py` (lógica determine_gama/find_gama_range)
+- `app/routers/items_extended.py` (endpoint GET /api/items/with_gamas)
+- `app/schemas/items_extended.py` (Pydantic models)
+- `tests/test_gama_assignment.py` (12 tests nuevos)
+
+**Archivos Modificados:**
+- `src/db/schema.py` (columna gama_asignada en ItemMaster)
+- `scripts/init_db.py` (integración seed + assign_gamas)
+- `app/main.py` (include_router items_extended)
+
+**Validaciones Completadas:**
+- Seed data: 8/8 materiales cumplen constraints
+- Endpoint: devuelve gama_asignada (nunca null)
+- Transacciones: rollback on error, commit on success
+- Constraints: 3/3 tests de constraint violations pasan
+- Tests totales: 12 nuevos (+ tests existentes)
+
+---
+
 ## 🔐 ÚLTIMA ACTUALIZACIÓN
 
-- **Fecha:** 2026-06-03
-- **Versión:** 1.2.0
-- **Modelo:** Claude Code (Sonnet 4.6)
+- **Fecha:** 12 de junio de 2026, 10:45 UTC
+- **Versión:** 1.4.2
+- **Modelo:** Claude Code (Haiku 4.5)
 
-**Cambios principales:**
-- ✅ Frontend: Logo actualizado + 4/4 tutoriales interactivos
-- ✅ Backend: TASK 5A–5D + TASK 6 completados
-- ✅ ImportService: lógica desacoplada del router, reutilizable
-- ✅ Validaciones: regex SHA256, tipos, rangos, edge cases
-- ✅ Logging: UUID de traza, INFO/DEBUG/WARNING/ERROR, elapsed time
-- ✅ Tests: 670/670 verdes (28 tests import, 11 normalize, 6 edge cases, 6 service directos)
-- ✅ Documentación: CONTEXT.md + docs/ESTADO_v1.2.0.md
+**Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
+- ✅ Tabla `gama_ranges` creada + 8 seed materiales base
+- ✅ Columna `gama_asignada` persistida en `item_master`
+- ✅ Endpoint GET `/api/items/with_gamas` operativo (con filtros)
+- ✅ Lógica gama: determine_gama() + find_gama_range()
+- ✅ Transacciones robustas: try/except/finally + rollback
+- ✅ Constraints de integridad: min<=max, sin solapamiento entre tiers
+- ✅ Error handling: per-item fallback + HTTP 500 descriptivo
+- ✅ Tests: 12 nuevos (constraints, transacciones, error handling)
+- ✅ Seed data validado: 8/8 materiales OK
+- ✅ Documentación: CONTEXT.md v1.4.2
 
 **Checklist:**
-- [x] 670/670 tests pasando
-- [x] Endpoint `/api/import/budgets` funcional (validado en vivo)
-- [x] Deduplicación automática por `normalize_item_key()` verificada
-- [x] ImportService reutilizable (sin acoplamiento HTTP)
-- [x] DuplicateImportError — contrato limpio entre capas
-- [x] Validaciones rigurosas (regex SHA256, tipos, rangos)
-- [x] Logging enterprise-grade (UUID traza + elapsed)
-- [x] RangoValidacion 3 estados (N=0 / N<2 / N≥2) funcional
-- [x] Frontend: Logo + 4/4 tutoriales
-- [x] 0 breaking changes
-- [x] BD en estado HEAD (Alembic `c4d5e6f7a8b9`)
-- [x] ADR-16, ADR-17 congeladas
-- [x] Documentado en CONTEXT.md + docs/ESTADO_v1.2.0.md
+- [x] Tabla gama_ranges creada + seed data insertado
+- [x] Columna gama_asignada en item_master persistida
+- [x] Endpoint /api/items/with_gamas operativo
+- [x] Error handling + transacciones robustas (Codex fixes)
+- [x] Constraints de integridad en GamaRanges
+- [x] Tests: 12 nuevos pasando (constraints, transacciones, error handling)
+- [x] Code review completado (Codex PROMPT 5B)
+- [x] Sin breaking changes
+- [x] Documentado en CONTEXT.md v1.4.2
+- [x] validate_context.py pasó sin errores
