@@ -29,7 +29,7 @@ const AnalisisForm: React.FC<AnalisisFormProps> = ({ onAnalizar, onClose }) => {
     const cargarItems = async () => {
       setLoadingItems(true);
       try {
-        const res = await fetch('/api/items/list');
+        const res = await fetch('/api/items/with_gamas');
         if (res.ok) {
           const data = await res.json();
           setAvailableItems(data.items);

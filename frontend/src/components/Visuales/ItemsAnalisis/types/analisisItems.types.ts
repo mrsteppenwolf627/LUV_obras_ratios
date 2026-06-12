@@ -9,7 +9,8 @@ export interface ItemParaAnalisis {
 // Output
 export interface ItemAnalisisResultado {
   descripcion: string;
-  categoria: string; // MEDIUM|PREMIUM|LUXURY|LUXURY_PLUS
+  categoria: string;
+  gama_asignada: string; // MEDIUM|PREMIUM|LUXURY|LUXURY_PLUS
   precio_usuario: number;
   ratio_historico: number | null;
   desviacion_pct: number | null;

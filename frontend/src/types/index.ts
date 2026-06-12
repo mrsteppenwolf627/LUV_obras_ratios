@@ -7,6 +7,7 @@ export interface Ratio {
   max_ratio: number;
   count_budgets: number;
   validation_status: 'VALID' | 'DUBIOUS';
+  gama_asignada?: string;
 }
 
 export interface MasterResponse {

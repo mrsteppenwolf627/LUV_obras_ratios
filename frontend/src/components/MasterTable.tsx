@@ -95,6 +95,7 @@ const MasterTable = () => {
               <tr className="border-b border-border text-xs uppercase tracking-widest text-accent font-bold bg-secondary/30">
                 <th className="px-4 py-4 font-bold">Capítulo</th>
                 <th className="px-4 py-4 font-bold">Descripción</th>
+                <th className="px-4 py-4 font-bold">Gama</th>
                 <th className="px-4 py-4 font-bold text-right">€/m² (Mediana)</th>
                 <th className="px-4 py-4 font-bold text-right">Min</th>
                 <th className="px-4 py-4 font-bold text-right">Max</th>
@@ -114,6 +115,13 @@ const MasterTable = () => {
                   >
                     <td className="px-4 py-4 font-medium text-primary">{ratio.chapter_code}</td>
                     <td className="px-4 py-4 text-accent italic">{ratio.chapter_description || '—'}</td>
+                    <td className="px-4 py-4 text-xs">
+                      {ratio.gama_asignada ? (
+                        <span className="px-2 py-1 rounded bg-secondary text-primary font-bold">
+                          {ratio.gama_asignada}
+                        </span>
+                      ) : '—'}
+                    </td>
                     <td className="px-4 py-4 text-right font-bold text-primary">
                       {formatCurrency(ratio.median_ratio)}
                     </td>

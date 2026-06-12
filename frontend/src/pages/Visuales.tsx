@@ -5,6 +5,7 @@ import ComparativaDesviacion from '@/components/Visuales/ComparativaDesviacion';
 import RangoValidacion from '@/components/Visuales/RangoValidacion';
 import TablaConfiabilidad from '@/components/Visuales/TablaConfiabilidad';
 import ItemsAnalisisTab from '@/components/Visuales/ItemsAnalisis/ItemsAnalisisTab';
+import GamaComparativa from '@/components/GamaComparativa';
 import { useVisuales } from '@/hooks/useVisuales';
 import type {
   CapituloRatioResponse,
@@ -22,7 +23,7 @@ type ComparativaDraftItem = {
   unidad: string;
 };
 
-const TABS = ['Rango', 'Solidez', 'Comparativa', 'Items × Categorías'];
+const TABS = ['Rango', 'Solidez', 'Comparativa', 'Items × Categorías', 'Items × Gama'];
 
 const createDraftItem = (capitulo = ''): ComparativaDraftItem => ({
   id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
@@ -422,6 +423,7 @@ const Visuales = () => {
           {indiceTab === 1 && <TablaConfiabilidad capitulos={capitulos} />}
           {indiceTab === 2 && renderComparativaForm()}
           {indiceTab === 3 && <ItemsAnalisisTab />}
+          {indiceTab === 4 && <GamaComparativa />}
         </>
       )}
     </div>

@@ -12,7 +12,7 @@ from openpyxl.utils import get_column_letter
 from sqlalchemy.orm import Session
 
 from src.db.queries import list_all_budgets, list_all_ratios
-from src.db.schema import Budget, LineItem, Ratio
+from src.db.schema import Budget, LineItem, Ratio, ItemMaster
 
 DEFAULT_OUTPUT = Path("data/master/master_latest.xlsx")
 
@@ -276,6 +276,46 @@ def _build_raw_data_sheet(ws: Any, budgets: list[Budget]) -> None:
     _freeze(ws)
 
 
+def _build_items_sheet(ws: Any, items: list[ItemMaster]) -> None:
+    ws.title = "ITEMS"
+    headers = [
+        "Item Key",
+        "Gama Asignada",
+        "Categoría",
+        "Unidad",
+        "Mediana €/unit",
+        "Min €/unit",
+        "Max €/unit",
+        "Muestras (N)",
+        "Última Actualización",
+    ]
+    _write_header(ws, headers)
+
+    for row_num, item in enumerate(items, start=2):
+        fill = ALT_FILL if row_num % 2 == 0 else None
+        values = [
+            item.item_key,
+            item.gama_asignada,
+            item.categoria_asignada,
+            item.unidad or "",
+            _fmt_eur(item.mediana_unitario),
+            _fmt_eur(item.min_unitario),
+            _fmt_eur(item.max_unitario),
+            item.muestras_count or 0,
+            _fmt_date(item.ultima_actualizacion),
+        ]
+        for col, val in enumerate(values, start=1):
+            cell = ws.cell(row=row_num, column=col, value=val)
+            cell.font = BODY_FONT
+            if fill:
+                cell.fill = fill
+            if col in (5, 6, 7) and isinstance(val, float):
+                cell.number_format = '#,##0.00 "€"'
+
+    _auto_width(ws)
+    _freeze(ws)
+
+
 def generate_master_excel(
     session: Session,
     output_path: str | Path = DEFAULT_OUTPUT,
@@ -289,6 +329,7 @@ def generate_master_excel(
 
     budgets = list_all_budgets(session)
     ratios = list_all_ratios(session)
+    items = session.query(ItemMaster).order_by(ItemMaster.muestras_count.desc()).all()
 
     wb = Workbook()
     # Remove default sheet
@@ -299,6 +340,9 @@ def generate_master_excel(
 
     ws_ratios = wb.create_sheet("RATIOS_SUMMARY")
     _build_ratios_sheet(ws_ratios, ratios)
+
+    ws_items = wb.create_sheet("ITEMS")
+    _build_items_sheet(ws_items, items)
 
     ws_chapters = wb.create_sheet("CHAPTERS")
     _build_chapters_sheet(ws_chapters, budgets)

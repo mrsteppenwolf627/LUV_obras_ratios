@@ -68,3 +68,13 @@ export interface RangoResponse {
   p75_unitario: number;
   avg_unitario: number;
 }
+
+export interface Item {
+  id: number;
+  item_key: string;
+  descripcion: string;
+  categoria_asignada: string;
+  gama_asignada: string;
+  muestras_count: number;
+  ratio_actual?: number;
+}

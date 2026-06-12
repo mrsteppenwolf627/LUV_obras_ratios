@@ -5,6 +5,7 @@ export interface ItemOption {
   item_key: string;
   descripcion: string;
   categoria_asignada: string;
+  gama_asignada: string;
   muestras_count: number;
   ratio_actual?: number;
 }
