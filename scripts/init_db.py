@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.db.models import DEFAULT_DB_PATH, init_db, get_session
 from scripts.seed_gama_ranges import seed_gama_ranges
+from scripts.assign_gamas_persistent import assign_gamas_to_all_items
 
 
 def main() -> None:
@@ -23,6 +24,15 @@ def main() -> None:
     inserted = seed_gama_ranges(session)
     print(f"[OK] {inserted} gama_ranges records inserted/verified.")
     session.close()
+
+    # Assign gamas to existing items
+    print("Assigning gamas to items...")
+    session = get_session(db_path)
+    result = assign_gamas_to_all_items(session)
+    session.close()
+    print(f"[OK] {result['total_items']} items processed:")
+    print(f"     {result['with_gama_assigned']} with gama assigned")
+    print(f"     {result['sin_clasificar']} sin clasificar")
 
 
 if __name__ == "__main__":

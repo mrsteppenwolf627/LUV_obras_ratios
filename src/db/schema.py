@@ -174,6 +174,7 @@ class ItemMaster(Base):
     ultima_actualizacion = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     categoria_asignada = Column(String(20), nullable=False, default="MEDIUM")
+    gama_asignada = Column(String(20), nullable=False, default="SIN_CLASIFICAR")
 
     instances = relationship(
         "ItemInstance", back_populates="item_master", cascade="all, delete-orphan"
