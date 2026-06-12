@@ -28,6 +28,7 @@ from .routers.visuales import router as visuales_router, invalidar_cache_chapter
 from .routers.items_analisis import router as items_analisis_router
 from .routers.import_budgets import router as import_budgets_router
 from .routers.stats import router as stats_router
+from .routers.items_extended import router as items_extended_router
 
 app = FastAPI(title="LUV Obras Ratios API", version="1.0.0")
 
@@ -47,6 +48,7 @@ app.include_router(visuales_router)
 app.include_router(items_analisis_router)
 app.include_router(import_budgets_router)
 app.include_router(stats_router)
+app.include_router(items_extended_router)
 
 
 @app.get("/api/master")
