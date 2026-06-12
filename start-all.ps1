@@ -5,11 +5,11 @@ $dbPath = Join-Path $projectRoot "data/master/ratios.db"
 
 if (-not (Test-Path $dbPath) -or (Get-Item $dbPath).Length -eq 0) {
     Write-Host "Inicializando BD SQLite..." -ForegroundColor Yellow
-    python (Join-Path $projectRoot "scripts/init_db.py")
+    py -3.11 (Join-Path $projectRoot "scripts/setup_db.py")
 }
 
 Write-Host "Lanzando backend en una nueva ventana (modo estable, sin reload)..." -ForegroundColor Cyan
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$projectRoot'; python -m uvicorn app.main:app --port 8000"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$projectRoot'; py -3.11 -m uvicorn app.main:app --port 8000"
 
 Start-Sleep -Seconds 3
 
