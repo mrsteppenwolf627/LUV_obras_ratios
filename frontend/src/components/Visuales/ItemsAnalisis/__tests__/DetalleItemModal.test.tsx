@@ -6,6 +6,7 @@ import type { ItemAnalisisResultado } from '../types/analisisItems.types';
 const mockItem: ItemAnalisisResultado = {
   descripcion: 'Carpintería Aluminio',
   categoria: 'PREMIUM',
+  gama_asignada: 'MEDIUM',
   precio_usuario: 500,
   ratio_historico: 450,
   desviacion_pct: 11.1,

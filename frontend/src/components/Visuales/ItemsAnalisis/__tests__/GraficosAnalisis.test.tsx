@@ -16,6 +16,7 @@ const mockItems: ItemAnalisisResultado[] = [
   {
     descripcion: 'Item 1',
     categoria: 'MEDIUM',
+    gama_asignada: 'MEDIUM',
     precio_usuario: 100,
     ratio_historico: 90,
     desviacion_pct: 11.1,
@@ -26,6 +27,7 @@ const mockItems: ItemAnalisisResultado[] = [
   {
     descripcion: 'Item 2',
     categoria: 'PREMIUM',
+    gama_asignada: 'MEDIUM',
     precio_usuario: 200,
     ratio_historico: 180,
     desviacion_pct: 11.1,

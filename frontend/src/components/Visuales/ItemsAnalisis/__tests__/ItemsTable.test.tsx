@@ -7,6 +7,7 @@ const mockItems: ItemAnalisisResultado[] = [
   {
     descripcion: 'Carpintería Aluminio',
     categoria: 'PREMIUM',
+    gama_asignada: 'MEDIUM',
     precio_usuario: 500,
     ratio_historico: 450,
     desviacion_pct: 11.1,
@@ -17,6 +18,7 @@ const mockItems: ItemAnalisisResultado[] = [
   {
     descripcion: 'Pintura Blanca',
     categoria: 'MEDIUM',
+    gama_asignada: 'MEDIUM',
     precio_usuario: 10,
     ratio_historico: 12,
     desviacion_pct: -16.7,
