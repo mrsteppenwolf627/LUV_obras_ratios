@@ -8,7 +8,6 @@ import ItemsAnalisisTab from '@/components/Visuales/ItemsAnalisis/ItemsAnalisisT
 import GamaComparativa from '@/components/GamaComparativa';
 import { useVisuales } from '@/hooks/useVisuales';
 import type {
-  CapituloRatioResponse,
   ComparativaResponse,
   ItemPresupuesto,
   PresupuestoAnalisis,
@@ -71,11 +70,6 @@ const Visuales = () => {
       setComparativaItems([createDraftItem(capitulos[0].capitulo)]);
     }
   }, [capituloSeleccionado, capitulos]);
-
-  const selectedCapitulo = useMemo(
-    () => capitulos.find((capitulo) => capitulo.capitulo === capituloSeleccionado) ?? null,
-    [capituloSeleccionado, capitulos],
-  );
 
   const displayError = humanizeError(formError ?? error);
 

@@ -10,7 +10,6 @@ import {
   ResponsiveContainer,
   ScatterChart,
   Scatter,
-  ComposedChart,
 } from 'recharts';
 import type { ItemAnalisisResultado } from './types/analisisItems.types';
 import styles from './styles/ItemsAnalisis.module.css';

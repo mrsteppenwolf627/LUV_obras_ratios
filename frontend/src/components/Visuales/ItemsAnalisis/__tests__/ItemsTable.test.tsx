@@ -42,7 +42,7 @@ describe('ItemsTable', () => {
   });
 
   test('colores de desviación correctos', () => {
-    const { container } = render(<ItemsTable items={mockItems} filtroCategoria={null} onItemClick={onItemClick} />);
+    render(<ItemsTable items={mockItems} filtroCategoria={null} onItemClick={onItemClick} />);
     
     // Buscar por texto y verificar que tenga una clase que contenga el nombre (CSS Modules)
     const posDesv = screen.getByText('11.1%');
