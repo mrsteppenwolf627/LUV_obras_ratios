@@ -1,18 +1,4 @@
 {
   "buildCommand": "npm --prefix frontend install && npm --prefix frontend run build",
-  "installCommand": "pip install -r requirements.txt",
-  "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/index.py": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/index.py" },
-    { "source": "/(.*)",       "destination": "/index.html" }
-  ],
-  "env": {
-    "DATABASE_URL": "@database_url"
-  }
+  "outputDirectory": "frontend/dist"
 }
