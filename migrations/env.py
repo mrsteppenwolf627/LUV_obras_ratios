@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -17,6 +18,11 @@ config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# DATABASE_URL env var overrides alembic.ini (used for PostgreSQL/Supabase)
+_db_url = os.getenv("DATABASE_URL")
+if _db_url:
+    config.set_main_option("sqlalchemy.url", _db_url)
 
 target_metadata = Base.metadata
 

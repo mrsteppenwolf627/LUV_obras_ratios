@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from sqlalchemy import create_engine, event
@@ -22,6 +23,9 @@ DEFAULT_DB_PATH = Path("data/master/ratios.db")
 
 
 def _get_engine(db_path: Path = DEFAULT_DB_PATH):
+    db_url = os.getenv("DATABASE_URL")
+    if db_url:
+        return create_engine(db_url, echo=False, pool_pre_ping=True)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     engine = create_engine(f"sqlite:///{db_path}", echo=False)
     # Enable foreign key enforcement for SQLite
