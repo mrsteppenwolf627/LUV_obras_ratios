@@ -1,3 +1,4 @@
+# Build timestamp: 2026-06-16T12:00:00Z
 """Vercel Python Serverless entry point for LUV Obras Ratios API.
 
 All /api/* requests are rewritten to this file via vercel.json.
