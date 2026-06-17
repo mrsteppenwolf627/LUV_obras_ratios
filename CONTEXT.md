@@ -822,6 +822,30 @@ Las filas item-level reales son **`Nat == 'Partida'`**. Las `Capítulo` son agre
 
 **Estado:** JSON listo y validado localmente. **Pendiente de autorización** para POST a `https://luv-obras-ratios.vercel.app/api/import/budgets` (no ejecutado). Los otros 4 xlsx siguen sin convertir (layouts distintos). BC3/PZH/Presto/PDF excluidos.
 
+---
+
+### Sesión 17 junio 2026 (11ª iteración) — POST de prueba `260318_PEC` → 504 TIMEOUT (sin datos escritos)
+
+**Pre-checks (OK):** JSON con 206 líneas, `file_hash=106b51…a5510`, 0 precios ≤0, 0 cantidades ≤0, `BudgetImportRequest(**payload)` válido.
+
+**POST único ejecutado:**
+- URL: `https://luv-obras-ratios.vercel.app/api/import/budgets`
+- filename: `260318_PEC- Presupuesto_CONTRATO.xlsx` · file_hash: `106b511082fddbe8d280213bd36dcd3aa8c79cb097f146835150d482132a5510` · líneas enviadas: 206
+- **HTTP: 504** · body: `FUNCTION_INVOCATION_TIMEOUT` · `X-Vercel-Id: cdg1::29gtm-1781694766359-c35a31e74128`
+
+**Estado post-504 (solo lectura):** `GET /api/items/list` → `200 {"items":[]}`, `GET /api/ratios/chapters` → `200 []`. **Producción SIGUE VACÍA → el commit no se aplicó; Postgres hizo rollback al matar la función. Sin datos parciales ni corrupción.**
+
+**Causa raíz:** `maxDuration:10s` en `vercel.json` (riesgo ya documentado en la 7ª iteración). Importar 206 líneas (insert de ItemMaster+ItemInstance + commit) contra el Transaction Pooler de Supabase supera los 10s. NO se reintentó (instrucción explícita ante error de servidor).
+
+**Runtime logs:** no accesibles vía API de Vercel (proyecto en scope personal → 403 Forbidden). Buscar en el dashboard personal por request id `cdg1::29gtm-1781694766359-c35a31e74128`.
+
+**No ejecutado:** recálculo de stats. No se tocó Vercel/Supabase/DATABASE_URL/frontend.
+
+**Opciones para desbloquear (a decidir; la obvia —subir `maxDuration`— está vetada por "no tocar Vercel config"):**
+- (i) Importar partido en lotes más pequeños vía el endpoint — PROBLEMA: el dedup es por `file_hash` único (un fichero = una importación); trocear exigiría hashes sintéticos distintos → rompe trazabilidad. No recomendado.
+- (ii) Importar este JSON con un script LOCAL usando `DATABASE_URL` = pooler de Supabase (Opción B), reutilizando el mismo `ImportService` validado, sin el límite de 10s del serverless. Escribe las mismas tablas. Requiere el pooler en entorno local. **Recomendado**, pendiente de autorización.
+- (iii) Revisar/optimizar el endpoint para que 206 líneas entren en <10s (cambio funcional, a evaluar aparte).
+
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
 - ✅ Columna `gama_asignada` persistida en `item_master`
