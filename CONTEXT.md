@@ -846,6 +846,16 @@ Las filas item-level reales son **`Nat == 'Partida'`**. Las `Capítulo` son agre
 - (ii) Importar este JSON con un script LOCAL usando `DATABASE_URL` = pooler de Supabase (Opción B), reutilizando el mismo `ImportService` validado, sin el límite de 10s del serverless. Escribe las mismas tablas. Requiere el pooler en entorno local. **Recomendado**, pendiente de autorización.
 - (iii) Revisar/optimizar el endpoint para que 206 líneas entren en <10s (cambio funcional, a evaluar aparte).
 
+---
+
+### Sesión 17 junio 2026 (12ª iteración) — Importación local (Opción B): script listo, BLOQUEADO en pre-check de pooler
+
+**Script creado:** `scripts/import_local_to_supabase.py` — importador local de un solo uso: abre sesión desde `DATABASE_URL` (env/.env), reutiliza el `ImportService` validado (un único `commit` al final; rollback ante error), **sin HTTP ni Vercel**. Nunca imprime `DATABASE_URL` ni secretos. Guardia: aborta si la URL no es del Transaction Pooler salvo `--allow-direct`. Repite los pre-checks (206 líneas, hash, precios/cantidades >0, `BudgetImportRequest`). Respeta el dedup por `file_hash` (`DuplicateImportError` → se detiene, no reinserta).
+
+**Pre-checks (estado):** 1) DATABASE_URL presente ✅; 2) no impresa ✅; 4) 206 líneas ✅; 5) hash `106b51…a5510` ✅; 6) 0 precios/cantidades ≤0 ✅; 7) `BudgetImportRequest` válido ✅. **3) Transaction Pooler ❌ — la `DATABASE_URL` local es la conexión DIRECTA (`db.<ref>.supabase.co:5432`), no el pooler (`*.pooler.supabase.com:6543`).**
+
+**Decisión:** detenido sin ejecutar (el pooler era confirmación obligatoria del usuario). NO se importó nada; producción sigue vacía. Pendiente: que el usuario aporte la URL del Transaction Pooler (ejecutando él mismo el script con `! DATABASE_URL=... python scripts/import_local_to_supabase.py`, o actualizando el `.env` local) o autorice `--allow-direct`. Nota técnica: para un script local de un solo uso, la conexión directa es técnicamente válida, pero el host directo puede ser IPv6-only en proyectos Supabase nuevos; el pooler es la vía IPv4. No se commitea `.env` ni datos reales.
+
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
 - ✅ Columna `gama_asignada` persistida en `item_master`
