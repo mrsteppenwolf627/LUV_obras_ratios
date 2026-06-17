@@ -662,6 +662,25 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
 1. (Datos) Importar/seed de datos en Supabase vía `POST /api/import/budgets` (ya registrado en prod) — sin esto, todo endpoint de lectura sigue vacío aunque se arreglen rutas.
 2. (Ruta) Portar a `api/index.py` los endpoints inline de solo-lectura que use el frontend, empezando por `api_items_list` (`/api/items/list`) y, si aplica, `/api/items/search` y `/api/items/by-category`. Son read-only sobre BD, seguros para serverless. NO portar `/api/import` (upload+FS), `/api/export/master.xlsx` ni `/api/master`: dependen de filesystem local y por eso se excluyeron del slim app a propósito.
 
+---
+
+### Sesión 17 junio 2026 (6ª iteración) — Portado `/api/items/list` a la app serverless
+
+**Ruta portada:** `GET /api/items/list` (read-only). **Motivo:** existía solo en `app/main.py` (entry local), no en `api/index.py` (entry Vercel) → 404 en producción.
+
+**Cambio (mínimo, funcional):**
+- Movida la implementación desde el endpoint inline de `app/main.py` a un handler en `app/routers/items_extended.py` (`get_items_list`), router que **ya incluyen ambas apps** (`api/index.py` y `app/main.py`) → single source of truth, sin ruta duplicada.
+- Eliminado el `@app.get("/api/items/list")` inline de `app/main.py` (evita doble registro).
+- Misma sesión/DB que el resto de endpoints serverless (`app.database.get_db`). Contrato de respuesta intacto: `{"items": [...]}`.
+- BD vacía → `{"items": []}` (200), nunca 500 (la query `outerjoin` devuelve lista vacía).
+- NO se tocó: Vercel config, Supabase config, `DATABASE_URL`, frontend, ni endpoints con dependencia de filesystem (`/api/import`, `/api/export/master.xlsx`, `/api/master`).
+
+**Test añadido:** `tests/test_items_list.py` (3 casos: BD vacía → `{"items": []}`, listado con orden por `item_key`, filtro por `categoria`). Verificado: 54 tests verdes (3 nuevos + stats + items_analisis).
+
+**Rutas registradas en `api/index.py` tras el cambio (12):** `/api/ratios/chapters`, `/api/analyze/comparativa`, `/api/items/analisis`, `/api/import/budgets`, `/api/ratios/rango`, `/api/items/with_gamas`, **`/api/items/list`**, `/api/health` (+ `/docs`, `/openapi.json`, `/redoc`, `/docs/oauth2-redirect` por defecto de FastAPI).
+
+**Estado esperado tras deploy:** `GET https://luv-obras-ratios.vercel.app/api/items/list` → `200` con `{"items": []}` mientras Supabase siga vacío; con datos importados devolverá la lista. Ya operativos en producción: `/api/hello`, `/api/ratios/chapters` (200 `[]`), y ahora `/api/items/list`.
+
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
 - ✅ Columna `gama_asignada` persistida en `item_master`

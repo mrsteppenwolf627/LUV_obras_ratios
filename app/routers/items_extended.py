@@ -18,6 +18,51 @@ router = APIRouter(prefix="/api", tags=["items"])
 logger = logging.getLogger(__name__)
 
 
+@router.get("/items/list")
+def get_items_list(categoria: str = "") -> dict:
+    """List ItemMaster rows for autocomplete (read-only).
+
+    Ported from app/main.py so the route is registered in the Vercel
+    serverless app (api/index.py), which only mounts the routers. Uses the
+    same DB session helper as the other serverless endpoints. An empty
+    database yields {"items": []} (never a 500).
+    """
+    from sqlalchemy import and_
+    from src.db.schema import ItemMasterRatio
+
+    session = _db.get_db()
+    try:
+        query = (
+            session.query(ItemMaster, ItemMasterRatio)
+            .outerjoin(
+                ItemMasterRatio,
+                and_(
+                    ItemMasterRatio.item_master_id == ItemMaster.id,
+                    ItemMasterRatio.categoria == ItemMaster.categoria_asignada,
+                ),
+            )
+            .order_by(ItemMaster.item_key.asc())
+        )
+        if categoria:
+            query = query.filter(ItemMaster.categoria_asignada == categoria.upper())
+
+        result = [
+            {
+                "id": master.id,
+                "item_key": master.item_key,
+                "descripcion": master.item_key.replace("_", " ").title(),
+                "categoria_asignada": master.categoria_asignada,
+                "muestras_count": master.muestras_count or 0,
+                "ratio_actual": ratio.ratio_actual if ratio else None,
+                "confianza": ratio.confianza if ratio else None,
+            }
+            for master, ratio in query.all()
+        ]
+        return {"items": result}
+    finally:
+        session.close()
+
+
 @router.get("/items/with_gamas", response_model=ItemsWithGamasResponse)
 def get_items_with_gamas(
     q: Optional[str] = Query(None, min_length=1, max_length=200),

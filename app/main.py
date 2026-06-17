@@ -281,44 +281,6 @@ def api_items_by_category(categoria: str):
         session.close()
 
 
-@app.get("/api/items/list")
-def api_items_list(categoria: str = ""):
-    from sqlalchemy import and_
-    from src.db.schema import ItemMaster, ItemMasterRatio
-
-    session = get_db()
-    try:
-        q = (
-            session.query(ItemMaster, ItemMasterRatio)
-            .outerjoin(
-                ItemMasterRatio,
-                and_(
-                    ItemMasterRatio.item_master_id == ItemMaster.id,
-                    ItemMasterRatio.categoria == ItemMaster.categoria_asignada,
-                ),
-            )
-            .order_by(ItemMaster.item_key.asc())
-        )
-        if categoria:
-            q = q.filter(ItemMaster.categoria_asignada == categoria.upper())
-
-        result = [
-            {
-                "id": master.id,
-                "item_key": master.item_key,
-                "descripcion": master.item_key.replace("_", " ").title(),
-                "categoria_asignada": master.categoria_asignada,
-                "muestras_count": master.muestras_count or 0,
-                "ratio_actual": ratio.ratio_actual if ratio else None,
-                "confianza": ratio.confianza if ratio else None,
-            }
-            for master, ratio in q.all()
-        ]
-        return {"items": result}
-    finally:
-        session.close()
-
-
 @app.get("/api/items/{item_key:path}/history")
 def api_item_history(item_key: str):
     session = get_db()
