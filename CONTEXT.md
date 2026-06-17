@@ -64,6 +64,7 @@ Como objetivo complementario ya implementado, el sistema expone visuales interna
 15. Todo calculo de ratio debe ser auditable desde el resultado final hasta el dato de origen.
 16. No subir a Git outputs reales, Excels generados ni reportes sensibles.
 17. La linea FASE 1-4 de `visuales` no sustituye el roadmap canonico del Excel maestro vivo.
+18. **Deployment obligatorio en Vercel + Supabase. Alternativas externas prohibidas salvo autorización explícita.** No se propondrá Render, Railway, Fly.io, Docker externo, VPS ni ningún otro proveedor. No se prepararán migraciones fuera de Vercel ni planes B en otra plataforma.
 
 ## Estado actual - v1.2.0 (3 de junio de 2026)
 
@@ -554,6 +555,61 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
 
 - **A) `/api/hello` responde 200:** Vercel detecta funciones Python. El problema anterior era solo el rewrite roto. Pasar a verificar `api/index.py` (imports pesados, Supabase, etc).
 - **B) `/api/hello` sigue en 404:** Vercel no está detectando funciones Python en absoluto. Causa probable: framework mal configurado en dashboard de Vercel, proyecto no tiene `@vercel/python`, o el runtime Python no está habilitado para este proyecto. Solución: revisar Settings → Functions en el dashboard.
+
+---
+
+### Sesión 17 junio 2026 (continuación) — Diagnóstico de configuración Vercel
+
+**Restricción crítica reafirmada:** Solo Vercel + Supabase. Alternativas externas prohibidas salvo autorización explícita (ver Restricción #18).
+
+**Test `/api/hello`:** 🔴 **404 confirmado** (estado reportado por el usuario).
+
+**Conclusión:** Vercel no está publicando funciones Python desde `/api`. Todo `/api/*` devuelve 404 mientras el frontend carga correctamente.
+
+**Auditoría del repositorio (todo CORRECTO — no es la causa):**
+- `api/hello.py` y `api/index.py` están rastreados en git; no hay exclusiones en `.gitignore` para `api/`.
+- `vercel.json` está en la **raíz** del repo (ubicación correcta) y es sintácticamente válido.
+- `.python-version` = `3.12` (limpio, sin BOM).
+- `requirements.txt` en la raíz, rastreado.
+- No existe `vercel.json` ni `now.json` dentro de `frontend/` (no hay config en conflicto).
+- El bloque `functions` lista `api/index.py`; esto **no excluye** a `api/hello.py` (Vercel autodetecta todo `/api`).
+- Los `rewrites` no interfieren: una función real en `/api/hello` se resuelve por filesystem **antes** que cualquier rewrite.
+
+**Causa probable (orden de probabilidad):**
+1. **Root Directory mal configurado en el dashboard** → apunta a `frontend/` en vez de la raíz del repo. Esto explica TODOS los síntomas a la vez: el frontend Vite compila (es la raíz efectiva), pero `api/` y el `vercel.json` de la raíz quedan **invisibles** → 404 en toda la capa API. Es la causa #1 del patrón "frontend OK + api 404".
+2. **El proyecto del deployment `luv-obras-ratios.vercel.app` NO aparece en el team "Aitor's projects"** (verificado vía API de Vercel: los 9 proyectos del team son otros). Probablemente vive en la cuenta personal/Hobby. Riesgo: estar redeployando/mirando un proyecto distinto al que sirve la URL.
+3. Build de Python fallando silenciosamente (runtime no habilitado / instalación de `requirements.txt` rota) → revisar build logs en el dashboard.
+
+**Cambio aplicado en código:** NINGUNO. La configuración del repo ya es correcta para Root Directory = raíz; cualquier edición a `vercel.json` arriesgaría romper el frontend que hoy sí funciona, sin atacar la causa real (que es de dashboard). La corrección debe hacerse en Settings del proyecto en Vercel, no en el repo.
+
+**A revisar manualmente en el dashboard de Vercel (Settings del proyecto que sirve `luv-obras-ratios.vercel.app`):**
+1. **Settings → General → Root Directory:** debe estar **vacío** (= raíz del repo), NO `frontend`. Si está en `frontend`, cambiarlo a raíz y redeploy. ← acción más probable.
+2. **Settings → General → Framework Preset:** "Other" (no "Vite"), para que respete `buildCommand`/`outputDirectory` del `vercel.json`.
+3. Confirmar que el proyecto enlazado al repo es el correcto y en qué scope vive (personal vs team).
+4. **Deployments → último build → Build Logs:** buscar si aparece "Installing required dependencies..." Python y "Compiling api/index.py / api/hello.py". Si no aparecen, Vercel no ve `/api`.
+5. **Deployment → pestaña Functions/Source:** confirmar que existan funciones serverless generadas para `api/index.py` y `api/hello.py`.
+6. Confirmar que el commit desplegado incluye `api/hello.py` (commits `2cc1039`, `40f9d2a`).
+
+**URL exacta a probar tras redeploy:** `https://luv-obras-ratios.vercel.app/api/hello` → esperado `200 OK` con cuerpo `Hello from Vercel Python`.
+
+---
+
+### Sesión 17 junio 2026 (3ª iteración) — Routing Vercel: solo se publicaba /api/index
+
+**Dato nuevo del dashboard (Deployment Summary):** Static Assets OK · Functions: **solo `/api/index`** · Runtime: Python 3.12 · `/api/hello` NO aparece · `/api/hello` = 404.
+
+**Verificación git:** `HEAD` local = `origin/main` = `40f9d2a`. `api/hello.py` **existe en el commit desplegado** (confirmado con `git cat-file -e origin/main:api/hello.py`). Descartado: no es un problema de commit/push.
+
+**Diagnóstico de routing (limpio):**
+- La lista de *Functions* del dashboard refleja lo que Vercel **construyó**, no el routing. Si `/api/hello` no aparece ahí, NO es por los rewrites (un rewrite solo redirige tráfico; no borra una función ya construida). → **Opción C descartada.**
+- Es un problema de **inclusión en el build**. La única palanca en `vercel.json` que nombra funciones es el bloque `functions`, que enumeraba **exclusivamente** `api/index.py`. En esta config (Root Directory ya correcto → `vercel.json` sí se lee), Vercel construyó solo lo enumerado. → **Causa raíz = Opción D.**
+- Coherente con la sesión previa: antes el Root Directory estaba mal → `vercel.json` ignorado → todo 404. Al corregirlo, el bloque `functions` pasó a estar activo y limitó el build a `api/index`.
+
+**Decisión:** Opción **D** (corregir `vercel.json`). Equivale también a B (hello queda como función realmente publicada). A se mantiene como fallback (todo endpoint real ya pasa por `api/index`/FastAPI).
+
+**Cambio aplicado (mínimo):** `vercel.json` → clave de `functions` de `"api/index.py"` a `"api/*.py"`, preservando `memory:1024`/`maxDuration:10`. No se tocó `api/index.py`, routers, Supabase, DATABASE_URL ni frontend. Rewrites intactos (la función real `/api/hello` se resuelve por filesystem antes que cualquier rewrite).
+
+**URL a probar tras push + redeploy:** `https://luv-obras-ratios.vercel.app/api/hello` → esperado `200 OK` `Hello from Vercel Python`. Tras el redeploy, verificar en Deployment → Functions que aparezcan **ambas**: `/api/index` y `/api/hello`.
 
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
