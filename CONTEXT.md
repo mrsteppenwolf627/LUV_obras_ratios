@@ -627,6 +627,41 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
 
 **Pendiente de la iteración anterior (sigue vigente):** no existía deployment para el commit `89ca724` → revisar conexión Git ↔ Vercel y Production Branch en el dashboard (proyecto en scope personal/Hobby). Este fix del `env` desbloquea la fase de validación; aún hay que asegurar que los pushes a `main` generen deployment de producción.
 
+---
+
+### Sesión 17 junio 2026 (5ª iteración) — Vercel + Supabase OPERATIVOS · diagnóstico de rutas
+
+**Estado producción:** 🟢 Vercel + Supabase funcionando. `DATABASE_URL` corregida usando **Supabase Transaction Pooler**.
+- `/api/hello` → 200 OK (función Python independiente publicada).
+- `/api/index` → `{"detail":"Not Found"}` (FastAPI vivo; 404 de FastAPI, no de edge).
+- `/api/ratios/chapters` → 200 OK con `[]`.
+- `/api/items/list` → 404 `{"detail":"Not Found"}`.
+
+**Causa raíz de los 404 funcionales — DOS apps FastAPI divergentes:**
+- `app/main.py` = entry point LOCAL (uvicorn, `python -m app.main`, localhost:8000). Incluye los 5 routers **+ endpoints inline** (`@app.get` directos): `/api/master`, `/api/archived`, `/api/ratios/stats`, `/api/import`, `/api/items/search`, `/api/items/by-category`, **`/api/items/list`**, `/api/items/{item_key}/history`, `/api/export/master.xlsx`.
+- `api/index.py` = entry point de VERCEL (producción). Incluye **solo los 5 routers + `/api/health`**. NO incluye ninguno de los endpoints inline de `app/main.py`.
+- Por eso `/api/items/list` da 404 en producción: existe únicamente en `app/main.py`, nunca se portó a `api/index.py`. FastAPI responde (404 con cuerpo JSON), pero la ruta no está registrada en la app serverless.
+
+**Rutas REALMENTE registradas en producción (`api/index.py`):**
+
+| Método | Path | Router origen | Handler |
+|---|---|---|---|
+| GET  | `/api/ratios/chapters`   | `visuales.py`        | `get_ratios_chapters` |
+| POST | `/api/analyze/comparativa` | `visuales.py`      | `analyze_comparativa` |
+| POST | `/api/items/analisis`    | `items_analisis.py`  | `analizar_items` |
+| POST | `/api/import/budgets`    | `import_budgets.py`  | `import_budgets` |
+| GET  | `/api/ratios/rango`      | `stats.py`           | `get_ratios_rango` |
+| GET  | `/api/items/with_gamas`  | `items_extended.py`  | `get_items_with_gamas` |
+| GET  | `/api/health`            | `api/index.py` (inline) | `health` |
+
+**Equivalente a `items/list` que SÍ existe en producción:** `GET /api/items/with_gamas` (lista `ItemMaster`; forma de respuesta distinta — devuelve gama en vez de `ratio_actual`/`confianza`). El path exacto `/api/items/list` NO está registrado en producción.
+
+**Por qué `/api/ratios/chapters` devuelve `[]`:** `obtener_capitulos_ratios()` (en `comparativa_service.py`) hace `session.query(ItemMaster).all()` sobre la tabla `item_master`. Devuelve `[]` porque **la BD de Supabase de producción está vacía**: los datos (27 presupuestos / 36 items) viven en el SQLite LOCAL y nunca se importaron a Supabase. No es un bug del pipeline; es ausencia de datos. Coherente con `/api/ratios/rango` → 404 "Sin datos" y `/api/items/with_gamas` → lista vacía.
+
+**Próximo cambio mínimo recomendado (NO aplicado en esta sesión):**
+1. (Datos) Importar/seed de datos en Supabase vía `POST /api/import/budgets` (ya registrado en prod) — sin esto, todo endpoint de lectura sigue vacío aunque se arreglen rutas.
+2. (Ruta) Portar a `api/index.py` los endpoints inline de solo-lectura que use el frontend, empezando por `api_items_list` (`/api/items/list`) y, si aplica, `/api/items/search` y `/api/items/by-category`. Son read-only sobre BD, seguros para serverless. NO portar `/api/import` (upload+FS), `/api/export/master.xlsx` ni `/api/master`: dependen de filesystem local y por eso se excluyeron del slim app a propósito.
+
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
 - ✅ Columna `gama_asignada` persistida en `item_master`
