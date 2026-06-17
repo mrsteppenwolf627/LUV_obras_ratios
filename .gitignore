@@ -43,6 +43,9 @@ temp/
 outputs/live_excel_master/*
 !outputs/live_excel_master/.gitkeep
 
+# Temp import staging: real budget copies + generated import JSON (sensitive, never commit)
+data/temp_import_xlsx_only/
+
 # Context backups local data
 .context-backups/*
 !.context-backups/.gitkeep

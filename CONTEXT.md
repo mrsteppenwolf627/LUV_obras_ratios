@@ -801,6 +801,27 @@ Las filas item-level reales son **`Nat == 'Partida'`**. Las `Capítulo` son agre
 
 **Recomendación:** SÍ construir un convertidor específico y auditable (Excel Presto-export → JSON del endpoint) para este fichero, dado que el mapeo es 100% coherente. Debe: (a) mostrarse el JSON antes de cualquier POST; (b) NO aplicarse a los otros 4 xlsx sin inspección propia. **Pendiente de autorización explícita** antes de implementar/ejecutar nada.
 
+---
+
+### Sesión 17 junio 2026 (10ª iteración) — Convertidor `260318_PEC` → JSON local (Opción B, sin POST)
+
+**Convertidor creado:** `scripts/convert_pec_xlsx_to_json.py` (read-only sobre el Excel; escribe JSON local; **sin red, sin POST, sin BD**). Detecta la cabecera por nombre de columna (no por índice fijo) y aplica el mapeo autorizado solo para este layout Presto-export.
+
+**JSON generado (local, NO commiteado):** `data/temp_import_xlsx_only/260318_PEC.import.json` (UTF-8 verificado: `DEMOLICIÓN` = bytes `c3 93`). El directorio `data/temp_import_xlsx_only/` se añadió a `.gitignore` (contiene presupuestos reales + JSON sensible).
+
+**Resultados de la conversión:**
+- Cabecera detectada: fila 11. colmap: `{codigo:1, nat:2, ud:3, resumen:4, canpres:11, pres:12, imppres:13}`.
+- `file_hash`: `106b511082fddbe8d280213bd36dcd3aa8c79cb097f146835150d482132a5510`.
+- `building_type`: `"sin_especificar"` — placeholder neutro documentado (el origen no tiene este campo; NO se infiere residencial/comercial).
+- `capitulo`: prefijo top-level del `Código` (`split('.')[0]`, p.ej. `PEC_01`) — derivación determinista.
+- **Partidas detectadas: 323. Exportadas: 206. Descartadas: 117** (sin_precio=115, sin_cantidad=2, sin_descripcion=0, fuera_schema=0).
+- **Coherencia `CanPres × Pres ≈ ImpPres`: OK=206, BAD=0.**
+- **Validación de schema (local, sin red): OK** — `BudgetImportRequest(**payload)` construye 206 líneas, `file_hash` válido (SHA256 64 hex), `building_type` aceptado.
+
+**Reglas aplicadas (sin inventar datos):** solo `Nat=='Partida'`; descarta sin descripción / `Pres≤0` / `CanPres≤0`; no completa precios ni cantidades; no usa defaults tipo 100. Ejemplos descartados reales: ítems "a valorar" con `Pres=0` (R639 PUERTA POCKET, R978 EXTRACTOR BAÑO) y partidas con `CanPres=0` (R400/R405 PAV MADERA).
+
+**Estado:** JSON listo y validado localmente. **Pendiente de autorización** para POST a `https://luv-obras-ratios.vercel.app/api/import/budgets` (no ejecutado). Los otros 4 xlsx siguen sin convertir (layouts distintos). BC3/PZH/Presto/PDF excluidos.
+
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
 - ✅ Columna `gama_asignada` persistida en `item_master`
