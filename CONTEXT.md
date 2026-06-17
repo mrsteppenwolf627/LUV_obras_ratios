@@ -530,9 +530,30 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
 
 ## 🔐 ÚLTIMA ACTUALIZACIÓN
 
-- **Fecha:** 12 de junio de 2026, 10:45 UTC
-- **Versión:** 1.4.2
-- **Modelo:** Claude Code (Haiku 4.5)
+- **Fecha:** 17 de junio de 2026
+- **Versión:** 1.4.3
+- **Modelo:** Claude Code (Sonnet 4.6)
+
+### Sesión 17 junio 2026 — Debug Vercel Python Serverless
+
+**Estado producción:** 🔴 BLOQUEADO — Frontend carga, todos los endpoints /api/* devuelven 404.
+
+**Hipótesis activa:** El rewrite `"/api/:path*" → "/api"` apuntaba a un directorio (no a una función), causando 404 en toda la capa API. Además el handler de `api/hello.py` usaba firma Lambda/AWS incorrecta.
+
+**Cambios realizados:**
+- `api/hello.py`: reescrito con `BaseHTTPRequestHandler` (formato Python nativo de Vercel, stdlib puro, sin dependencias)
+- `vercel.json`: rewrites corregidos:
+  - Añadida regla explícita `"/api/hello" → "/api/hello"` (diagnóstico aislado)
+  - Corregida regla principal `"/api/:path*" → "/api/index"` (antes apuntaba a `/api`, un directorio → causa raíz del 404)
+
+**Endpoint de diagnóstico:** `https://luv-obras-ratios.vercel.app/api/hello`
+
+**Resultado esperado:** `200 OK` — `Hello from Vercel Python`
+
+**Próximos pasos según resultado:**
+
+- **A) `/api/hello` responde 200:** Vercel detecta funciones Python. El problema anterior era solo el rewrite roto. Pasar a verificar `api/index.py` (imports pesados, Supabase, etc).
+- **B) `/api/hello` sigue en 404:** Vercel no está detectando funciones Python en absoluto. Causa probable: framework mal configurado en dashboard de Vercel, proyecto no tiene `@vercel/python`, o el runtime Python no está habilitado para este proyecto. Solución: revisar Settings → Functions en el dashboard.
 
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
