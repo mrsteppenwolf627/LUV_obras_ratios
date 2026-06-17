@@ -749,6 +749,58 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
   ```
 - **Nota:** solo tiene sentido DESPUÉS de que existan `item_instances` reales en Supabase. Hoy es no-op.
 
+---
+
+### Sesión 17 junio 2026 (9ª iteración) — Inspección de `260318_PEC- Presupuesto_CONTRATO.xlsx` (diagnóstico, sin importar)
+
+**Hojas detectadas:** una sola → `Hoja1` (2395 filas × 15 columnas).
+
+**Layout identificado:** Excel **exportado de Presto**, jerárquico. Cabeceras en **fila 11**; datos desde fila 12. Columnas:
+| Col | Cabecera | Uso |
+|---|---|---|
+| 1 | `Código` | código jerárquico (PEC_01.01.1) |
+| 2 | `Nat` | naturaleza: `Capítulo` (agregado) / `Partida` (línea real) |
+| 3 | `Ud` | unidad (m2, u, pa…) |
+| 4 | `Resumen` | **descripción** |
+| 5 | `Comentario` | texto auxiliar |
+| 6-9 | `N`/`Longitud`/`Anchura`/`Altura` | detalle de mediciones |
+| 10 | `Cantidad` | cantidad a nivel medición |
+| 11 | `CanPres` | **cantidad presupuestada** |
+| 12 | `Pres` | **precio unitario** |
+| 13 | `ImpPres` | **importe/total** |
+| 14-15 | — | vacías |
+
+Las filas item-level reales son **`Nat == 'Partida'`**. Las `Capítulo` son agregados; las filas con col2 vacía (2004) son mediciones/subtotales/continuaciones → se ignoran.
+
+**Mapeo propuesto (auditable, solo este fichero / layout Presto-export):**
+- `descripcion` ← col 4 `Resumen`
+- `unidad` ← col 3 `Ud`
+- `cantidad` ← col 11 `CanPres`
+- `precio_unitario` ← col 12 `Pres`
+- `importe` (solo validación, no se envía) ← col 13 `ImpPres`
+- `capitulo` ← col 1 `Código` (prefijo) o último `Resumen` de `Nat=Capítulo` (opcional)
+- `file_hash` ← SHA256 del fichero (`106b51…a5510`)
+- Filtro: procesar SOLO filas con `Nat=='Partida'`.
+
+**Conteos (sobre 2395 filas):** `Nat`: 57 Capítulo, 323 Partida, 2004 vacías. De las 323 partidas:
+- **VÁLIDAS (importables): 206** (descripción no vacía + `Pres>0` + `CanPres>0`).
+- Descartadas: 115 sin `Pres>0` (ítems "a valorar", `Pres=0`/`ImpPres=0`), 16 sin `CanPres>0` (solapan), 0 sin descripción.
+- **Coherencia: 206/206 cumplen `CanPres × Pres ≈ ImpPres` (0 incoherentes)** → mapeo inequívoco.
+
+**Reglas de descarte (sin inventar datos):**
+1. Saltar toda fila con `Nat != 'Partida'`.
+2. Descartar partida sin descripción.
+3. Descartar partida con `Pres` vacío o ≤ 0 (NO asignar default).
+4. Descartar partida con `CanPres` vacío o ≤ 0.
+5. (Opcional) marcar/descartar si `|CanPres×Pres − ImpPres| > max(0.5, 1%·ImpPres)` (aquí: 0 casos).
+
+**Riesgos:**
+1. **No generaliza:** este mapeo es del layout Presto-export (cabecera fila 11, nombres exactos). Los otros 4 xlsx tienen layouts DISTINTOS (BER: hojas GENERAL/CONTRATADO/ADICIONALES 30 cols; AFP: INDICE/GENERAL/PRESUPUESTO; etc.) → cada uno requiere su propia inspección y mapeo.
+2. **Categoría débil:** `extract_categoria_from_item_key` deriva la categoría de la última palabra de la descripción → estas descripciones (p.ej. "DEMOLICIÓN DE TABIQUE INTERIOR") no acaban en categoría conocida → `SIN_CATEGORIA`. Afecta a `/api/ratios/rango` por capítulo y a gamas (no bloquea el import, sí la calidad de visuals).
+3. Las 115 partidas sin precio quedan fuera (correcto: son "a valorar").
+
+**Recomendación:** SÍ construir un convertidor específico y auditable (Excel Presto-export → JSON del endpoint) para este fichero, dado que el mapeo es 100% coherente. Debe: (a) mostrarse el JSON antes de cualquier POST; (b) NO aplicarse a los otros 4 xlsx sin inspección propia. **Pendiente de autorización explícita** antes de implementar/ejecutar nada.
+
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
 - ✅ Columna `gama_asignada` persistida en `item_master`
