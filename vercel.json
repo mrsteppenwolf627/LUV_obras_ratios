@@ -11,8 +11,5 @@
     { "source": "/api/hello",  "destination": "/api/hello" },
     { "source": "/api/:path*", "destination": "/api/index" },
     { "source": "/(.*)",       "destination": "/index.html" }
-  ],
-  "env": {
-    "DATABASE_URL": "@database_url"
-  }
+  ]
 }

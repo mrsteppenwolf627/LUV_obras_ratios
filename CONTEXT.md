@@ -611,6 +611,22 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
 
 **URL a probar tras push + redeploy:** `https://luv-obras-ratios.vercel.app/api/hello` → esperado `200 OK` `Hello from Vercel Python`. Tras el redeploy, verificar en Deployment → Functions que aparezcan **ambas**: `/api/index` y `/api/hello`.
 
+---
+
+### Sesión 17 junio 2026 (4ª iteración) — Bloqueo de deploy: referencia legacy `@database_url`
+
+**Error de Vercel:** `Environment Variable "DATABASE_URL" references Secret "database_url", which does not exist.` Persistía incluso tras borrar y recrear `DATABASE_URL` en el dashboard.
+
+**Causa raíz:** `vercel.json` contenía un bloque `env` con `"DATABASE_URL": "@database_url"`. El prefijo `@` es la sintaxis **legacy de Vercel para referenciar un "Secret"** (concepto distinto de las Environment Variables del dashboard). En cada deploy, Vercel intentaba vincular la variable a un Secret llamado `database_url` que no existe → fallo en la fase de validación de entorno, **antes del build**, bloqueando cualquier deployment. Recrear la variable en el dashboard NO lo arreglaba porque el dashboard crea una Environment Variable normal, no un Secret; el `env` de `vercel.json` forzaba la búsqueda del Secret.
+
+**Búsqueda confirmatoria:** la referencia `@database_url` aparecía **únicamente** en `vercel.json:16`. Ningún `.env`, `.env.example`, README ni script usa `@secret`. `.env` (no rastreado, gitignored) tiene el valor literal correcto; `app/config.py`, `migrations/env.py` y `src/db/models.py` leen `os.getenv("DATABASE_URL")` en runtime (correcto).
+
+**Cambio aplicado (mínimo):** eliminado por completo el bloque `env` de `vercel.json`. NO se sustituyó por la URL real ni se escribió ningún secreto en el repo.
+
+**Política de secretos:** `DATABASE_URL` debe gestionarse **exclusivamente desde Environment Variables del dashboard de Vercel**. Prohibido guardar secretos/credenciales reales en el repositorio (`vercel.json` ni ningún archivo rastreado). `app/config.py` ya la consume vía `os.getenv("DATABASE_URL")`, sin necesitar mapeo en `vercel.json`.
+
+**Pendiente de la iteración anterior (sigue vigente):** no existía deployment para el commit `89ca724` → revisar conexión Git ↔ Vercel y Production Branch en el dashboard (proyecto en scope personal/Hobby). Este fix del `env` desbloquea la fase de validación; aún hay que asegurar que los pushes a `main` generen deployment de producción.
+
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
 - ✅ Columna `gama_asignada` persistida en `item_master`
