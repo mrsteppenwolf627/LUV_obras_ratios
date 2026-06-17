@@ -856,6 +856,31 @@ Las filas item-level reales son **`Nat == 'Partida'`**. Las `Capítulo` son agre
 
 **Decisión:** detenido sin ejecutar (el pooler era confirmación obligatoria del usuario). NO se importó nada; producción sigue vacía. Pendiente: que el usuario aporte la URL del Transaction Pooler (ejecutando él mismo el script con `! DATABASE_URL=... python scripts/import_local_to_supabase.py`, o actualizando el `.env` local) o autorice `--allow-direct`. Nota técnica: para un script local de un solo uso, la conexión directa es técnicamente válida, pero el host directo puede ser IPv6-only en proyectos Supabase nuevos; el pooler es la vía IPv4. No se commitea `.env` ni datos reales.
 
+---
+
+### Sesión 17 junio 2026 (13ª iteración) — ✅ Importación local a Supabase COMPLETADA (260318_PEC)
+
+`.env` local actualizado al Transaction Pooler (`*.pooler.supabase.com:6543`, usuario `postgres.<ref>`) — secreto no impreso, `.env` gitignored y NO commiteado. Ejecutado `scripts/import_local_to_supabase.py` (sin HTTP/Vercel, una sola transacción).
+
+**Resultado: COMMIT (status `success`).** Sin errores, sin rollback.
+- `file_hash` importado: `106b511082fddbe8d280213bd36dcd3aa8c79cb097f146835150d482132a5510`
+- ImportService: `items_creados=199`, `items_duplicados=7` (claves repetidas dentro del mismo presupuesto), `muestras_actualizadas=206`.
+- Conteos en Supabase (antes → después):
+  - `budgets`: 0 → **1**
+  - `budget_imports`: 0 → **1** (status `success`)
+  - `item_master`: 0 → **199**
+  - `item_instances`: 0 → **206**
+
+**Endpoints de producción (ya NO vacíos):**
+- `GET /api/items/list` → `200`, **199 items** (p.ej. `{"item_key":"ac 01- mesa de plancha","categoria_asignada":"MEDIUM","muestras_count":1,"ratio_actual":null}`).
+- `GET /api/ratios/chapters` → `200`, **199 filas**.
+
+**Gaps esperados (documentados):** `capitulo` = `SIN_CATEGORIA` y `mediana/min/max/desv = 0.0` porque (a) la categoría se deriva de la última palabra de la descripción y estas no coinciden con categorías conocidas; (b) NO se ha ejecutado el recálculo de stats (`recalculate_all_item_master_stats`) — pendiente y autorizable aparte. `ratio_actual` null porque no hay `item_master_ratios` (eso lo genera `/api/items/analisis`).
+
+**Importante (seguridad):** se usó una credencial real de Supabase pegada en el chat; el usuario optó por NO rotarla de momento. Recomendación pendiente: rotar la contraseña de la BD cuando proceda.
+
+**Pendiente:** recálculo de stats (no ejecutado); importar los otros 4 xlsx (requieren parser propio por layout distinto); BC3/PZH/Presto/PDF excluidos.
+
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
 - ✅ Columna `gama_asignada` persistida en `item_master`
