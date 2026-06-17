@@ -681,6 +681,33 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
 
 **Estado esperado tras deploy:** `GET https://luv-obras-ratios.vercel.app/api/items/list` → `200` con `{"items": []}` mientras Supabase siga vacío; con datos importados devolverá la lista. Ya operativos en producción: `/api/hello`, `/api/ratios/chapters` (200 `[]`), y ahora `/api/items/list`.
 
+---
+
+### Sesión 17 junio 2026 (7ª iteración) — Diagnóstico previo a poblar Supabase (sin ejecutar)
+
+**`POST /api/import/budgets` (serverless-compatible ✅):**
+- Body: **JSON** `{filename, file_hash (SHA256 hex 64 chars, REQUERIDO+validado), building_type, lineas:[{descripcion, cantidad, precio_unitario, unidad?, capitulo?, numero?}]}`. Acepta alias de campos (description/qty/price...). **No** sube archivos. **No** usa filesystem. Pure DB. (El endpoint con upload de fichero es el OTRO, `/api/import`, que NO está en serverless.)
+- Tablas que puebla: `budget_imports` (guard dedup por file_hash), `budgets` (source_format=`json_api`), `item_master` (dedup por `item_key` normalizado; incrementa `muestras_count`), `item_instances` (una por línea válida). **NO** computa stats agregadas de ItemMaster (`mediana_unitario`, `min/max/media/desv_std`) ni `item_master_ratios`/`ratios` — eso solo lo hace `recalculate_all_item_master_stats`, que vive en el path de upload de `app/main.py`, no en el serverless.
+- Idempotente: re-POST del mismo file_hash → 409 (no duplica).
+
+**Selección de BD:** `src/db/models.py:_get_engine()` usa `DATABASE_URL` si está en el entorno (→ Supabase) o SQLite local `data/master/ratios.db` si no. Por eso un script local con `DATABASE_URL` de Supabase escribiría directo a Supabase.
+
+**Migración SQLite→Postgres:** NO existe script dedicado. Además el SQLite local (`data/master/ratios.db`) está casi vacío (0 budgets, 8 item_master sin item_instances, 10 gama_ranges) — los "27 presupuestos / 36 items" históricos NO están aquí. No hay dataset local que migrar: hay que re-importar desde las **fuentes reales** en `data/samples/PRESUPUESTOS/` (5 xlsx, 12 bc3, 12 pzh, 9 presto, 8 pdf).
+
+**Herramienta existente:** `scripts/importar_presupuestos_masivo.ps1` lee las fuentes reales LOCALMENTE (Excel vía COM; BC3/PZH/Presto vía texto), las convierte al JSON del endpoint y hace `Invoke-RestMethod` a `-ApiUrl` (default localhost). Apuntándolo a la URL de producción, puebla Supabase a través del endpoint.
+
+**Método recomendado: A) `POST /api/import/budgets` vía el script masivo apuntado a producción.** (B descartado como primario: requiere creds Supabase en local y un script que use ImportService — el `load_test_budgets_simple.py` escribe `LineItem`, tabla legacy equivocada. C descartado: no hay datos en SQLite que exportar y el esquema difiere.)
+
+**Riesgos identificados (a decidir antes de ejecutar):**
+1. **`No inventar datos` (restricción #1):** el parser BC3/PZH del script usa `precio=100` por defecto cuando no detecta precio → datos inventados. ⇒ empezar SOLO con los 5 `.xlsx` (precios reales); BC3/PZH/Presto requieren validación aparte.
+2. **Stats no calculadas:** tras importar, `mediana_unitario` queda NULL ⇒ `/api/ratios/chapters` devolverá filas pero con medianas 0.0 y `/api/items/with_gamas` con `SIN_CLASIFICAR`. Para visuals completas hace falta un paso posterior de recálculo (no expuesto en serverless).
+3. **`maxDuration:10s`** (vercel.json): un presupuesto muy grande podría superar 10s contra el pooler → timeout. Mitigación: importar archivos de uno en uno (el script ya lo hace) y empezar por los pequeños.
+4. Excel COM requiere Excel instalado en la máquina local (no en Vercel).
+
+**Backup previo:** Supabase prod está VACÍO (baseline confirmado: chapters `[]`, items `[]`), así que el riesgo de pérdida es nulo. Aun así, recomendable tomar un snapshot/backup en Supabase antes de la carga masiva (o registrar la lista de file_hash importados para poder revertir por borrado selectivo). La guardia de dedup hace los re-intentos seguros.
+
+**Decisión pendiente del usuario:** qué subconjunto de fuentes importar (recomendado: los 5 xlsx reales primero) y si se requiere el paso de recálculo de stats.
+
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
 - ✅ Columna `gama_asignada` persistida en `item_master`
