@@ -708,6 +708,47 @@ Ej: "CARPINTERÍA ALUMINIO" ≠ "Carpintería Aluminio" = duplicación silencios
 
 **Decisión pendiente del usuario:** qué subconjunto de fuentes importar (recomendado: los 5 xlsx reales primero) y si se requiere el paso de recálculo de stats.
 
+---
+
+### Sesión 17 junio 2026 (8ª iteración) — Intento de importación de los 5 xlsx reales → 0 importado (BLOQUEADO)
+
+**Acción autorizada:** importar SOLO los 5 `.xlsx` reales (sin BC3/PZH/Presto/PDF, sin precios inventados) vía `scripts/importar_presupuestos_masivo.ps1` apuntado a `https://luv-obras-ratios.vercel.app/api/import/budgets`.
+
+**Preparación (OK):** creado `data/temp_import_xlsx_only/` con copia de los 5 xlsx; verificado 0 ficheros bc3/pzh/presto/pdf.
+
+**Archivos candidatos + SHA-256 (calculados, NO importados):**
+- `23_06_BER-Control económico.xlsx` — `5bc91b853d66bb575ffe8aef2a8f25e0d025958f230668a8eda0b6d3fa6e25b8`
+- `24_26_PED_Presupuesto y mediciones.PDF.xlsx` — `c9f5716eeb94b037fb198333b1cf6cd8fe05dbf79de750c937eded7f8eb5d124`
+- `260318_PEC- Presupuesto_CONTRATO.xlsx` — `106b511082fddbe8d280213bd36dcd3aa8c79cb097f146835150d482132a5510`
+- `AFP025-D001  RAMBLA CATALUNYA 29_R1_220125.xlsx` — `1b90b74af470dbccb8f339b2a14b335236b10081b300e4e9c560d918ac972fa7`
+- `LLAVANERES_PPA_Presupuesto.xlsx` — `3ac491d71629b1dc1f21d4c4a0f65943ffbf976c87c604301a74a97cbef2c80f`
+
+**Resultado real: 0 presupuestos importados, 0 líneas enviadas, 0 POST a producción.** El parser Excel (COM + detección heurística de cabeceras) del script leyó las hojas pero extrajo "Files to import: 0". Ningún `Invoke-RestMethod` se ejecutó.
+
+**Verificación de endpoints (post-intento, siguen vacíos):**
+- `GET /api/items/list` → `200 {"items":[]}`
+- `GET /api/ratios/chapters` → `200 []`
+
+**Causa raíz del bloqueo:** mismatch de formato. `/api/import/budgets` exige líneas item-level (`descripcion`+`cantidad`+`precio_unitario`). Pero (a) el parser heurístico del `.ps1` no detecta las columnas en el layout de estos Excel reales; (b) el lector canónico `src/core/excel_reader.read_excel` sí lee, pero produce estructura a nivel de **capítulo** (`chapter_code`/`chapter_name`/`total_cost`), no precios unitarios por línea, y marca muchas filas `DUBIOUS` ("importe faltante o invalido"). Ningún parser existente extrae limpiamente (descripción, cantidad, precio unitario) de estos ficheros heterogéneos.
+
+**Decisión:** NO se fuerza un parser ad-hoc para no violar la restricción crítica #1 ("No inventar datos") ni #2. Importar requeriría un parser por-fichero fiable, a autorizar aparte. Producción Supabase permanece vacía (estado seguro y consistente).
+
+**Exclusiones que SIGUEN vigentes hasta validación específica:** BC3, PZH, Presto y PDF NO se importan (el parser BC3/PZH además inyecta `precio=100` por defecto → datos inventados).
+
+---
+
+### Diagnóstico (NO ejecutado): recálculo de stats de ItemMaster
+
+- **Función exacta:** `app/services/recalculate_service.py::recalculate_all_item_master_stats(session)` → itera todos los `ItemMaster` y llama a `src/ratios/item_ratio_calculator.py::recalculate_item_master_stats(session, master.id)`.
+- **Tablas/columnas que actualiza:** SOLO `item_master` → `mediana_unitario`, `media_unitario`, `min_unitario`, `max_unitario`, `desv_std`, `muestras_count`, `ultima_actualizacion`, `primera_fecha`, `ultima_fecha`. Lee `item_instances` (solo lectura). NO toca `budgets`, `item_instances`, `ratios`, `item_master_ratios`, `gama_ranges`.
+- **¿Seguro contra Supabase prod?** Sí en principio: es determinista e idempotente (recalcula desde `item_instances` cada vez); con BD vacía es no-op (0 actualizados). Riesgos: (a) escribe directo en prod; (b) sobrescribe `muestras_count` con el nº de instancias con precio>0; (c) `get_session()` ejecuta `Base.metadata.create_all` (DDL `IF NOT EXISTS`) contra Supabase — idempotente pero convive con Alembic; (d) requiere apuntar al MISMO pooler que Vercel para no actuar sobre otra BD.
+- **¿Requiere DATABASE_URL local?** SÍ. No está expuesto en serverless → se ejecuta como script local (Opción B) con `DATABASE_URL` = pooler de Supabase en el entorno.
+- **Comando exacto (NO ejecutar aún):**
+  ```bash
+  DATABASE_URL='<supabase_transaction_pooler_url>' python -c "from app.database import get_db; from app.services.recalculate_service import recalculate_all_item_master_stats as r; s=get_db(); n=r(s); s.commit(); print('updated', n); s.close()"
+  ```
+- **Nota:** solo tiene sentido DESPUÉS de que existan `item_instances` reales en Supabase. Hoy es no-op.
+
 **Cambios principales (TASK 8 - PROMPTS 1 a 5B):**
 - ✅ Tabla `gama_ranges` creada + 8 seed materiales base
 - ✅ Columna `gama_asignada` persistida en `item_master`
