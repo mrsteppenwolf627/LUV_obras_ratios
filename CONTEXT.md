@@ -904,3 +904,49 @@ Las filas item-level reales son **`Nat == 'Partida'`**. Las `Capítulo` son agre
 - [x] Sin breaking changes
 - [x] Documentado en CONTEXT.md v1.4.2
 - [x] validate_context.py pasó sin errores
+
+---
+
+### Sesión 22 junio 2026 — Recálculo de stats de `item_master` en Supabase producción
+
+**Objetivo:** ejecutar el recálculo pendiente de stats sobre la BD de producción de Supabase usando la `DATABASE_URL` local del **Transaction Pooler**, sin importar nuevos presupuestos y sin tocar Vercel/Supabase/frontend.
+
+**Pre-checks confirmados antes de ejecutar:**
+- `DATABASE_URL` cargada localmente sin imprimir secretos.
+- Host/puerto verificados: `*.pooler.supabase.com:6543` → **sí apunta al Transaction Pooler**.
+- Conteos actuales en Supabase: `budgets=1`, `budget_imports=1`, `item_master=199`, `item_instances=206`.
+- Universo actualizable: `199/199` `item_master` con al menos una `item_instance` con `precio_unitario > 0`.
+- Estado previo de stats: `199/199` `item_master` tenían `mediana_unitario = NULL`.
+
+**Columnas realmente actualizadas por el recálculo:**
+- Tabla `item_master` únicamente.
+- Campos: `mediana_unitario`, `media_unitario`, `min_unitario`, `max_unitario`, `desv_std`, `muestras_count`, `ultima_actualizacion`, `primera_fecha`, `ultima_fecha`.
+- `item_instances` se usa solo en lectura. No se tocaron `budgets`, `budget_imports`, `item_master_ratios`, `ratios`, `gama_ranges` ni configuración de Vercel/Supabase.
+
+**Ejecución real:**
+- Función: `app.services.recalculate_service.recalculate_all_item_master_stats(session)`.
+- Modo: sesión local contra Supabase producción + una sola transacción.
+- Política aplicada: `commit` solo al final si no había errores; `rollback` si fallaba algo.
+- Resultado: **`updated=199`**.
+- Estado `mediana_unitario NULL`: `199 -> 0`.
+- Commit aplicado correctamente. Sin errores ni rollback.
+
+**Verificación post-recálculo en BD:**
+- `item_master` con `mediana_unitario` rellena: **199**.
+- Muestras de comprobación reales:
+  - id `75`: `muestras_count=1`, `mediana=15.0`, `media=15.0`, `min=15.0`, `max=15.0`, `desv_std=0.0`
+  - id `76`: `muestras_count=1`, `mediana=80.0`, `media=80.0`, `min=80.0`, `max=80.0`, `desv_std=0.0`
+  - id `77`: `muestras_count=1`, `mediana=15.0`, `media=15.0`, `min=15.0`, `max=15.0`, `desv_std=0.0`
+- `primera_fecha`/`ultima_fecha` quedaron informadas desde `item_instances.created_at`.
+- `ultima_actualizacion` quedó refrescada a la fecha/hora real de ejecución del 22 de junio de 2026.
+
+**Prueba de endpoints de producción tras el commit:**
+- `GET https://luv-obras-ratios.vercel.app/api/items/list` → `200` con items reales (sigue devolviendo `199` items; `ratio_actual` continúa `null`, como esperado).
+- `GET https://luv-obras-ratios.vercel.app/api/ratios/chapters` → `200` con stats ya calculadas (por ejemplo, `mediana`, `minimo`, `maximo`, `desviacion_std` ya no van a `0.0` por ausencia de recálculo).
+- Nota operativa: `curl.exe` falló en Windows por `schannel SEC_E_NO_CREDENTIALS`; la validación HTTP final se hizo con `python urllib.request`.
+
+**Estado resultante:**
+- Producción Vercel + Supabase sigue operativa.
+- Importaciones: sin cambios (`1` presupuesto real; no se importó nada nuevo).
+- Stats de `item_master`: **recalculadas y persistidas en producción**.
+- Pendiente que sigue igual: `ratio_actual` continúa vacío hasta que exista flujo que pueble `item_master_ratios`.
