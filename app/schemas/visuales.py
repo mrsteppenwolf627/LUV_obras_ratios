@@ -23,6 +23,21 @@ class CapituloRatioResponse(BaseModel):
     building_type: Optional[str] = None
 
 
+class ItemRatioResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_master_id: int
+    item_key: str
+    categoria: str
+    muestras_total: int
+    min_unitario: float
+    p25_unitario: float
+    median_unitario: float
+    p75_unitario: float
+    max_unitario: float
+    avg_unitario: float
+
+
 class ItemPresupuesto(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 

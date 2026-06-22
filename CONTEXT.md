@@ -996,3 +996,28 @@ Las filas item-level reales son **`Nat == 'Partida'`**. Las `Capítulo` son agre
 - la tab `Rango` debe cargar datos del primer capítulo automáticamente sin mostrar falso error inicial
 - la tab `Solidez` debe seguir mostrando los capítulos/items disponibles
 - `Master` y `Archivados` ya no se promocionan desde navegación/home y, si se visitan manualmente, muestran aviso de desactivación temporal
+### SesiÃ³n 22 junio 2026 â€” Rango por item: contrato nuevo y validaciÃ³n real
+
+**Objetivo:** corregir la tab `Rango` para que consulte un `item_master` concreto en vez de reutilizar el agregado global por `categoria`.
+
+**Cambios implementados:**
+- Nuevo endpoint read-only `GET /api/ratios/item/{item_master_id}`.
+- Respuesta nueva con `item_master_id`, `item_key`, `categoria`, `muestras_total`, `min_unitario`, `p25_unitario`, `median_unitario`, `p75_unitario`, `max_unitario` y `avg_unitario`.
+- `GET /api/items/list` ahora incluye `categoria` para poder mostrar `categoria - item_key` en el selector.
+- Frontend `Visuales`:
+  - el selector de `Rango` usa `item_master_id` como `value`
+  - al seleccionar un item, carga stats desde `/api/ratios/item/{item_master_id}`
+  - los textos del flujo de rango hablan de `item` / `partida`, no de `capitulo`
+- `GET /api/ratios/chapters` no se tocÃ³ y sigue reservado para `Solidez`.
+
+**ValidaciÃ³n ejecutada:**
+- Backend tests: `pytest tests/test_stats.py tests/test_items_list.py tests/test_visuales_endpoints.py -q` â†’ **39 passed**.
+- Frontend tests: `cd frontend && npm test` â†’ **51 passed**.
+- Frontend build: `cd frontend && npm run build` â†’ **OK**.
+
+**ValidaciÃ³n contra datos reales de producciÃ³n:**
+- `DATABASE_URL` local confirmada como Transaction Pooler: `aws-0-eu-west-3.pooler.supabase.com:6543`.
+- Dos items distintos devolvieron stats distintas en `GET /api/ratios/item/{id}`:
+  - `ac 01- mesa de plancha` â†’ `median=450.0`, `muestras=1`
+  - `ac 07- armero` â†’ `median=690.0`, `muestras=1`
+- Con este contrato, la tab `Rango` ya no repite el rango global `SIN_CATEGORIA 2-24000` para todas las selecciones.

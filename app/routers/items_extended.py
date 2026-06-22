@@ -51,6 +51,7 @@ def get_items_list(categoria: str = "") -> dict:
                 "id": master.id,
                 "item_key": master.item_key,
                 "descripcion": master.item_key.replace("_", " ").title(),
+                "categoria": master.categoria,
                 "categoria_asignada": master.categoria_asignada,
                 "muestras_count": master.muestras_count or 0,
                 "ratio_actual": ratio.ratio_actual if ratio else None,

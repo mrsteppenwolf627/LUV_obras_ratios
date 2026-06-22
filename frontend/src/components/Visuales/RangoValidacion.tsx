@@ -29,11 +29,16 @@ const getEstadoValidacion = (cantidad: number) => {
 
 const getBadgeColor = (estado: EstadoConfiabilidad) => {
   switch (estado) {
-    case 'muy_solido': return 'bg-[#2D5016]';
-    case 'solido':     return 'bg-[#4CAF50]';
-    case 'debil':      return 'bg-[#FBC02D]';
-    case 'muy_debil':  return 'bg-[#D32F2F]';
-    default:           return 'bg-gray-500';
+    case 'muy_solido':
+      return 'bg-[#2D5016]';
+    case 'solido':
+      return 'bg-[#4CAF50]';
+    case 'debil':
+      return 'bg-[#FBC02D]';
+    case 'muy_debil':
+      return 'bg-[#D32F2F]';
+    default:
+      return 'bg-gray-500';
   }
 };
 
@@ -56,7 +61,7 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
   const estado = getEstadoValidacion(cantidad_datos);
 
   const miValorNumerico = miValor !== '' ? Number(miValor) : null;
-  const hasMiValor = miValorNumerico !== null && !isNaN(miValorNumerico);
+  const hasMiValor = miValorNumerico !== null && !Number.isNaN(miValorNumerico);
 
   const puedeValidar = estado === 'VALIDACION_COMPLETA';
 
@@ -73,43 +78,60 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
     <div className="mt-8 border-t border-[#D4C788] pt-4">
       <button
         onClick={() => setShowTutorial(!showTutorial)}
-        className="flex items-center gap-2 text-sm font-medium text-primary hover:text-[#2D5016] transition-colors"
+        className="flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-[#2D5016]"
       >
-        {showTutorial ? '📖 Cerrar guía' : '📖 Cómo usar esta herramienta'}
+        {showTutorial ? 'Cerrar guia' : 'Como usar esta herramienta'}
         <span className="text-xs">{showTutorial ? '▼' : '▶'}</span>
       </button>
 
       {showTutorial && (
-        <div className="mt-3 bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
-          <h3 className="font-bold text-gray-800 mb-2">Validar si tu precio está en rango</h3>
-          <ol className="space-y-3 text-sm text-[#4A4034] list-decimal pl-5">
-            <li><strong>Selecciona un capítulo</strong> en el desplegable superior (ej: AMENITIES).</li>
-            <li><strong>Entra el precio unitario</strong> en EUR/m2 que quieres validar (ej: 250).</li>
-            <li>El sistema compara tu precio contra todos los históricos:
-              <ul className="list-disc pl-5 mt-1 space-y-1">
-                <li><span className="text-green-700 font-bold">VERDE</span> = Dentro del rango normal (Ej: rango 200-300, pones 250).</li>
-                <li><span className="text-red-700 font-bold">ROJO</span> = Fuera de rango (Ej: pones 350 o 100).</li>
+        <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-sm animate-in fade-in slide-in-from-top-1 duration-200">
+          <h3 className="mb-2 font-bold text-gray-800">Validar si tu precio esta en rango</h3>
+          <ol className="list-decimal space-y-3 pl-5 text-sm text-[#4A4034]">
+            <li>
+              <strong>Selecciona una partida o item</strong> en el desplegable superior.
+            </li>
+            <li>
+              <strong>Entra el precio unitario</strong> en EUR/m2 que quieres validar (ej: 250).
+            </li>
+            <li>
+              El sistema compara tu precio contra todos los historicos:
+              <ul className="mt-1 list-disc pl-5 space-y-1">
+                <li>
+                  <span className="font-bold text-green-700">VERDE</span> = Dentro del rango
+                  normal (Ej: rango 200-300, pones 250).
+                </li>
+                <li>
+                  <span className="font-bold text-red-700">ROJO</span> = Fuera de rango (Ej:
+                  pones 350 o 100).
+                </li>
               </ul>
             </li>
-            <li><strong>Lee la confiabilidad</strong> (badge arriba a la derecha):
-              <ul className="list-disc pl-5 mt-1 space-y-1">
-                <li><span className="font-bold uppercase text-red-700">MUY DÉBIL</span> = Solo 1 dato histórico (poco fiable).</li>
-                <li><span className="font-bold uppercase text-green-700">SÓLIDO / MUY SÓLIDO</span> = Muchos datos (muy fiable).</li>
+            <li>
+              <strong>Lee la confiabilidad</strong> (badge arriba a la derecha):
+              <ul className="mt-1 list-disc pl-5 space-y-1">
+                <li>
+                  <span className="font-bold uppercase text-red-700">MUY DEBIL</span> = Solo 1
+                  dato historico (poco fiable).
+                </li>
+                <li>
+                  <span className="font-bold uppercase text-green-700">SOLIDO / MUY SOLIDO</span>
+                  = Muchos datos (muy fiable).
+                </li>
               </ul>
             </li>
           </ol>
-          <p className="mt-4 text-xs font-semibold text-gray-600 border-t border-blue-200 pt-2 italic">
-            Cuándo usarlo: Para revisar si tus precios de construcción son razonables.
+          <p className="mt-4 border-t border-blue-200 pt-2 text-xs font-semibold italic text-gray-600">
+            Cuando usarlo: para revisar si tus precios de construccion son razonables.
           </p>
         </div>
       )}
     </div>
   );
 
-  // ── Estado: SIN DATOS ──────────────────────────────────────────────────────
   if (estado === 'SIN_DATOS') {
     return (
-      <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter text-left">
+      <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 text-left font-inter">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="font-playfair text-xl font-bold">{capitulo}</h2>
@@ -118,10 +140,10 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
         </div>
         <div className="rounded-lg border border-[#D4C788] bg-gray-100 p-6 text-center">
           <p className="text-gray-600">
-            No hay datos históricos para <strong>{descripcion}</strong> aún.
+            No hay datos historicos para <strong>{descripcion}</strong> aun.
           </p>
           <p className="mt-2 text-sm text-gray-500">
-            Importa presupuestos para ver análisis comparativos.
+            Importa presupuestos para ver analisis comparativos.
           </p>
         </div>
         {renderTutorial()}
@@ -129,10 +151,9 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
     );
   }
 
-  // ── Estado: MUESTRA INSUFICIENTE (N=1) ────────────────────────────────────
   if (estado === 'MUESTRA_INSUFICIENTE') {
     return (
-      <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter text-left">
+      <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 text-left font-inter">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="font-playfair text-xl font-bold">{capitulo}</h2>
@@ -142,14 +163,15 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
         <div className="rounded-lg border border-orange-300 bg-orange-50 p-4">
           <div className="mb-2 flex items-center gap-2">
             <span className="inline-block rounded bg-orange-600 px-2 py-1 text-xs font-bold text-white">
-              MUY_DÉBIL
+              MUY DEBIL
             </span>
             <p className="text-sm font-semibold text-orange-800">
               Muestra insuficiente ({cantidad_datos}/{MUESTRAS_MINIMAS_PARA_RANGO})
             </p>
           </div>
           <p className="text-xs text-orange-700">
-            Solo hay {cantidad_datos} dato. Importa más presupuestos para validar rangos confiables.
+            Solo hay {cantidad_datos} dato. Importa mas presupuestos para validar rangos
+            confiables.
           </p>
           <label className="mt-3 flex flex-col gap-2">
             <span className="text-sm">Valor comparativo ({unidad}) (referencia):</span>
@@ -164,7 +186,7 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
             />
           </label>
           <p className="mt-2 text-xs text-orange-700">
-            Referencia: {formatMetric(mediana)} {unidad} (único dato)
+            Referencia: {formatMetric(mediana)} {unidad} (unico dato)
           </p>
         </div>
         {renderTutorial()}
@@ -172,9 +194,8 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
     );
   }
 
-  // ── Estado: VALIDACION COMPLETA (N>=2) ────────────────────────────────────
   return (
-    <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 font-inter text-left">
+    <div className="w-full rounded-lg border border-[#E0D5C7] bg-[#F5F1EB] p-6 text-left font-inter">
       <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="font-playfair text-xl font-bold">{capitulo}</h2>
@@ -221,10 +242,13 @@ const RangoValidacion: React.FC<RangoValidacionProps> = ({
         <p>Muestras: {cantidad_datos}</p>
       </div>
 
-      <div className={`text-lg font-bold ${hasMiValor ? (dentroRango ? 'text-green-700' : 'text-red-700') : 'text-[#6B5D4D]'}`}>
+      <div
+        className={`text-lg font-bold ${hasMiValor ? (dentroRango ? 'text-green-700' : 'text-red-700') : 'text-[#6B5D4D]'}`}
+      >
         {hasMiValor ? (
           <>
-            Mi valor: {miValorNumerico?.toFixed(2)} {unidad} — {dentroRango ? '✅ Dentro de rango' : '❌ Fuera de rango'}
+            Mi valor: {miValorNumerico?.toFixed(2)} {unidad} -{' '}
+            {dentroRango ? 'Dentro de rango' : 'Fuera de rango'}
           </>
         ) : (
           'Introduce tu valor para validar el rango.'

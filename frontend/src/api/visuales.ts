@@ -1,6 +1,8 @@
 import type {
   CapituloRatioResponse,
   ComparativaResponse,
+  Item,
+  ItemRatioResponse,
   PresupuestoAnalisis,
 } from '@/types/visuales';
 
@@ -68,6 +70,54 @@ export const getCapitulosRatios = async (
       signal,
     });
     return await parseJsonResponse<CapituloRatioResponse[]>(response);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('La peticion ha excedido el tiempo de espera.');
+    }
+    throw error;
+  } finally {
+    cleanup();
+  }
+};
+
+export const getItemsList = async (options: RequestOptions = {}): Promise<Item[]> => {
+  const { signal, cleanup } = buildTimeoutSignal(DEFAULT_TIMEOUT_MS, options.signal);
+  try {
+    const response = await fetch(`${API_BASE}/items/list`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      signal,
+    });
+    const payload = await parseJsonResponse<{ items: Item[] }>(response);
+    return payload.items;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('La peticion ha excedido el tiempo de espera.');
+    }
+    throw error;
+  } finally {
+    cleanup();
+  }
+};
+
+export const getItemRatio = async (
+  itemMasterId: number,
+  options: RequestOptions = {},
+): Promise<ItemRatioResponse> => {
+  const { signal, cleanup } = buildTimeoutSignal(DEFAULT_TIMEOUT_MS, options.signal);
+  try {
+    const response = await fetch(`${API_BASE}/ratios/item/${itemMasterId}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      signal,
+    });
+    return await parseJsonResponse<ItemRatioResponse>(response);
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error('La peticion ha excedido el tiempo de espera.');

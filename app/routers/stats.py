@@ -6,7 +6,9 @@ from sqlalchemy import func
 from pydantic import BaseModel
 
 from app import database as _db
+from app.schemas.visuales import ItemRatioResponse
 from src.db.schema import ItemInstance, ItemMaster
+from src.ratios.item_ratio_calculator import get_item_ratio_history
 
 router = APIRouter(prefix="/api", tags=["stats"])
 
@@ -97,5 +99,50 @@ def get_ratios_rango(chapter: Optional[str] = None):
             avg_unitario=round(avg_p, 2),
         )
 
+    finally:
+        session.close()
+
+
+@router.get("/ratios/item/{item_master_id}", response_model=ItemRatioResponse)
+def get_ratio_by_item(item_master_id: int) -> ItemRatioResponse:
+    """Return historical stats for one concrete ItemMaster."""
+    session = _db.get_db()
+    try:
+        master = session.get(ItemMaster, item_master_id)
+        if master is None:
+            raise HTTPException(status_code=404, detail=f"ItemMaster {item_master_id} no encontrado")
+
+        stats = get_item_ratio_history(session, item_master_id)
+        if not stats:
+            raise HTTPException(status_code=404, detail=f"Sin datos historicos para item {item_master_id}")
+
+        prices = sorted(
+            float(sample["precio_unitario"])
+            for sample in stats["muestras"]
+            if sample.get("precio_unitario") is not None and float(sample["precio_unitario"]) > 0
+        )
+
+        def _percentile(values: list[float], percentile: float) -> float:
+            if len(values) == 1:
+                return values[0]
+            position = (len(values) - 1) * percentile / 100.0
+            lower = int(position)
+            fraction = position - lower
+            if lower + 1 >= len(values):
+                return values[-1]
+            return values[lower] * (1 - fraction) + values[lower + 1] * fraction
+
+        return ItemRatioResponse(
+            item_master_id=master.id,
+            item_key=master.item_key,
+            categoria=master.categoria or "SIN_CATEGORIA",
+            muestras_total=int(stats["muestras_count"]),
+            min_unitario=float(min(prices)),
+            p25_unitario=float(_percentile(prices, 25)),
+            median_unitario=float(stats["mediana"]),
+            p75_unitario=float(_percentile(prices, 75)),
+            max_unitario=float(max(prices)),
+            avg_unitario=float(stats["media"]),
+        )
     finally:
         session.close()

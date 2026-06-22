@@ -169,3 +169,51 @@ class TestRatiosRango:
         assert resp.status_code == 200
         data = resp.json()
         assert data["chapter"] == "ESTRUCTURA"
+
+
+class TestRatiosItem:
+    def test_returns_item_stats(self, stats_client):
+        session = stats_module._db.get_db()
+        try:
+            item = session.query(ItemMaster).filter_by(item_key="vigas metalicas estructura").first()
+            assert item is not None
+        finally:
+            session.close()
+
+        resp = stats_client.get(f"/api/ratios/item/{item.id}")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["item_master_id"] == item.id
+        assert data["item_key"] == "vigas metalicas estructura"
+        assert data["categoria"] == "ESTRUCTURA"
+        assert data["muestras_total"] == 2
+        assert data["min_unitario"] == 100.0
+        assert data["max_unitario"] == 140.0
+        assert data["median_unitario"] == 120.0
+        assert data["avg_unitario"] == 120.0
+
+    def test_two_items_return_different_stats(self, stats_client):
+        session = stats_module._db.get_db()
+        try:
+            first = session.query(ItemMaster).filter_by(item_key="vigas metalicas estructura").first()
+            second = session.query(ItemMaster).filter_by(item_key="forjado hormigon estructura").first()
+            assert first is not None
+            assert second is not None
+        finally:
+            session.close()
+
+        resp_first = stats_client.get(f"/api/ratios/item/{first.id}")
+        resp_second = stats_client.get(f"/api/ratios/item/{second.id}")
+
+        assert resp_first.status_code == 200
+        assert resp_second.status_code == 200
+
+        data_first = resp_first.json()
+        data_second = resp_second.json()
+
+        assert data_first["median_unitario"] != data_second["median_unitario"]
+        assert data_first["min_unitario"] != data_second["min_unitario"]
+
+    def test_missing_item_returns_404(self, stats_client):
+        resp = stats_client.get("/api/ratios/item/9999")
+        assert resp.status_code == 404

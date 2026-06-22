@@ -69,10 +69,24 @@ export interface RangoResponse {
   avg_unitario: number;
 }
 
+export interface ItemRatioResponse {
+  item_master_id: number;
+  item_key: string;
+  categoria: string;
+  muestras_total: number;
+  min_unitario: number;
+  p25_unitario: number;
+  median_unitario: number;
+  p75_unitario: number;
+  max_unitario: number;
+  avg_unitario: number;
+}
+
 export interface Item {
   id: number;
   item_key: string;
   descripcion: string;
+  categoria?: string | null;
   categoria_asignada: string;
   gama_asignada: string;
   muestras_count: number;

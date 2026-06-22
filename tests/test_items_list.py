@@ -97,10 +97,11 @@ class TestItemsList:
         # Shape: ratio is None (outerjoin with no ItemMasterRatio rows)
         first = items[0]
         assert set(first.keys()) == {
-            "id", "item_key", "descripcion", "categoria_asignada",
+            "id", "item_key", "descripcion", "categoria", "categoria_asignada",
             "muestras_count", "ratio_actual", "confianza",
         }
         assert first["descripcion"] == "Griferia Bano"
+        assert first["categoria"] == "FONTANERIA"
         assert first["ratio_actual"] is None
         assert first["confianza"] is None
 
