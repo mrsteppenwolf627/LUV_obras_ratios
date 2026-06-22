@@ -1,4 +1,4 @@
-import { Archive, ArrowRight, PieChart, Table, Upload } from 'lucide-react';
+import { ArrowRight, PieChart, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Home = () => {
@@ -11,22 +11,9 @@ const Home = () => {
       accent: 'text-success',
     },
     {
-      title: 'Ver Master',
-      description: 'Explora la base de datos consolidada de ratios por capitulo.',
-      link: '/master',
-      icon: Table,
-      accent: 'text-accent',
-    },
-    {
-      title: 'Archivados',
-      description: 'Consulta el historial de importaciones y trazabilidad.',
-      link: '/archived',
-      icon: Archive,
-      accent: 'text-warning',
-    },
-    {
       title: 'Ratios Visuales',
-      description: 'Analisis grafico de tendencias, rangos y comparativas de costes.',
+      description:
+        'Demo de lectura con datos reales: rangos y solidez estadistica disponibles en produccion.',
       link: '/visuales',
       icon: PieChart,
       accent: 'text-primary',
@@ -54,9 +41,7 @@ const Home = () => {
               className="group relative overflow-hidden border border-border bg-white p-10 transition-all duration-500 hover:border-accent"
             >
               <div className="relative z-10 flex h-full flex-col">
-                <div
-                  className={`mb-6 w-fit rounded-sm bg-secondary p-3 transition-colors duration-500 group-hover:bg-accent group-hover:text-white`}
-                >
+                <div className="mb-6 w-fit rounded-sm bg-secondary p-3 transition-colors duration-500 group-hover:bg-accent group-hover:text-white">
                   <Icon className="h-8 w-8" />
                 </div>
                 <h2 className="mb-3 font-serif text-2xl text-primary transition-transform duration-500 group-hover:translate-x-1">
@@ -64,7 +49,8 @@ const Home = () => {
                 </h2>
                 <p className="mb-8 flex-grow text-sm leading-relaxed text-accent">{card.description}</p>
                 <div className="flex items-center text-xs font-medium uppercase tracking-widest text-primary transition-all group-hover:gap-2">
-                  Explorar <ArrowRight className="ml-1 h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                  Explorar{' '}
+                  <ArrowRight className="ml-1 h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
                 </div>
               </div>
 

@@ -1,5 +1,6 @@
-import { Archive, Home, PieChart, Table, Upload } from 'lucide-react';
+import { Home, PieChart, Upload } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+
 import { cn } from '@/lib/utils';
 import logoImage from '@/assets/luvstudio-logo.png';
 
@@ -9,8 +10,6 @@ const Navigation = () => {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Importar', path: '/import', icon: Upload },
-    { name: 'Master', path: '/master', icon: Table },
-    { name: 'Archivados', path: '/archived', icon: Archive },
     { name: 'Visuales', path: '/visuales', icon: PieChart },
   ];
 
@@ -20,10 +19,10 @@ const Navigation = () => {
         <div className="flex h-20 justify-between">
           <div className="flex items-center">
             <Link to="/" className="flex items-center">
-              <img 
-                src={logoImage} 
-                alt="LUV Studio Logo" 
-                className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+              <img
+                src={logoImage}
+                alt="LUV Studio Logo"
+                className="h-10 w-auto cursor-pointer transition-opacity hover:opacity-80"
               />
             </Link>
           </div>

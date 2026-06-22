@@ -950,3 +950,49 @@ Las filas item-level reales son **`Nat == 'Partida'`**. Las `Capítulo` son agre
 - Importaciones: sin cambios (`1` presupuesto real; no se importó nada nuevo).
 - Stats de `item_master`: **recalculadas y persistidas en producción**.
 - Pendiente que sigue igual: `ratio_actual` continúa vacío hasta que exista flujo que pueble `item_master_ratios`.
+
+---
+
+### Sesión 22 junio 2026 — MVP visual mínimo en producción (frontend)
+
+**Objetivo:** dejar el frontend usable como demo de lectura con datos reales, sin tocar Supabase/Vercel/backend y ocultando superficies no fiables.
+
+**Decisión aplicada (frontend only):**
+- Se mantiene visible el flujo de lectura en `https://luv-obras-ratios.vercel.app/visuales`.
+- Se dejan activas solo las tabs **Rango** y **Solidez**.
+- Se ocultan/desactivan temporalmente superficies no fiables o no alineadas con el MVP actual:
+  - `Items × Categorías`
+  - `Items × Gama`
+  - `Master`
+  - `Archivados`
+  - Export asociado a Master
+
+**Cambios mínimos realizados:**
+- `frontend/src/pages/Visuales.tsx`
+  - fix de carga inicial: al llegar `capitulos`, ahora selecciona el primer capítulo **y lanza automáticamente** `GET /api/ratios/rango?chapter=...`
+  - tabs reducidas a `Rango` + `Solidez`
+  - copy de cabecera ajustado a “demo de lectura”
+- `frontend/src/components/Navigation.tsx`
+  - ocultados los enlaces de `Master` y `Archivados`
+- `frontend/src/components/Home.tsx`
+  - retiradas las cards de `Master` y `Archivados`
+  - card de `Ratios Visuales` ajustada al alcance real del MVP
+- `frontend/src/App.tsx`
+  - rutas `/master` y `/archived` desactivadas temporalmente con aviso simple de MVP
+
+**No se tocó:**
+- Supabase
+- `DATABASE_URL`
+- config de Vercel
+- backend
+- importación de datos
+
+**Validación realizada:**
+- Frontend build: `npm run build` ✅
+- Resultado: build Vite/TypeScript correcta; único warning no bloqueante por chunk grande (`index-*.js > 500 kB`)
+
+**Estado esperado en producción tras deploy:**
+- `/visuales` debe abrir directamente como demo de lectura
+- la tab `Rango` debe cargar datos del primer capítulo automáticamente sin mostrar falso error inicial
+- la tab `Solidez` debe seguir mostrando los capítulos/items disponibles
+- `Master` y `Archivados` ya no se promocionan desde navegación/home y, si se visitan manualmente, muestran aviso de desactivación temporal
