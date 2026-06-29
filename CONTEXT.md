@@ -100,7 +100,32 @@ id inexistente ──approve/reject──▶ ApprovalError
 
 **Tests:** `test_master_approve.py` — todos los xfail eliminados, 19 tests PASS. Añadidos 11 tests nuevos de transiciones cruzadas (doble approve, doble reject, approve→reject, reject→approve, partial-status-can-approve). `test_master_export.py` sigue con 4 XFAIL (T6 pendiente). `test_import.py` sin regresiones (33 PASS).
 
-**Pendiente:** T4 (endpoints master router: POST /api/master/import, GET /api/master/imports, POST /api/master/imports/{id}/approve, POST /api/master/imports/{id}/reject, GET /api/master/export), T5 (congelar flujos no canónicos), T6 (generate_master_excel_approved).
+### T4 — COMPLETADA (29 junio 2026)
+
+**Pre-verificación T4:** Confirmado que `approve_import()` ya era idempotente sin sobrescribir metadatos. Añadido `test_approve_idempotent_preserves_original_metadata` en `test_master_approve.py` (20 tests total).
+
+**Archivo creado:** `app/routers/master.py`
+
+**Endpoints implementados (no registrados todavía en main.py/api/index.py):**
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET  | `/api/master/status` | Fase activa, approval_flow_enabled |
+| GET  | `/api/master/imports` | Lista con filtros: approval_status, technical_status, limit |
+| GET  | `/api/master/imports/pending` | Shortcut: solo PENDING_REVIEW |
+| GET  | `/api/master/imports/{id}` | Detalle; 404 si no existe |
+| POST | `/api/master/imports/{id}/approve` | PENDING_REVIEW→APPROVED; idempotente; 400 si no permitido |
+| POST | `/api/master/imports/{id}/reject` | PENDING_REVIEW→REJECTED; notes obligatorio; 400 si no permitido |
+
+**Sin efectos secundarios:** no recalcula ratios, no genera Excel. El router gestiona `session.commit()/rollback()`; el servicio solo hace `flush()`.
+
+**Aún no registrado:** `master_router` no está en `app/main.py` ni `api/index.py`. Eso es T5.
+
+**Tests:** `tests/test_master_router.py` — 25 tests, todos PASS. Fixture crea app FastAPI local con monkey-patch de `_db.get_db` en el módulo del router (mismo patrón que `test_import.py`).
+
+**Resultado total:** 85 passed, 4 xfailed (test_master_export, T6 pendiente), 0 failed.
+
+**Pendiente:** T5 (registrar `master_router` en `app/main.py` y `api/index.py`), T6 (`generate_master_excel_approved`).
 
 ---
 

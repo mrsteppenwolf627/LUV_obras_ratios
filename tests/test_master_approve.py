@@ -222,6 +222,46 @@ def test_approve_already_approved_returns_record(session):
     assert returned.approval_status == "APPROVED"
 
 
+def test_approve_idempotent_preserves_original_metadata(session):
+    """Segunda llamada a approve NO sobrescribe reviewed_by, reviewed_at ni review_notes.
+
+    La idempotencia debe ser un no-op real: los metadatos del revisor original
+    se preservan aunque la segunda llamada pase valores distintos.
+    """
+    from app.services.approval_service import approve_import
+
+    record = _do_import(session, "t3_approve_idem_meta", "Azulejo test preserva metadata")
+
+    # Primera aprobación — establece el revisor original
+    approve_import(
+        session=session,
+        budget_import_id=record.id,
+        reviewed_by="aitor",
+        review_notes="Aprobación original",
+    )
+    session.refresh(record)
+    original_reviewed_at = record.reviewed_at
+
+    # Segunda llamada con datos distintos — no debe sobrescribir nada
+    approve_import(
+        session=session,
+        budget_import_id=record.id,
+        reviewed_by="otro_revisor",
+        review_notes="Intento de sobrescribir",
+    )
+    session.refresh(record)
+
+    assert record.reviewed_by == "aitor", (
+        "reviewed_by no debe sobrescribirse en segunda llamada idempotente."
+    )
+    assert record.review_notes == "Aprobación original", (
+        "review_notes no debe sobrescribirse en segunda llamada idempotente."
+    )
+    assert record.reviewed_at == original_reviewed_at, (
+        "reviewed_at no debe modificarse en segunda llamada idempotente."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Test 4 — reject_import() transitions PENDING_REVIEW → REJECTED
 # ---------------------------------------------------------------------------
