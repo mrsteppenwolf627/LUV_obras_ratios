@@ -73,7 +73,34 @@ subir archivo → PENDING_REVIEW → revisar partidas → APPROVED/REJECTED
 
 **Contrato xfail:** Los marcadores `xfail(strict=True)` en `test_master_approve.py` se eliminan cuando se implemente `app/services/approval_service.py` (T3). Los de `test_master_export.py` se eliminan cuando se implemente `generate_master_excel_approved()` (T6). El CI fallará (XPASS) si se implementa la lógica sin retirar el marcador.
 
-**Pendiente:** T3 (approval_service.py: approve_import, reject_import, ApprovalError), T4 (endpoints master router), T5 (congelar /api/import y /api/items/analisis para escritura), T6 (generate_master_excel_approved), ... (ver plan técnico en sesión anterior).
+### T3 — COMPLETADA (29 junio 2026)
+
+**Qué se hizo:** `app/services/approval_service.py` implementado con la máquina de estados de aprobación.
+
+**Archivo creado:** `app/services/approval_service.py`
+
+**Exports:**
+- `class ApprovalError(Exception)` — se lanza en transiciones inválidas.
+- `approve_import(session, budget_import_id, reviewed_by, review_notes=None) → BudgetImport`
+- `reject_import(session, budget_import_id, reviewed_by, review_notes=None) → BudgetImport`
+
+**Máquina de estados implementada:**
+```
+PENDING_REVIEW ──approve──▶ APPROVED  (review_notes opcional)
+PENDING_REVIEW ──reject──▶  REJECTED  (review_notes OBLIGATORIO → ValueError)
+APPROVED       ──approve──▶ APPROVED  (idempotente, no-op)
+APPROVED       ──reject──▶  ApprovalError
+REJECTED       ──approve──▶ ApprovalError
+REJECTED       ──reject──▶  ApprovalError
+status=error   ──approve──▶ ApprovalError  (ADR-004)
+id inexistente ──approve/reject──▶ ApprovalError
+```
+
+**Sin efectos secundarios:** T3 solo gestiona `approval_status`, `reviewed_by`, `reviewed_at`, `review_notes`. No toca ratios, no toca exportación Excel, no hace `session.commit()` (el caller gestiona la transacción).
+
+**Tests:** `test_master_approve.py` — todos los xfail eliminados, 19 tests PASS. Añadidos 11 tests nuevos de transiciones cruzadas (doble approve, doble reject, approve→reject, reject→approve, partial-status-can-approve). `test_master_export.py` sigue con 4 XFAIL (T6 pendiente). `test_import.py` sin regresiones (33 PASS).
+
+**Pendiente:** T4 (endpoints master router: POST /api/master/import, GET /api/master/imports, POST /api/master/imports/{id}/approve, POST /api/master/imports/{id}/reject, GET /api/master/export), T5 (congelar flujos no canónicos), T6 (generate_master_excel_approved).
 
 ---
 
