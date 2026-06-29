@@ -46,7 +46,34 @@ subir archivo → PENDING_REVIEW → revisar partidas → APPROVED/REJECTED
 
 **No tocado en T1:** app/main.py, /api/import, /api/items/analisis, exportador Excel, ningún endpoint existente.
 
-**Pendiente:** T2 (tests end-to-end del flujo de aprobación), T3 (approval_service.py), T4 (endpoints master router), ... (ver plan técnico en sesión anterior).
+### T2 — COMPLETADA (29 junio 2026)
+
+**Qué se hizo:** Tests de contrato TDD para el flujo master completo.
+
+**Archivos creados:**
+- `tests/test_master_import.py` — 7 tests, todos PASS:
+  - `TestDefaultApprovalStatus` (4): verifica que todo BudgetImport nuevo queda en PENDING_REVIEW, independencia de status/approval_status, campos de revisión null.
+  - `TestPendingReviewDoesNotFeedRatios` (3): verifica que PENDING_REVIEW no genera item_master_ratios (guarda permanente de ADR-004).
+- `tests/test_master_approve.py` — 8 tests, todos XFAIL(strict=True) hasta T3:
+  - `test_approve_import_transitions_to_approved` — contrato de approve_import()
+  - `test_approve_import_without_notes_is_valid` — notas opcionales en aprobación
+  - `test_approve_import_is_idempotent` — doble aprobación no duplica ratios
+  - `test_reject_import_transitions_to_rejected` — contrato de reject_import()
+  - `test_reject_import_requires_review_notes` — notas obligatorias en rechazo
+  - `test_rejected_import_does_not_update_ratios` — REJECTED no alimenta ratios
+  - `test_failed_technical_import_cannot_be_approved` — status=error bloquea ApprovalError
+  - `test_nonexistent_import_raises_on_approve` — ID inválido levanta excepción
+- `tests/test_master_export.py` — 4 tests, todos XFAIL(strict=True) hasta T6:
+  - `test_rejected_import_never_feeds_master_export`
+  - `test_master_export_uses_only_approved_imports`
+  - `test_master_export_with_no_approved_imports_generates_empty_sheets`
+  - `test_master_export_filename_is_luv_ratios_master`
+
+**Resultado:** 7 passed, 12 xfailed, 0 failed, 0 errors.
+
+**Contrato xfail:** Los marcadores `xfail(strict=True)` en `test_master_approve.py` se eliminan cuando se implemente `app/services/approval_service.py` (T3). Los de `test_master_export.py` se eliminan cuando se implemente `generate_master_excel_approved()` (T6). El CI fallará (XPASS) si se implementa la lógica sin retirar el marcador.
+
+**Pendiente:** T3 (approval_service.py: approve_import, reject_import, ApprovalError), T4 (endpoints master router), T5 (congelar /api/import y /api/items/analisis para escritura), T6 (generate_master_excel_approved), ... (ver plan técnico en sesión anterior).
 
 ---
 
