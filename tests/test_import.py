@@ -514,3 +514,120 @@ class TestImportService:
             item_key="aplacado petreo marmol"
         ).first()
         assert master.muestras_count == 2
+
+
+# ---------------------------------------------------------------------------
+# Suite 8: FASE MASTER — approval_status en BudgetImport (T1)
+# ---------------------------------------------------------------------------
+
+class TestApprovalStatus:
+    """Verify that the new approval workflow columns do not break existing
+    behaviour and that every new BudgetImport defaults to PENDING_REVIEW."""
+
+    def test_new_import_has_pending_review(self, direct_session):
+        """approval_status defaults to PENDING_REVIEW on creation."""
+        from app.services.import_service import ImportService
+        from src.db.schema import BudgetImport
+
+        svc = ImportService(direct_session)
+        svc.importar(
+            filename="approval_default.xlsx",
+            file_hash="a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+            building_type="residencial",
+            lineas=[_linea("Pavimento cerámico test approval")],
+        )
+        record = direct_session.query(BudgetImport).filter_by(
+            file_hash="a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+        ).first()
+        assert record is not None
+        assert record.approval_status == "PENDING_REVIEW"
+
+    def test_technical_status_unchanged(self, direct_session):
+        """status (technical) still reflects ingestion outcome, not approval."""
+        from app.services.import_service import ImportService
+        from src.db.schema import BudgetImport
+
+        svc = ImportService(direct_session)
+        result = svc.importar(
+            filename="status_technical.xlsx",
+            file_hash="b2c3d4e5f6a7b2c3d4e5f6a7b2c3d4e5f6a7b2c3d4e5f6a7b2c3d4e5f6a7b2c3",
+            building_type="residencial",
+            lineas=[_linea("Estructura metálica test status")],
+        )
+        assert result.status == "success"
+        record = direct_session.query(BudgetImport).filter_by(
+            file_hash="b2c3d4e5f6a7b2c3d4e5f6a7b2c3d4e5f6a7b2c3d4e5f6a7b2c3d4e5f6a7b2c3"
+        ).first()
+        # Technical status is set by ImportService; approval_status is independent
+        assert record.status == "success"
+        assert record.approval_status == "PENDING_REVIEW"
+
+    def test_review_fields_accept_null(self, direct_session):
+        """reviewed_by, reviewed_at, review_notes are nullable on new records."""
+        from app.services.import_service import ImportService
+        from src.db.schema import BudgetImport
+
+        svc = ImportService(direct_session)
+        svc.importar(
+            filename="null_review.xlsx",
+            file_hash="c3d4e5f6a7b8c3d4e5f6a7b8c3d4e5f6a7b8c3d4e5f6a7b8c3d4e5f6a7b8c3d4",
+            building_type="residencial",
+            lineas=[_linea("Pintura interior null review")],
+        )
+        record = direct_session.query(BudgetImport).filter_by(
+            file_hash="c3d4e5f6a7b8c3d4e5f6a7b8c3d4e5f6a7b8c3d4e5f6a7b8c3d4e5f6a7b8c3d4"
+        ).first()
+        assert record.reviewed_by is None
+        assert record.reviewed_at is None
+        assert record.review_notes is None
+
+    def test_deduplication_still_works_with_new_columns(self, direct_session):
+        """Re-importing same file_hash raises DuplicateImportError (approval fields do not break guard)."""
+        from app.services.import_service import DuplicateImportError, ImportService
+
+        hash_val = "d4e5f6a7b8c9d4e5f6a7b8c9d4e5f6a7b8c9d4e5f6a7b8c9d4e5f6a7b8c9d4e5"
+        svc1 = ImportService(direct_session)
+        svc1.importar(
+            filename="dedup_approval.xlsx",
+            file_hash=hash_val,
+            building_type="residencial",
+            lineas=[_linea("Carpintería madera dedup approval")],
+        )
+        svc2 = ImportService(direct_session)
+        with pytest.raises(DuplicateImportError):
+            svc2.importar(
+                filename="dedup_approval.xlsx",
+                file_hash=hash_val,
+                building_type="residencial",
+                lineas=[_linea("Carpintería madera dedup approval")],
+            )
+
+    def test_approval_status_can_be_updated_directly(self, direct_session):
+        """approval_status field is writable — simulate what approve endpoint will do."""
+        from datetime import datetime, timezone
+
+        from app.services.import_service import ImportService
+        from src.db.schema import BudgetImport
+
+        hash_val = "e5f6a7b8c9d0e5f6a7b8c9d0e5f6a7b8c9d0e5f6a7b8c9d0e5f6a7b8c9d0e5f6"
+        svc = ImportService(direct_session)
+        svc.importar(
+            filename="approve_direct.xlsx",
+            file_hash=hash_val,
+            building_type="residencial",
+            lineas=[_linea("Solado exterior aprobación directa")],
+        )
+        record = direct_session.query(BudgetImport).filter_by(file_hash=hash_val).first()
+        assert record.approval_status == "PENDING_REVIEW"
+
+        # Simulate what the future approval endpoint will do
+        record.approval_status = "APPROVED"
+        record.reviewed_by = "aitor"
+        record.reviewed_at = datetime.now(timezone.utc)
+        record.review_notes = "Presupuesto verificado manualmente"
+        direct_session.commit()
+
+        refreshed = direct_session.query(BudgetImport).filter_by(file_hash=hash_val).first()
+        assert refreshed.approval_status == "APPROVED"
+        assert refreshed.reviewed_by == "aitor"
+        assert refreshed.review_notes == "Presupuesto verificado manualmente"

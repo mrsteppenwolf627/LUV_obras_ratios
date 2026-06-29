@@ -1,10 +1,54 @@
 # CONTEXT: LUV Ratios
 
 **Proyecto:** Sistema de consolidacion y validacion de ratios de construccion
-**Version:** 1.4.1
-**Estado:** 🟢 PRODUCCIÓN READY
-**Fecha actualizacion:** 9 de junio de 2026
-**Ultima sesion relevante:** Tab Comparativa operativo — POST /api/analyze/comparativa calcula desviaciones, impacto monetario y confiabilidad globales + 733/733 tests verdes
+**Version:** 1.5.0-FASE-MASTER**
+**Estado:** 🟡 RECONDUCCIÓN ACTIVA — FASE MASTER en planificación
+**Fecha actualizacion:** 29 de junio de 2026
+**Ultima sesion relevante:** Auditoría de flujos de importación — decisión FASE MASTER: flujo canónico con revisión humana antes de actualizar ratios + exportación LUV_RATIOS_MASTER.xlsx
+
+---
+
+## DECISIÓN FASE MASTER (29 junio 2026)
+
+**Decisión arquitectónica:** El sistema pasa a operar bajo el modelo "importación controlada con aprobación explícita". Ninguna importación actualiza ratios definitivos hasta que un humano la apruebe. El documento de salida oficial pasa a llamarse `LUV_RATIOS_MASTER.xlsx`.
+
+**Flujo canónico adoptado:**
+```
+subir archivo → PENDING_REVIEW → revisar partidas → APPROVED/REJECTED
+                                                          ↓
+                                                    actualizar ratios
+                                                          ↓
+                                                  exportar LUV_RATIOS_MASTER.xlsx
+```
+
+**Flujo NO canónico (a congelar):**
+- `POST /api/import` — actualiza ratios inmediatamente sin aprobación. Se congela.
+- `POST /api/items/analisis` — actualiza `item_master_ratios` sin aprobación. Se congela para escritura.
+
+**Flujo canónico a construir:** `POST /api/master/import` (upload) → estados PENDING_REVIEW / APPROVED / REJECTED en `BudgetImport` → endpoints de revisión y aprobación → recalculo de ratios solo tras APPROVED → `GET /api/master/export` devuelve `LUV_RATIOS_MASTER.xlsx`.
+
+**ADR asociado:** ADR-18 (pendiente de redactar formalmente).
+
+### T1 — COMPLETADA (29 junio 2026)
+
+**Qué se hizo:**
+- `src/db/schema.py`: añadidos 4 campos a `BudgetImport`:
+  - `approval_status` — String(30), nullable=False, default="PENDING_REVIEW" — estado funcional del flujo de aprobación. Valores: PENDING_REVIEW | APPROVED | REJECTED.
+  - `reviewed_by` — String(255), nullable=True — quién aprobó/rechazó.
+  - `reviewed_at` — DateTime, nullable=True — cuándo.
+  - `review_notes` — Text, nullable=True — motivo u observaciones.
+- Migración Alembic `d5e6f7a8b9c0` — solo ADD COLUMN con `server_default='PENDING_REVIEW'` para registros existentes. HEAD actualizado.
+- `tests/test_import.py`: añadida `TestApprovalStatus` (5 tests). 33/33 pasan.
+
+**Separación de responsabilidades confirmada:**
+- `BudgetImport.status` — estado técnico de ingesta: `success | partial | error`. **No se modifica.**
+- `BudgetImport.approval_status` — estado funcional del flujo FASE MASTER: `PENDING_REVIEW | APPROVED | REJECTED`. **No altera comportamiento existente.**
+
+**No tocado en T1:** app/main.py, /api/import, /api/items/analisis, exportador Excel, ningún endpoint existente.
+
+**Pendiente:** T2 (tests end-to-end del flujo de aprobación), T3 (approval_service.py), T4 (endpoints master router), ... (ver plan técnico en sesión anterior).
+
+---
 
 ## Arquitectura
 

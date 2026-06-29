@@ -268,12 +268,23 @@ class BudgetImport(Base):
     file_hash = Column(String(64), unique=True, nullable=False)
     building_type = Column(String(100), nullable=True)
     import_date = Column(DateTime, default=_utcnow, nullable=False)
-    status = Column(String(50), nullable=False, default="success")  # success | partial | error
+    # Technical ingestion state: success | partial | error
+    status = Column(String(50), nullable=False, default="success")
     items_count = Column(Integer, nullable=True)
     error_message = Column(String(1000), nullable=True)
 
+    # FASE MASTER — functional approval workflow (separate from technical status above)
+    # Values: PENDING_REVIEW | APPROVED | REJECTED
+    approval_status = Column(String(30), nullable=False, default="PENDING_REVIEW")
+    reviewed_by = Column(String(255), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    review_notes = Column(Text, nullable=True)
+
     def __repr__(self) -> str:
-        return f"<BudgetImport id={self.id} hash={self.file_hash[:8]} status={self.status!r}>"
+        return (
+            f"<BudgetImport id={self.id} hash={self.file_hash[:8]} "
+            f"status={self.status!r} approval={self.approval_status!r}>"
+        )
 
 
 class ValidationLog(Base):
