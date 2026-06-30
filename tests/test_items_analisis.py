@@ -112,6 +112,8 @@ class TestAnalisisBasics:
         assert "items" in data
         assert "resumenes_por_categoria" in data
         assert "resumen_general" in data
+        assert data["ratios_updated"] is False
+        assert data["mode"] == "read_only"
 
     def test_single_item_returns_one_resultado(self, client_and_session):
         client, _ = client_and_session
@@ -189,67 +191,80 @@ class TestClasificacion:
 
 
 # ---------------------------------------------------------------------------
-# Suite 3: Ratio updates
+# Suite 3: Read-only behaviour
 # ---------------------------------------------------------------------------
 
-class TestRatioUpdates:
-    def test_primera_muestra_crea_ratio(self, client_and_session):
-        client, Session = client_and_session
-        desc = "Item primera muestra test001"
-        _post(client, {"items": [{"descripcion": desc, "precio_unitario": 200.0}]})
+class TestReadOnlyMode:
+    def test_endpoint_does_not_call_update_ratio_incremental(
+        self, client_and_session, monkeypatch
+    ):
+        client, _ = client_and_session
+        called = {"count": 0}
 
-        from app.routers.items_analisis import normalizar_item_key
+        def _boom(*_args, **_kwargs):
+            called["count"] += 1
+            raise AssertionError("update_ratio_incremental() no debe llamarse en T8")
+
+        monkeypatch.setattr("app.crud.item_master_ratios.update_ratio_incremental", _boom)
+
+        resp = _post(
+            client,
+            {"items": [{"descripcion": "Analisis solo lectura test001", "precio_unitario": 200.0}]},
+        )
+        assert resp.status_code == 200
+        assert called["count"] == 0
+
+    def test_item_master_ratio_no_cambia_tras_llamar_endpoint(self, client_and_session):
+        client, Session = client_and_session
+        desc = "Item readonly no change test002"
         key = normalizar_item_key(desc)
+
         session = Session()
-        master = session.query(ItemMaster).filter_by(item_key=key).first()
-        assert master is not None
-        ratio = session.query(ItemMasterRatio).filter_by(item_master_id=master.id).first()
-        assert ratio is not None
+        master = ItemMaster(item_key=key, categoria_asignada="PREMIUM")
+        session.add(master)
+        session.flush()
+        session.add(
+            ItemMasterRatio(
+                item_master_id=master.id,
+                categoria="PREMIUM",
+                ratio_actual=200.0,
+                mediana=200.0,
+                muestras_count=3,
+                confianza=str(Confianza.DEBIL),
+                ultima_actualizacion=datetime.utcnow(),
+            )
+        )
+        session.commit()
+        master_id = master.id
+        session.close()
+
+        data = _post(
+            client,
+            {"items": [{"descripcion": desc, "precio_unitario": 240.0, "cantidad": 2.0}]},
+        ).json()
+        assert data["items"][0]["ratio_historico"] == pytest.approx(200.0)
+        assert data["items"][0]["desviacion_pct"] == pytest.approx(20.0, abs=0.01)
+
+        session = Session()
+        ratio = session.query(ItemMasterRatio).filter_by(item_master_id=master_id).first()
         assert ratio.ratio_actual == pytest.approx(200.0)
-        assert ratio.muestras_count == 1
+        assert ratio.muestras_count == 3
         session.close()
 
-    def test_segunda_muestra_promedio_ponderado(self, client_and_session):
+    def test_unknown_item_remains_read_only_and_creates_no_ratio(self, client_and_session):
         client, Session = client_and_session
-        desc = "Item segunda muestra test002"
-        _post(client, {"items": [{"descripcion": desc, "precio_unitario": 200.0}]})
-        _post(client, {"items": [{"descripcion": desc, "precio_unitario": 400.0}]})
-
+        desc = "Item nuevo solo lectura test003"
         key = normalizar_item_key(desc)
-        session = Session()
-        master = session.query(ItemMaster).filter_by(item_key=key).first()
-        ratio = session.query(ItemMasterRatio).filter_by(item_master_id=master.id).first()
-        # (200*1 + 400) / 2 = 300
-        assert ratio.ratio_actual == pytest.approx(300.0)
-        assert ratio.muestras_count == 2
-        session.close()
 
-    def test_confianza_sube_con_muestras(self, client_and_session):
-        client, Session = client_and_session
-        desc = "Item confianza progresion test003"
-        for i in range(5):
-            _post(client, {"items": [{"descripcion": desc, "precio_unitario": float(100 + i * 10)}]})
-
-        key = normalizar_item_key(desc)
-        session = Session()
-        master = session.query(ItemMaster).filter_by(item_key=key).first()
-        ratio = session.query(ItemMasterRatio).filter_by(item_master_id=master.id).first()
-        assert ratio.muestras_count == 5
-        assert ratio.confianza == Confianza.SOLIDO
-        session.close()
-
-    def test_respuesta_muestra_ratio_antes_de_update(self, client_and_session):
-        """The endpoint should return the pre-update ratio in the response."""
-        client, Session = client_and_session
-        desc = "Item orden actualizacion test004"
-        # First call creates ratio at 200
-        _post(client, {"items": [{"descripcion": desc, "precio_unitario": 200.0}]})
-        # Second call: response should show ratio_historico=200 (pre-update)
         data = _post(client, {"items": [{"descripcion": desc, "precio_unitario": 300.0}]}).json()
         item = data["items"][0]
-        assert item["ratio_historico"] == pytest.approx(200.0)
-        assert item["ratio_encontrado"] is True
-        session.close() if False else None
+        assert item["ratio_encontrado"] is False
+        assert item["ratio_historico"] is None
+
+        session = Session()
+        master = session.query(ItemMaster).filter_by(item_key=key).first()
+        assert master is None
+        session.close()
 
 
 # ---------------------------------------------------------------------------
@@ -409,7 +424,7 @@ class TestResumenes:
 # ---------------------------------------------------------------------------
 
 class TestE2E:
-    def test_e2e_sin_historico_todas_primera_muestra(self, client_and_session):
+    def test_e2e_sin_historico_todas_read_only(self, client_and_session):
         client, Session = client_and_session
         items = [
             {"descripcion": "E2E primer item aluminio lacado ggg", "precio_unitario": 350.0},
@@ -418,42 +433,72 @@ class TestE2E:
         data = _post(client, {"items": items}).json()
         assert all(not i["ratio_encontrado"] for i in data["items"])
         assert data["resumen_general"]["items_sin_ratio"] == 2
+        assert data["ratios_updated"] is False
 
-        # Verify both ratios got created in DB
         session = Session()
         for item in items:
             key = normalizar_item_key(item["descripcion"])
             master = session.query(ItemMaster).filter_by(item_key=key).first()
-            assert master is not None
-            ratio = session.query(ItemMasterRatio).filter_by(item_master_id=master.id).first()
-            assert ratio is not None
-            assert ratio.ratio_actual == pytest.approx(item["precio_unitario"])
+            assert master is None
         session.close()
 
     def test_e2e_con_historico_calcula_desviacion(self, client_and_session):
         client, Session = client_and_session
         desc = "E2E item con historico previo iii999"
-        # First call seeds the ratio
-        _post(client, {"items": [{"descripcion": desc, "precio_unitario": 300.0}]})
-        # Second call should see the ratio and compute deviation
+        session = Session()
+        key = normalizar_item_key(desc)
+        master = ItemMaster(item_key=key, categoria_asignada="PREMIUM")
+        session.add(master)
+        session.flush()
+        session.add(
+            ItemMasterRatio(
+                item_master_id=master.id,
+                categoria="PREMIUM",
+                ratio_actual=300.0,
+                mediana=300.0,
+                muestras_count=3,
+                confianza=str(Confianza.DEBIL),
+                ultima_actualizacion=datetime.utcnow(),
+            )
+        )
+        session.commit()
+        session.close()
+
         data = _post(client, {"items": [{"descripcion": desc, "precio_unitario": 360.0}]}).json()
         item = data["items"][0]
         assert item["ratio_encontrado"] is True
         assert item["ratio_historico"] == pytest.approx(300.0)
         assert item["desviacion_pct"] == pytest.approx(20.0, abs=0.01)
 
-    def test_e2e_ratio_actualizado_en_bd(self, client_and_session):
+    def test_e2e_ratio_no_se_actualiza_en_bd(self, client_and_session):
         client, Session = client_and_session
         desc = "E2E ratio actualizado jjj000"
-        _post(client, {"items": [{"descripcion": desc, "precio_unitario": 200.0}]})
-        _post(client, {"items": [{"descripcion": desc, "precio_unitario": 400.0}]})
-
         key = normalizar_item_key(desc)
         session = Session()
-        master = session.query(ItemMaster).filter_by(item_key=key).first()
-        ratio = session.query(ItemMasterRatio).filter_by(item_master_id=master.id).first()
-        assert ratio.muestras_count == 2
-        assert ratio.ratio_actual == pytest.approx(300.0)
+        master = ItemMaster(item_key=key, categoria_asignada="PREMIUM")
+        session.add(master)
+        session.flush()
+        session.add(
+            ItemMasterRatio(
+                item_master_id=master.id,
+                categoria="PREMIUM",
+                ratio_actual=200.0,
+                mediana=200.0,
+                muestras_count=1,
+                confianza=str(Confianza.MUY_DEBIL),
+                ultima_actualizacion=datetime.utcnow(),
+            )
+        )
+        session.commit()
+        master_id = master.id
+        session.close()
+
+        _post(client, {"items": [{"descripcion": desc, "precio_unitario": 400.0}]})
+
+        session = Session()
+        ratio = session.query(ItemMasterRatio).filter_by(item_master_id=master_id).first()
+        assert ratio.muestras_count == 1
+        assert ratio.ratio_actual == pytest.approx(200.0)
         session.close()
 
     def test_e2e_con_area_total_aceptada(self, client_and_session):

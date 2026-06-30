@@ -1,5 +1,41 @@
 # CONTEXT: LUV Ratios
 
+## ACTUALIZACIÃ“N T8 (30 junio 2026)
+
+**Estado:** COMPLETADA
+
+**DecisiÃ³n aplicada en FASE MASTER:**
+- `POST /api/items/analisis` queda en modo solo lectura.
+- El endpoint ya no llama `update_ratio_incremental()`.
+- El endpoint ya no crea `ItemMaster`, ya no modifica `ItemMasterRatio` y ya no hace commit de cambios estadÃ­sticos.
+
+**Contrato actual de `/api/items/analisis`:**
+- mantiene clasificaciÃ³n, comparativa, desviaciÃ³n, impacto y resÃºmenes;
+- devuelve `ratios_updated=false`;
+- devuelve `mode="read_only"`.
+
+**Arquitectura resultante tras T8:**
+- `/api/import` queda congelado como ingesta que deja `PENDING_REVIEW`.
+- `/api/items/analisis` queda congelado como anÃ¡lisis sin escritura.
+- El Ãºnico flujo que actualiza ratios oficiales y exporta el master es:
+  - importaciÃ³n
+  - `PENDING_REVIEW`
+  - revisiÃ³n humana
+  - `APPROVED`
+  - recÃ¡lculo canÃ³nico approved-only
+  - export `LUV_RATIOS_MASTER.xlsx`
+
+**ValidaciÃ³n T8:**
+- `pytest tests/test_items_analisis.py` â€” PASS
+- `pytest tests/test_master_router.py` â€” PASS
+- `pytest tests/test_master_export.py` â€” PASS
+- `pytest tests/test_import.py` â€” PASS
+
+**Nota de test:**
+- `tests/test_import.py` usa un path temporal para el workbook oficial durante la suite, evitando bloqueos de archivo de Windows sin cambiar el comportamiento de producciÃ³n.
+
+**Siguiente tarea:** T9.
+
 **Proyecto:** Sistema de consolidacion y validacion de ratios de construccion
 **Version:** 1.5.0-FASE-MASTER**
 **Estado:** 🟡 RECONDUCCIÓN ACTIVA — FASE MASTER en planificación

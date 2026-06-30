@@ -12,7 +12,6 @@ from app import database as _db
 from app.crud.item_master_ratios import (
     get_median_prices_por_categoria,
     get_ratio_by_categoria,
-    update_ratio_incremental,
 )
 from app.schemas.items_analisis import (
     AnalisisItemsResponse,
@@ -22,7 +21,6 @@ from app.schemas.items_analisis import (
 )
 from app.services.clasificacion_service import clasificar_item_desde_descripcion
 from app.services.items_service import (
-    get_or_create_item_master as _get_or_create_item_master_service,
     normalize_item_key,
 )
 from src.db.schema import Confianza, ItemMaster
@@ -41,13 +39,11 @@ _CONFIANZA_ORDEN: Dict[str, int] = {
 
 @router.post("/items/analisis", response_model=AnalisisItemsResponse)
 def analizar_items(presupuesto: PresupuestoParaAnalisis) -> AnalisisItemsResponse:
-    """Classify items, compare against historical ratios, and update ratios."""
+    """Classify items and compare against historical ratios in read-only mode."""
     session = _db.get_db()
     try:
         medianas = get_median_prices_por_categoria(session)
         items_resultados: List[ItemAnalisisResultado] = []
-        # Collect (item_master_id, categoria, nuevo_valor) for deferred ratio update
-        actualizaciones: List[tuple[int, str, float]] = []
 
         for item_input in presupuesto.items:
             # 1. Classify
@@ -58,11 +54,15 @@ def analizar_items(presupuesto: PresupuestoParaAnalisis) -> AnalisisItemsRespons
             )
             categoria_str = categoria.value
 
-            # 2. Get or create ItemMaster
-            item_master = _get_or_create_item_master(session, item_input.descripcion, categoria_str)
+            # 2. Read-only lookup: never create/update ItemMaster from this endpoint in FASE MASTER
+            item_master = _get_existing_item_master(session, item_input.descripcion)
 
-            # 3. Get existing ratio (before update — response shows historical state)
-            ratio_obj = get_ratio_by_categoria(session, item_master.id, categoria_str)
+            # 3. Get existing ratio — response reflects historical persisted state only
+            ratio_obj = (
+                get_ratio_by_categoria(session, item_master.id, categoria_str)
+                if item_master is not None
+                else None
+            )
             ratio_historico = ratio_obj.ratio_actual if ratio_obj else None
 
             # 4. Calculate deviation
@@ -91,18 +91,12 @@ def analizar_items(presupuesto: PresupuestoParaAnalisis) -> AnalisisItemsRespons
                 )
             )
 
-            actualizaciones.append((item_master.id, categoria_str, item_input.precio_unitario))
-
-        # 6. Update ratios incrementally (after building results, so response shows pre-update state)
-        for item_master_id, categoria_str, nuevo_valor in actualizaciones:
-            update_ratio_incremental(session, item_master_id, categoria_str, nuevo_valor)
-
-        session.commit()
-
         return AnalisisItemsResponse(
             items=items_resultados,
             resumenes_por_categoria=_generar_resumenes_por_categoria(items_resultados),
             resumen_general=_generar_resumen_general(items_resultados),
+            ratios_updated=False,
+            mode="read_only",
         )
 
     except Exception:
@@ -110,6 +104,7 @@ def analizar_items(presupuesto: PresupuestoParaAnalisis) -> AnalisisItemsRespons
         logger.exception("Error in analizar_items")
         raise
     finally:
+        session.rollback()
         session.close()
 
 
@@ -127,20 +122,10 @@ def normalizar_item_key(descripcion: str) -> str:
     return normalize_item_key(descripcion)
 
 
-def _get_or_create_item_master(session: Any, descripcion: str, categoria_asignada: str) -> ItemMaster:
-    """Get or create ItemMaster using centralized service."""
+def _get_existing_item_master(session: Any, descripcion: str) -> ItemMaster | None:
+    """Read-only lookup of ItemMaster by normalized key."""
     item_key = normalize_item_key(descripcion)
-    master = _get_or_create_item_master_service(
-        session,
-        item_key=item_key,
-        categoria=None,
-        subcategoria=None,
-        unidad=None,
-    )
-    # Set categoria_asignada if it's provided and not already set
-    if categoria_asignada and not master.categoria_asignada:
-        master.categoria_asignada = categoria_asignada
-    return master
+    return session.query(ItemMaster).filter(ItemMaster.item_key == item_key).first()
 
 
 def _generar_resumenes_por_categoria(

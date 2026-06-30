@@ -59,5 +59,7 @@ class AnalisisItemsResponse(BaseModel):
     items: List[ItemAnalisisResultado]
     resumenes_por_categoria: Dict[str, ResumenPorCategoria]
     resumen_general: Dict[str, Any]
+    ratios_updated: bool = False
+    mode: str = "read_only"
 
     model_config = ConfigDict(extra="forbid")

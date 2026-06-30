@@ -742,11 +742,17 @@ class TestLegacyApiImportFrozen:
         assert "ya fue importado" in resp2.json()["message"].lower()
 
     def test_legacy_import_can_be_approved_later_via_canonical_flow(
-        self, client_and_session, monkeypatch
+        self, client_and_session, monkeypatch, tmp_path
     ):
         client, Session = client_and_session
-        export_path = Path("data/master/LUV_RATIOS_MASTER.xlsx")
-        export_path.unlink(missing_ok=True)
+        export_path = tmp_path / "LUV_RATIOS_MASTER.xlsx"
+
+        from src.export.excel_master_generator import generate_master_excel_approved as real_generate
+
+        monkeypatch.setattr(
+            "app.services.master_recalculation_service.generate_master_excel_approved",
+            lambda session: real_generate(session, export_path),
+        )
 
         monkeypatch.setattr("src.core.auditor.compute_file_hash", lambda _path: "cd" * 32)
         monkeypatch.setattr(
