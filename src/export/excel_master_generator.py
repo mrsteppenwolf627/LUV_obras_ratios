@@ -1,4 +1,4 @@
-"""Excel master generator: creates/updates master_latest.xlsx with 5 sheets."""
+"""Excel master generator for legacy and approved-only master workbooks."""
 
 from __future__ import annotations
 
@@ -11,10 +11,16 @@ from openpyxl.styles import Alignment, Font, PatternFill, numbers
 from openpyxl.utils import get_column_letter
 from sqlalchemy.orm import Session
 
-from src.db.queries import list_all_budgets, list_all_ratios, list_all_item_masters
+from src.db.queries import (
+    list_all_budgets,
+    list_all_item_masters,
+    list_all_ratios,
+    list_approved_budgets,
+)
 from src.db.schema import Budget, LineItem, Ratio, ItemMaster, Confianza
 
 DEFAULT_OUTPUT = Path("data/master/master_latest.xlsx")
+APPROVED_OUTPUT = Path("data/master/LUV_RATIOS_MASTER.xlsx")
 
 # Color palette
 HDR_FILL = PatternFill("solid", fgColor="1F3864")
@@ -389,5 +395,51 @@ def generate_master_excel(
     # Always open on ITEM_MASTER (the consolidated catalog)
     wb.active = ws_item_master
 
+    wb.save(str(out))
+    return str(out.resolve())
+
+
+def generate_master_excel_approved(
+    session: Session,
+    output_path: str | Path = APPROVED_OUTPUT,
+) -> str:
+    """Generate the official master workbook using only APPROVED imports.
+
+    Scope of the approved-only filtering in T6:
+      - INDEX, CHAPTERS, AUDIT and RAW_DATA are built from approved budgets only.
+      - RATIOS_SUMMARY and ITEM_MASTER still read legacy aggregate tables
+        (ratios, item_master), which may contain data historically computed from
+        non-approved imports. T6 documents this limitation instead of performing
+        a larger aggregate refactor.
+    """
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    budgets = list_approved_budgets(session)
+    ratios = list_all_ratios(session)
+    items = list_all_item_masters(session)
+
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    ws_item_master = wb.create_sheet("ITEM_MASTER")
+    _build_item_master_sheet(ws_item_master, items)
+
+    ws_index = wb.create_sheet("INDEX")
+    _build_index_sheet(ws_index, budgets)
+
+    ws_ratios = wb.create_sheet("RATIOS_SUMMARY")
+    _build_ratios_sheet(ws_ratios, ratios)
+
+    ws_chapters = wb.create_sheet("CHAPTERS")
+    _build_chapters_sheet(ws_chapters, budgets)
+
+    ws_audit = wb.create_sheet("AUDIT")
+    _build_audit_sheet(ws_audit, budgets, ratios)
+
+    ws_raw = wb.create_sheet("RAW_DATA")
+    _build_raw_data_sheet(ws_raw, budgets)
+
+    wb.active = ws_item_master
     wb.save(str(out))
     return str(out.resolve())

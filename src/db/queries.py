@@ -6,7 +6,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from src.db.schema import Budget, LineItem, Ratio, ItemMaster
+from src.db.schema import Budget, LineItem, Ratio, ItemMaster, BudgetImport
 
 
 def get_budget_by_hash(session: Session, file_hash: str) -> Optional[Budget]:
@@ -42,6 +42,23 @@ def get_ratio(
 
 def list_all_budgets(session: Session) -> list[Budget]:
     return session.query(Budget).order_by(Budget.import_date).all()
+
+
+def list_approved_budgets(session: Session) -> list[Budget]:
+    """Return only budgets backed by an APPROVED BudgetImport.
+
+    T6 intentionally links Budget ↔ BudgetImport by file_hash because the schema
+    does not yet have a direct foreign key between both tables. file_hash is
+    already unique on both tables and preserves the import-level traceability
+    needed for the approved-only master export.
+    """
+    return (
+        session.query(Budget)
+        .join(BudgetImport, Budget.file_hash == BudgetImport.file_hash)
+        .filter(BudgetImport.approval_status == "APPROVED")
+        .order_by(Budget.import_date)
+        .all()
+    )
 
 
 def list_all_ratios(session: Session) -> list[Ratio]:

@@ -161,6 +161,38 @@ id inexistente ──approve/reject──▶ ApprovalError
 
 **Siguiente tarea:** T6 — `generate_master_excel_approved()` / export oficial `LUV_RATIOS_MASTER.xlsx`.
 
+### T6 — COMPLETADA (30 junio 2026)
+
+**Qué se hizo:**
+- `src/db/queries.py`: añadida `list_approved_budgets(session)`.
+- El vínculo `Budget` ↔ `BudgetImport` se resuelve temporalmente por `file_hash` porque no existe FK directa entre ambas tablas. No se añadió migración nueva en T6.
+- `src/export/excel_master_generator.py`: añadida `generate_master_excel_approved(session, output_path=...)` para generar el workbook oficial filtrando solo imports `APPROVED`.
+- `app/utils/excel_export.py`: `generate_or_get_excel()` pasa a devolver `data/master/LUV_RATIOS_MASTER.xlsx` y usa la exportación aprobada.
+
+**Cobertura real del filtro APPROVED en T6:**
+- `INDEX`: solo presupuestos `APPROVED`.
+- `CHAPTERS`: solo partidas de presupuestos `APPROVED`.
+- `RAW_DATA`: solo partidas de presupuestos `APPROVED`.
+- `AUDIT`: solo presupuestos contribuyentes `APPROVED`.
+
+**Limitación documentada y aceptada en T6 (sin gran refactor):**
+- `RATIOS_SUMMARY` sigue leyendo la tabla agregada legacy `ratios`.
+- `ITEM_MASTER` sigue leyendo la tabla agregada legacy `item_master`.
+- Esas tablas pueden contener datos calculados históricamente desde imports no aprobados. T6 no recalcula esos agregados para no abrir un refactor mayor ni tocar flujos legacy congelados.
+- Pendiente para tarea posterior: recalcular/agregar vistas de export exclusivamente desde imports `APPROVED`.
+
+**Archivo oficial:**
+- Nombre canónico del export oficial: `LUV_RATIOS_MASTER.xlsx`.
+
+**Sin cambios en T6:**
+- Sin cambios en `/api/import`.
+- Sin cambios en `/api/items/analisis`.
+- Sin cambios en `approval_service.py`.
+- Sin cambios en frontend.
+- Sin aprobación automática de imports existentes.
+
+**Siguiente tarea:** T7 — saneamiento/recalculo de agregados del export oficial exclusivamente desde imports `APPROVED`.
+
 ---
 
 ## Arquitectura

@@ -1,14 +1,5 @@
 """Contract tests for FASE MASTER — export filter (T2/T6).
 
-All tests in this file are marked xfail(strict=True) because they depend on
-generate_master_excel_approved() which will be implemented in T6.
-
-xfail(strict=True) semantics:
-  - While T6 is pending: ImportError from the missing function causes the
-    test to FAIL → pytest records it as XFAIL → CI stays green.
-  - Once T6 is implemented and a test PASSES: pytest records XPASS → CI
-    fails → that is the signal to remove the xfail marker from that test.
-
 The contract being specified:
   generate_master_excel_approved(session, output_path) must:
     - Accept a SQLAlchemy session and a file path.
@@ -113,20 +104,13 @@ def _filenames_in_index(wb) -> list[str]:
 # Test 5 — REJECTED no aparece en el export
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "generate_master_excel_approved() not implemented yet (T6 pending). "
-        "src/export/excel_master_generator.py does not yet filter by approval_status."
-    ),
-)
 def test_rejected_import_never_feeds_master_export(session, tmp_excel):
     """Un presupuesto REJECTED no debe aparecer en LUV_RATIOS_MASTER.xlsx.
 
     ADR-007: exclusión sin borrado del histórico.
     El dato bruto sigue en la BD; el artefacto exportado solo refleja datos aprobados.
     """
-    from src.export.excel_master_generator import generate_master_excel_approved  # not yet
+    from src.export.excel_master_generator import generate_master_excel_approved
 
     _seed_budget(session, "mi_t2_exp5_rejected", approval_status="REJECTED")
     _seed_budget(session, "mi_t2_exp5_approved", approval_status="APPROVED")
@@ -149,20 +133,13 @@ def test_rejected_import_never_feeds_master_export(session, tmp_excel):
 # Test 6 — export solo incluye APPROVED
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "generate_master_excel_approved() not implemented yet (T6 pending). "
-        "src/export/excel_master_generator.py does not yet filter by approval_status."
-    ),
-)
 def test_master_export_uses_only_approved_imports(session, tmp_excel):
     """El exportador oficial debe incluir únicamente presupuestos APPROVED.
 
     PENDING_REVIEW y REJECTED quedan excluidos del LUV_RATIOS_MASTER.xlsx.
     Solo los datos validados y aprobados consolidan el master.
     """
-    from src.export.excel_master_generator import generate_master_excel_approved  # not yet
+    from src.export.excel_master_generator import generate_master_excel_approved
 
     _seed_budget(session, "mi_t2_exp6_pending", approval_status="PENDING_REVIEW")
     _seed_budget(session, "mi_t2_exp6_rejected", approval_status="REJECTED")
@@ -185,20 +162,13 @@ def test_master_export_uses_only_approved_imports(session, tmp_excel):
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "generate_master_excel_approved() not implemented yet (T6 pending). "
-        "Export with zero approved budgets behaviour undefined."
-    ),
-)
 def test_master_export_with_no_approved_imports_generates_empty_sheets(session, tmp_excel):
     """Con cero presupuestos APPROVED el export debe generar hojas vacías (sin crash).
 
     El sistema debe ser robusto: exportar aunque no haya datos aprobados aún,
     devolviendo un workbook válido con encabezados pero sin filas de datos.
     """
-    from src.export.excel_master_generator import generate_master_excel_approved  # not yet
+    from src.export.excel_master_generator import generate_master_excel_approved
 
     _seed_budget(session, "mi_t2_exp6b_pending_only", approval_status="PENDING_REVIEW")
 
@@ -216,10 +186,6 @@ def test_master_export_with_no_approved_imports_generates_empty_sheets(session, 
 # Test — nombre del archivo oficial
 # ---------------------------------------------------------------------------
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="generate_master_excel_approved() not implemented yet (T6 pending)",
-)
 def test_master_export_filename_is_luv_ratios_master(session, tmp_excel):
     """El archivo de exportación oficial debe llamarse LUV_RATIOS_MASTER.xlsx.
 
@@ -227,7 +193,7 @@ def test_master_export_filename_is_luv_ratios_master(session, tmp_excel):
     El nombre canónico no varía entre generaciones para que la última versión
     siempre sobrescriba a la anterior en la carpeta de entrega.
     """
-    from src.export.excel_master_generator import generate_master_excel_approved  # not yet
+    from src.export.excel_master_generator import generate_master_excel_approved
 
     _seed_budget(session, "mi_t2_exp_name", approval_status="APPROVED")
 
