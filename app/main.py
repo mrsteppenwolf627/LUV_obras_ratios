@@ -19,12 +19,17 @@ from fastapi.responses import FileResponse
 logger = logging.getLogger(__name__)
 
 from .database import get_db
+from .crud.budgets import (
+    create_budget_import,
+    get_budget_import_by_hash,
+    get_archived_budgets,
+    update_budget_import_status,
+)
 from .crud.ratios import get_master_data
-from .crud.budgets import get_archived_budgets
 from .crud.items import get_item_history, get_items_by_category, search_items
 from .utils.stats import get_stats
 from .utils.excel_export import generate_or_get_excel
-from .routers.visuales import router as visuales_router, invalidar_cache_chapters
+from .routers.visuales import router as visuales_router
 from .routers.items_analisis import router as items_analisis_router
 from .routers.import_budgets import router as import_budgets_router
 from .routers.master import router as master_router
@@ -88,8 +93,6 @@ async def api_import(file: UploadFile = File(...)):
     from src.core.excel_reader import read_excel
     from src.core.normalizer import normalize
     from src.db.queries import get_budget_by_hash
-    from src.export.excel_master_generator import generate_master_excel
-    from src.ratios.calculator import recalculate_all_ratios
 
     filename = file.filename or "unknown"
     ext = Path(filename).suffix.lower()
@@ -105,37 +108,60 @@ async def api_import(file: UploadFile = File(...)):
         tmp_path = Path(tmp.name)
 
     session = get_db()
+    import_record = None
     try:
         from src.core.auditor import compute_file_hash
         from src.db.queries import get_budget_by_hash
 
         file_hash = compute_file_hash(tmp_path)
 
-        existing = get_budget_by_hash(session, file_hash)
-        if existing:
+        existing_budget = get_budget_by_hash(session, file_hash)
+        existing_import = get_budget_import_by_hash(session, file_hash)
+        if existing_budget or existing_import:
             return {
                 "success": False,
-                "message": f"Este archivo ya fue importado (Budget ID={existing.id})",
+                "message": (
+                    f"Este archivo ya fue importado "
+                    f"(Budget ID={existing_budget.id})"
+                    if existing_budget
+                    else "Este archivo ya fue importado y quedó registrado en trazabilidad"
+                ),
             }
+
+        # T7: legacy /api/import is now ingestion-only. A BudgetImport record is
+        # created immediately so the file remains traceable and pending review.
+        import_record = create_budget_import(
+            session,
+            filename=filename,
+            file_hash=file_hash,
+            building_type=None,
+        )
 
         if ext == ".presto":
             return await _import_presto_api(
-                session, tmp_path, filename, file_hash, _ROOT
+                session, tmp_path, filename, file_hash, _ROOT, import_record
             )
 
         from src.core.bc3_reader import read_bc3
         from src.core.excel_reader import read_excel
         from src.core.normalizer import normalize
-        from src.export.excel_master_generator import generate_master_excel
-        from src.ratios.calculator import recalculate_all_ratios
 
         fmt = "excel" if ext in (".xlsx", ".xlsm") else "bc3"
         raw_data = read_excel(tmp_path) if fmt == "excel" else read_bc3(tmp_path)
 
         if raw_data.get("errors"):
+            error_message = "Error al leer: " + "; ".join(raw_data["errors"])
+            update_budget_import_status(
+                session,
+                import_record,
+                status="error",
+                items_count=0,
+                error_message=error_message,
+            )
+            session.commit()
             return {
                 "success": False,
-                "message": "Error al leer: " + "; ".join(raw_data["errors"]),
+                "message": error_message,
             }
 
         budget, items, logs = normalize(
@@ -148,17 +174,16 @@ async def api_import(file: UploadFile = File(...)):
         session.add_all(logs)
         session.flush()
 
-        ratios_created = recalculate_all_ratios(session)
-        session.flush()
-
-        # Recalculate ItemMaster stats (mediana_unitario, muestras_count, etc.)
-        from app.services.recalculate_service import recalculate_all_item_master_stats
-        recalculate_all_item_master_stats(session)
-        session.flush()
-
-        invalidar_cache_chapters()
-
-        generate_master_excel(session)
+        valid_items = sum(1 for item in items if item.validation_status == "VALID")
+        technical_status = (
+            "error" if valid_items == 0 else "partial" if valid_items < len(items) else "success"
+        )
+        update_budget_import_status(
+            session,
+            import_record,
+            status=technical_status,
+            items_count=len(items),
+        )
 
         archived_dir = _ROOT / "data" / "archived_budgets"
         archived_dir.mkdir(parents=True, exist_ok=True)
@@ -169,13 +194,17 @@ async def api_import(file: UploadFile = File(...)):
 
         return {
             "success": True,
-            "message": "Archivo importado correctamente",
+            "message": "Archivo importado correctamente y pendiente de revisión",
             "budget_id": budget.id,
+            "import_id": import_record.id if import_record else None,
             "filename": filename,
             "file_hash": file_hash,
             "chapter_count": len(items),
             "total_amount": float(budget.total_cost or 0.0),
-            "ratios_created": ratios_created,
+            "approval_status": "PENDING_REVIEW",
+            "master_update": "pending_approval",
+            "ratios_updated": False,
+            "technical_status": technical_status,
         }
 
     except Exception as exc:
@@ -189,7 +218,9 @@ async def api_import(file: UploadFile = File(...)):
         tmp_path.unlink(missing_ok=True)
 
 
-async def _import_presto_api(session, tmp_path: Path, filename: str, file_hash: str, root: Path) -> dict:
+async def _import_presto_api(
+    session, tmp_path: Path, filename: str, file_hash: str, root: Path, import_record
+) -> dict:
     """Handle Presto import inside the API endpoint."""
     from src.core.presto_reader import parse_presto
     from src.db.schema import Budget, SpaceRatio
@@ -229,6 +260,13 @@ async def _import_presto_api(session, tmp_path: Path, filename: str, file_hash: 
     session.add_all(space_rows)
     session.flush()
 
+    update_budget_import_status(
+        session,
+        import_record,
+        status="success",
+        items_count=len(space_rows),
+    )
+
     exports_dir = root / "data" / "exports" / "space_ratios"
     exports_dir.mkdir(parents=True, exist_ok=True)
     stem = Path(filename).stem.replace(" ", "_")
@@ -244,8 +282,9 @@ async def _import_presto_api(session, tmp_path: Path, filename: str, file_hash: 
 
     return {
         "success": True,
-        "message": "Presto importado correctamente",
+        "message": "Presto importado correctamente y pendiente de revisión",
         "budget_id": budget.id,
+        "import_id": import_record.id if import_record else None,
         "filename": filename,
         "file_hash": file_hash,
         "space_count": len(space_rows),
@@ -253,6 +292,10 @@ async def _import_presto_api(session, tmp_path: Path, filename: str, file_hash: 
         "has_space_breakdown": presupuesto.get("has_space_breakdown", False),
         "excel_path": str(excel_path),
         "warnings": presupuesto.get("warnings", []),
+        "approval_status": "PENDING_REVIEW",
+        "master_update": "pending_approval",
+        "ratios_updated": False,
+        "technical_status": "success",
     }
 
 

@@ -236,6 +236,61 @@ id inexistente ──approve/reject──▶ ApprovalError
 
 **Siguiente tarea:** T7 — congelar side effects legacy (`/api/import`, `/api/items/analisis`) sin romper el flujo canónico master.
 
+### T7 — COMPLETADA (30 junio 2026)
+
+**Qué se hizo:**
+- `POST /api/import` en `app/main.py` queda congelado como flujo de ingesta legacy.
+- Sigue leyendo el archivo, calculando `file_hash`, preservando RAW/trazabilidad y creando `Budget`.
+- Ahora también registra `BudgetImport` en ese flujo legacy con `approval_status="PENDING_REVIEW"`.
+- Se retiraron de `/api/import` los side effects legacy sobre master:
+  - `recalculate_all_ratios(session)`
+  - `recalculate_all_item_master_stats(session)`
+  - `generate_master_excel(session)`
+  - invalidación de cache ligada al recálculo de ratios
+
+**Nuevo contrato de `/api/import`:**
+- `success: true`
+- `message: "Archivo importado correctamente y pendiente de revisión"`
+- `approval_status: "PENDING_REVIEW"`
+- `master_update: "pending_approval"`
+- `ratios_updated: false`
+- `technical_status: success | partial | error`
+
+**Impacto arquitectónico:**
+- `/api/import` ya NO actualiza ratios definitivos.
+- `/api/import` ya NO genera el máster automáticamente.
+- El único camino oficial de recálculo/export del master queda en el flujo canónico:
+  - importación
+  - `PENDING_REVIEW`
+  - revisión
+  - `APPROVED`
+  - `recalculate_after_approval()`
+  - export `LUV_RATIOS_MASTER.xlsx`
+
+**Presto / limitación explícita:**
+- El subflujo legacy de Presto dentro de `/api/import` también queda marcado como `PENDING_REVIEW` y `ratios_updated=false`.
+- Sigue generando su Excel especializado de `space_ratios` porque pertenece a ese flujo técnico específico y no contamina el máster oficial `LUV_RATIOS_MASTER.xlsx`.
+- T7 no rehace ni elimina ese comportamiento especializado.
+
+**Tests T7:**
+- `tests/test_import.py` — PASS. Añadida cobertura para verificar que `/api/import`:
+  - no llama a `recalculate_all_ratios()`
+  - no llama a `recalculate_all_item_master_stats()`
+  - no llama a `generate_master_excel()`
+  - devuelve `approval_status="PENDING_REVIEW"`
+  - devuelve `ratios_updated=false`
+  - preserva deduplicación por hash
+  - permite aprobación posterior por `/api/master/imports/{id}/approve`
+- `tests/test_master_router.py` — PASS.
+- `tests/test_master_approve.py` — PASS.
+- `tests/test_master_export.py` — PASS.
+
+**Resultado tras T7:**
+- El writer legacy `/api/import` queda congelado respecto al master.
+- El flujo canónico master sigue operativo y exclusivo para recálculo/export oficial.
+
+**Siguiente tarea:** T8 — congelar side effects legacy de `/api/items/analisis` para que deje de escribir `item_master_ratios` fuera del flujo master.
+
 ---
 
 ## Arquitectura

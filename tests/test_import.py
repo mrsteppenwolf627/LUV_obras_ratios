@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -61,6 +62,19 @@ def client_and_session(api_client):
 
 def _post(client, payload):
     return client.post("/api/import/budgets", json=payload)
+
+
+def _post_legacy_file(client, filename: str = "legacy.xlsx", content: bytes = b"fake"):
+    return client.post(
+        "/api/import",
+        files={
+            "file": (
+                filename,
+                content,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        },
+    )
 
 
 def _make_hash(seed: str) -> str:
@@ -631,3 +645,137 @@ class TestApprovalStatus:
         assert refreshed.approval_status == "APPROVED"
         assert refreshed.reviewed_by == "aitor"
         assert refreshed.review_notes == "Presupuesto verificado manualmente"
+
+
+# ---------------------------------------------------------------------------
+# Suite 9: FASE MASTER T7 — /api/import legacy congelado (sin recálculo/export)
+# ---------------------------------------------------------------------------
+
+class TestLegacyApiImportFrozen:
+    def test_legacy_import_no_longer_recalculates_or_generates_master(
+        self, client_and_session, monkeypatch
+    ):
+        client, Session = client_and_session
+
+        monkeypatch.setattr(
+            "src.core.auditor.compute_file_hash",
+            lambda _path: "f1" * 32,
+        )
+        monkeypatch.setattr(
+            "src.core.excel_reader.read_excel",
+            lambda _path: {
+                "filename": "legacy.xlsx",
+                "source_format": "excel",
+                "total_cost": 1234.5,
+                "chapters": [
+                    {
+                        "chapter_code": "01",
+                        "chapter_name": "Demoliciones",
+                        "total_cost": 1234.5,
+                    }
+                ],
+                "errors": [],
+                "warnings": [],
+            },
+        )
+
+        def _should_not_recalc(_session):
+            raise AssertionError("recalculate_all_ratios() no debe llamarse en T7")
+
+        def _should_not_recalc_items(_session):
+            raise AssertionError(
+                "recalculate_all_item_master_stats() no debe llamarse en T7"
+            )
+
+        def _should_not_generate(_session, *_args, **_kwargs):
+            raise AssertionError("generate_master_excel() no debe llamarse en T7")
+
+        monkeypatch.setattr("src.ratios.calculator.recalculate_all_ratios", _should_not_recalc)
+        monkeypatch.setattr(
+            "app.services.recalculate_service.recalculate_all_item_master_stats",
+            _should_not_recalc_items,
+        )
+        monkeypatch.setattr(
+            "src.export.excel_master_generator.generate_master_excel",
+            _should_not_generate,
+        )
+
+        response = _post_legacy_file(client, "legacy.xlsx")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["approval_status"] == "PENDING_REVIEW"
+        assert data["master_update"] == "pending_approval"
+        assert data["ratios_updated"] is False
+
+        session = Session()
+        record = session.query(BudgetImport).filter_by(file_hash="f1" * 32).first()
+        assert record is not None
+        assert record.approval_status == "PENDING_REVIEW"
+        assert record.status == "success"
+        session.close()
+
+    def test_legacy_import_preserves_hash_deduplication(self, client_and_session, monkeypatch):
+        client, _ = client_and_session
+
+        monkeypatch.setattr("src.core.auditor.compute_file_hash", lambda _path: "ab" * 32)
+        monkeypatch.setattr(
+            "src.core.excel_reader.read_excel",
+            lambda _path: {
+                "filename": "legacy_dedup.xlsx",
+                "source_format": "excel",
+                "total_cost": 200.0,
+                "chapters": [
+                    {"chapter_code": "01", "chapter_name": "Cap", "total_cost": 200.0}
+                ],
+                "errors": [],
+                "warnings": [],
+            },
+        )
+
+        resp1 = _post_legacy_file(client, "legacy_dedup.xlsx")
+        assert resp1.status_code == 200
+
+        resp2 = _post_legacy_file(client, "legacy_dedup.xlsx")
+        assert resp2.status_code == 200
+        assert resp2.json()["success"] is False
+        assert "ya fue importado" in resp2.json()["message"].lower()
+
+    def test_legacy_import_can_be_approved_later_via_canonical_flow(
+        self, client_and_session, monkeypatch
+    ):
+        client, Session = client_and_session
+        export_path = Path("data/master/LUV_RATIOS_MASTER.xlsx")
+        export_path.unlink(missing_ok=True)
+
+        monkeypatch.setattr("src.core.auditor.compute_file_hash", lambda _path: "cd" * 32)
+        monkeypatch.setattr(
+            "src.core.excel_reader.read_excel",
+            lambda _path: {
+                "filename": "legacy_then_approve.xlsx",
+                "source_format": "excel",
+                "total_cost": 300.0,
+                "chapters": [
+                    {"chapter_code": "02", "chapter_name": "Estructura", "total_cost": 300.0}
+                ],
+                "errors": [],
+                "warnings": [],
+            },
+        )
+
+        import_resp = _post_legacy_file(client, "legacy_then_approve.xlsx")
+        assert import_resp.status_code == 200
+        import_data = import_resp.json()
+        assert import_data["approval_status"] == "PENDING_REVIEW"
+
+        approve_resp = client.post(
+            f"/api/master/imports/{import_data['import_id']}/approve",
+            json={"reviewed_by": "aitor", "notes": "Aprobado en flujo canónico"},
+        )
+        assert approve_resp.status_code == 200
+        assert export_path.exists()
+
+        session = Session()
+        record = session.query(BudgetImport).filter_by(id=import_data["import_id"]).first()
+        assert record.approval_status == "APPROVED"
+        session.close()
