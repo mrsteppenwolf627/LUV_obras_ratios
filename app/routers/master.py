@@ -26,6 +26,10 @@ from pydantic import BaseModel, ConfigDict
 
 from app import database as _db
 from app.services.approval_service import ApprovalError, approve_import, reject_import
+from app.services.master_recalculation_service import (
+    MasterRecalculationError,
+    recalculate_after_approval,
+)
 from src.db.schema import BudgetImport
 
 router = APIRouter(prefix="/api/master", tags=["master"])
@@ -166,7 +170,7 @@ def approve_import_endpoint(import_id: int, body: ApproveBody):
     Returns the updated BudgetImport.
     400 if transition is not allowed (wrong state, status=error, not found).
 
-    NOTE (T4): does NOT recalculate ratios. That happens in a future task.
+    T6.5: after approval, triggers canonical approved-only recalculation and export.
     """
     session = _db.get_db()
     try:
@@ -176,11 +180,15 @@ def approve_import_endpoint(import_id: int, body: ApproveBody):
             reviewed_by=body.reviewed_by,
             review_notes=body.notes,
         )
+        recalculate_after_approval(session=session, import_id=import_id)
         session.commit()
         return BudgetImportOut.model_validate(record)
     except ApprovalError as exc:
         session.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
+    except MasterRecalculationError as exc:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(exc))
     except Exception:
         session.rollback()
         logger.exception("Error inesperado en approve_import_endpoint id=%d", import_id)

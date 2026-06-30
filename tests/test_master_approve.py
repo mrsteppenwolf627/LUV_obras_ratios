@@ -18,6 +18,7 @@ and Excel export (T6) are NOT triggered by these functions.
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, event
@@ -486,3 +487,69 @@ def test_partial_technical_status_can_be_approved(session):
     )
 
     assert returned.approval_status == "APPROVED"
+
+
+# ---------------------------------------------------------------------------
+# T6.5 — canonical recalculation after APPROVED
+# ---------------------------------------------------------------------------
+
+def test_recalculate_after_approval_runs_for_approved_import(session):
+    from app.services.approval_service import approve_import
+    from app.services.master_recalculation_service import recalculate_after_approval
+
+    export_path = Path("data/master/LUV_RATIOS_MASTER.xlsx")
+    export_path.unlink(missing_ok=True)
+
+    record = _do_import(session, "t65_recalc_ok", "Partida canónica approved")
+    approve_import(session=session, budget_import_id=record.id, reviewed_by="aitor")
+
+    summary = recalculate_after_approval(session=session, import_id=record.id)
+
+    assert summary["import_id"] == record.id
+    assert summary["budget_id"] is not None
+    assert summary["master_exported"] is True
+    assert export_path.exists()
+    assert isinstance(summary["warnings"], list)
+
+
+def test_recalculate_after_approval_rejects_pending_review(session):
+    from app.services.master_recalculation_service import (
+        MasterRecalculationError,
+        recalculate_after_approval,
+    )
+
+    record = _do_import(session, "t65_pending", "Partida pendiente")
+
+    with pytest.raises(MasterRecalculationError, match="APPROVED|approval_status"):
+        recalculate_after_approval(session=session, import_id=record.id)
+
+
+def test_recalculate_after_approval_rejects_rejected_import(session):
+    from app.services.approval_service import reject_import
+    from app.services.master_recalculation_service import (
+        MasterRecalculationError,
+        recalculate_after_approval,
+    )
+
+    record = _do_import(session, "t65_rejected", "Partida rechazada")
+    reject_import(
+        session=session,
+        budget_import_id=record.id,
+        reviewed_by="aitor",
+        review_notes="No válido",
+    )
+
+    with pytest.raises(MasterRecalculationError, match="APPROVED|approval_status"):
+        recalculate_after_approval(session=session, import_id=record.id)
+
+
+def test_recalculate_after_approval_fails_without_associated_budget(session):
+    from app.services.master_recalculation_service import (
+        MasterRecalculationError,
+        recalculate_after_approval,
+    )
+
+    record = _direct_import(session, "t65_missing_budget", approval_status="APPROVED")
+
+    with pytest.raises(MasterRecalculationError, match="No existe Budget asociado"):
+        recalculate_after_approval(session=session, import_id=record.id)

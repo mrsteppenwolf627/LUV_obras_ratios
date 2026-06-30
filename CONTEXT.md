@@ -193,6 +193,49 @@ id inexistente ──approve/reject──▶ ApprovalError
 
 **Siguiente tarea:** T7 — saneamiento/recalculo de agregados del export oficial exclusivamente desde imports `APPROVED`.
 
+### T6.5 — COMPLETADA (30 junio 2026)
+
+**Qué se hizo:**
+- Añadido `app/services/master_recalculation_service.py`.
+- Nuevo servicio:
+  - `class MasterRecalculationError(Exception)`
+  - `recalculate_after_approval(session, import_id)`
+- `POST /api/master/imports/{id}/approve` ahora ejecuta el flujo canónico:
+  1. `approve_import()`
+  2. `recalculate_after_approval()`
+  3. `session.commit()` en el router
+- Si el recálculo/export falla, el router hace `rollback()` y devuelve error controlado.
+- `POST /reject` sigue sin recalcular ni exportar.
+
+**Qué recalcula ya en modo APPROVED-only:**
+- La tabla `ratios` se reconstruye canónicamente usando solo presupuestos `APPROVED`.
+- El cálculo evita explícitamente `recalculate_all_ratios()` porque esa función legacy mezcla todos los datos validados sin filtrar por aprobación.
+- El export oficial `LUV_RATIOS_MASTER.xlsx` se regenera justo después del recálculo canónico.
+
+**Fuente de verdad usada en T6.5:**
+- `BudgetImport` aprobado (`approval_status="APPROVED"`)
+- `Budget` asociado por `file_hash`
+- `LineItem VALID` de budgets aprobados
+- `surface_m2 > 0` cuando el ratio requiere €/m²
+
+**Limitaciones/deuda explícita que siguen pendientes:**
+- `ItemMaster` NO se recalcula en modo approved-only en T6.5.
+- `ItemMasterRatio` NO se recalcula en modo approved-only en T6.5.
+- Si un budget aprobado no aporta `LineItem` con `surface_m2` válida, el servicio exporta igualmente el workbook oficial pero devuelve warning y `ratios_recalculated=0`.
+- La ruta legacy `/api/import` sigue existiendo y sigue pudiendo contaminar `ratios`/exports hasta que T7 congele ese comportamiento.
+
+**Tests T6.5:**
+- `tests/test_master_router.py` — PASS. Verifica disparo del recálculo canónico, rollback si falla, export oficial tras approve y que reject no recalcula.
+- `tests/test_master_approve.py` — PASS. Verifica ejecución directa del servicio canónico, rechazo de `PENDING_REVIEW`, rechazo de `REJECTED` y error controlado si falta `Budget` asociado.
+- `tests/test_master_export.py` — PASS. El export oficial sigue usando solo `APPROVED`.
+- `tests/test_import.py` — PASS sin regresiones.
+
+**Resultado arquitectónico tras T6.5:**
+- Ya existe un camino productivo canónico `APPROVED -> recálculo -> export oficial`.
+- T7 puede centrarse en congelar escritores legacy sin dejar al sistema sin vía de actualización del master.
+
+**Siguiente tarea:** T7 — congelar side effects legacy (`/api/import`, `/api/items/analisis`) sin romper el flujo canónico master.
+
 ---
 
 ## Arquitectura

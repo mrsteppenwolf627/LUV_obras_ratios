@@ -9,6 +9,7 @@ This mirrors the pattern used in test_import.py for import_budgets.
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -17,7 +18,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from src.db.schema import Base, BudgetImport
+from src.db.schema import Base, Budget, BudgetImport
 
 
 # ---------------------------------------------------------------------------
@@ -175,6 +176,20 @@ def _seed_import(db_session, seed: str, status: str = "success",
     db_session.commit()
     db_session.refresh(record)
     return record
+
+
+def _seed_budget_for_import(db_session, record: BudgetImport) -> Budget:
+    budget = Budget(
+        filename=record.filename,
+        file_hash=record.file_hash,
+        building_type=record.building_type,
+        source_format="json_api",
+        total_cost=1_000.0,
+    )
+    db_session.add(budget)
+    db_session.commit()
+    db_session.refresh(budget)
+    return budget
 
 
 # ---------------------------------------------------------------------------
@@ -335,6 +350,7 @@ class TestGetImport:
 class TestApproveEndpoint:
     def test_approve_changes_status_to_approved(self, client, db_session):
         record = _seed_import(db_session, "tr_approve_01")
+        _seed_budget_for_import(db_session, record)
         resp = client.post(
             f"/api/master/imports/{record.id}/approve",
             json={"reviewed_by": "aitor", "notes": "OK"},
@@ -347,6 +363,7 @@ class TestApproveEndpoint:
 
     def test_approve_without_notes_is_valid(self, client, db_session):
         record = _seed_import(db_session, "tr_approve_no_notes")
+        _seed_budget_for_import(db_session, record)
         resp = client.post(
             f"/api/master/imports/{record.id}/approve",
             json={"reviewed_by": "aitor"},
@@ -356,6 +373,7 @@ class TestApproveEndpoint:
 
     def test_approve_persists_to_db(self, client, db_session):
         record = _seed_import(db_session, "tr_approve_persist")
+        _seed_budget_for_import(db_session, record)
         client.post(
             f"/api/master/imports/{record.id}/approve",
             json={"reviewed_by": "aitor", "notes": "Persistencia"},
@@ -390,6 +408,7 @@ class TestApproveEndpoint:
     def test_approve_idempotent_returns_200(self, client, db_session):
         """Double-approve returns 200 (no error) on the second call."""
         record = _seed_import(db_session, "tr_approve_idem_http")
+        _seed_budget_for_import(db_session, record)
         client.post(
             f"/api/master/imports/{record.id}/approve",
             json={"reviewed_by": "aitor", "notes": "Primera"},
@@ -402,12 +421,92 @@ class TestApproveEndpoint:
         # Original reviewer must be preserved (idempotent no-op)
         assert resp2.json()["reviewed_by"] == "aitor"
 
+    def test_approve_triggers_canonical_recalculation(self, client, db_session, monkeypatch):
+        from app.routers import master as master_module
+
+        called = {"count": 0}
+        record = _seed_import(db_session, "tr_approve_recalc")
+        _seed_budget_for_import(db_session, record)
+
+        def _fake_recalc(session, import_id):
+            called["count"] += 1
+            assert import_id == record.id
+            return {
+                "import_id": import_id,
+                "budget_id": 1,
+                "ratios_recalculated": 0,
+                "master_exported": True,
+                "warnings": [],
+            }
+
+        monkeypatch.setattr(master_module, "recalculate_after_approval", _fake_recalc)
+
+        resp = client.post(
+            f"/api/master/imports/{record.id}/approve",
+            json={"reviewed_by": "aitor", "notes": "OK"},
+        )
+        assert resp.status_code == 200
+        assert called["count"] == 1
+
+    def test_approve_rollback_if_recalculation_fails(self, client, db_session, monkeypatch):
+        from app.routers import master as master_module
+        from app.services.master_recalculation_service import MasterRecalculationError
+
+        record = _seed_import(db_session, "tr_approve_rollback")
+        _seed_budget_for_import(db_session, record)
+
+        def _boom(session, import_id):
+            raise MasterRecalculationError("fallo controlado de recálculo")
+
+        monkeypatch.setattr(master_module, "recalculate_after_approval", _boom)
+
+        resp = client.post(
+            f"/api/master/imports/{record.id}/approve",
+            json={"reviewed_by": "aitor", "notes": "OK"},
+        )
+        assert resp.status_code == 500
+        db_session.refresh(record)
+        assert record.approval_status == "PENDING_REVIEW"
+
+    def test_approve_exports_official_master_file(self, client, db_session):
+        export_path = Path("data/master/LUV_RATIOS_MASTER.xlsx")
+        export_path.unlink(missing_ok=True)
+
+        record = _seed_import(db_session, "tr_approve_export")
+        _seed_budget_for_import(db_session, record)
+
+        resp = client.post(
+            f"/api/master/imports/{record.id}/approve",
+            json={"reviewed_by": "aitor", "notes": "OK"},
+        )
+        assert resp.status_code == 200
+        assert export_path.exists()
+
 
 # ---------------------------------------------------------------------------
 # 7. POST /api/master/imports/{import_id}/reject
 # ---------------------------------------------------------------------------
 
 class TestRejectEndpoint:
+    def test_reject_does_not_trigger_recalculation(self, client, db_session, monkeypatch):
+        from app.routers import master as master_module
+
+        called = {"count": 0}
+        record = _seed_import(db_session, "tr_reject_no_recalc")
+
+        def _fake_recalc(session, import_id):
+            called["count"] += 1
+            return {}
+
+        monkeypatch.setattr(master_module, "recalculate_after_approval", _fake_recalc)
+
+        resp = client.post(
+            f"/api/master/imports/{record.id}/reject",
+            json={"reviewed_by": "aitor", "notes": "No procede"},
+        )
+        assert resp.status_code == 200
+        assert called["count"] == 0
+
     def test_reject_changes_status_to_rejected(self, client, db_session):
         record = _seed_import(db_session, "tr_reject_01")
         resp = client.post(
