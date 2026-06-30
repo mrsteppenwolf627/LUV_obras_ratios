@@ -1,5 +1,52 @@
 # CONTEXT: LUV Ratios
 
+## ACTUALIZACION T10 (30 junio 2026)
+
+**Estado:** COMPLETADA
+
+**Cierre de FASE MASTER:**
+- T1 a T9 quedan consolidadas y verificadas documentalmente.
+- FASE MASTER queda cerrada como flujo canonico operativo.
+- El sistema queda alineado alrededor de:
+  - ingesta legacy sin recalculo
+  - `PENDING_REVIEW`
+  - revision humana
+  - `APPROVED` o `REJECTED`
+  - recalculo/export official approved-only tras `APPROVED`
+
+**Resumen de estado operativo al cierre:**
+- `approval_status` activo en `BudgetImport`
+- contrato de aprobacion cubierto por tests
+- `approval_service.py` operativo
+- router master implementado y registrado
+- export oficial approved-only activo: `LUV_RATIOS_MASTER.xlsx`
+- aprobacion conectada a recalculo/export canonico
+- `/api/import` congelado como ingesta pendiente de revision
+- `/api/items/analisis` congelado como solo lectura
+- pantalla minima frontend de revision disponible en `/master` y `/master/revision`
+
+**Documentacion de cierre creada/actualizada:**
+- `docs/FASE_MASTER.md`
+- `ADRs.md` con ADR-026 para formalizar FASE MASTER como flujo canonico
+
+**Limitaciones que siguen controladas:**
+- vinculo temporal `Budget` <-> `BudgetImport` por `file_hash`
+- deuda pendiente para reconstruccion approved-only completa de `ItemMaster` y `ItemMasterRatio`
+- subflujo Presto mantiene su export tecnico propio sin contaminar el master oficial
+
+**Validacion T10:**
+- `pytest tests/test_import.py`
+- `pytest tests/test_master_router.py`
+- `pytest tests/test_master_approve.py`
+- `pytest tests/test_master_export.py`
+- `pytest tests/test_items_analisis.py`
+- `cd frontend && npm test`
+- `cd frontend && npm run build`
+
+**Estado de fase:**
+- FASE MASTER cerrada
+- siguiente fase propuesta: validacion con archivos reales y prueba end-to-end del flujo canonico
+
 ## ACTUALIZACIÃ“N T8 (30 junio 2026)
 
 **Estado:** COMPLETADA

@@ -31,6 +31,7 @@ Registro de decisiones arquitectonicas del proyecto.
 - ADR-023: confiabilidad determinada por numero de muestras.
 - ADR-024: proxy de Vite para desarrollo local de `/api/*`.
 - ADR-025: hook custom `useVisuales` y estado local para la UI de visuales.
+- ADR-026: FASE MASTER como flujo canonico de actualizacion de ratios.
 
 ## ADR-001 a ADR-008: Principios fundacionales
 
@@ -228,6 +229,47 @@ Registro de decisiones arquitectonicas del proyecto.
 
 - La feature puede evolucionar sin acoplarse a un store global prematuro.
 - Si la superficie funcional crece, se podra abrir una ADR futura para estado compartido mas amplio.
+
+## ADR-026: FASE MASTER como flujo canonico de actualizacion de ratios
+
+**Status:** CONGELADA
+**Fecha:** 30 de junio de 2026
+**Actualizada:** 30 de junio de 2026
+
+**Decision**
+
+- El unico flujo canonico para actualizar ratios oficiales pasa a ser FASE MASTER.
+- Ninguna importacion actualiza ratios definitivos sin aprobacion humana previa.
+- El artefacto oficial de salida del flujo es `LUV_RATIOS_MASTER.xlsx`.
+- La aprobacion de una importacion dispara el recalculo approved-only y la regeneracion del workbook oficial.
+
+**Flujo canonico**
+
+- `POST /api/import`
+- `approval_status = PENDING_REVIEW`
+- revision humana
+- `POST /api/master/imports/{id}/approve` o `POST /api/master/imports/{id}/reject`
+- si `APPROVED`: recÃ¡lculo canÃ³nico approved-only
+- export oficial `LUV_RATIOS_MASTER.xlsx`
+
+**Congelacion de writers legacy**
+
+- `POST /api/import` queda como ingesta trazable y pendiente de revision.
+- `POST /api/items/analisis` queda como endpoint de analisis solo lectura.
+- Ninguno de esos dos flujos puede seguir modificando ratios oficiales fuera del proceso de aprobacion master.
+
+**Por que**
+
+- Aplica ADR-004: no actualizar ratios sin validacion.
+- Reduce contaminacion del master con imports pendientes o rechazados.
+- Alinea backend, export y frontend alrededor de una unica secuencia operativa auditable.
+
+**Impacto**
+
+- Los endpoints `/api/master/*` pasan a ser la superficie operativa principal de revision.
+- El frontend incorpora una pantalla minima de revision en `/master/revision`.
+- El export oficial queda desacoplado del comportamiento legacy automatico.
+- Sigue existiendo deuda controlada mientras `ItemMaster` y `ItemMasterRatio` no se reconstruyan por completo en modo approved-only.
 
 ### ADR-18: Estrategia de Ingesta Masiva + Afinación
 
