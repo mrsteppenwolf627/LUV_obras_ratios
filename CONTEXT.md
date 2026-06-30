@@ -127,6 +127,40 @@ id inexistente ──approve/reject──▶ ApprovalError
 
 **Pendiente:** T5 (registrar `master_router` en `app/main.py` y `api/index.py`), T6 (`generate_master_excel_approved`).
 
+### T5 — COMPLETADA (30 junio 2026)
+
+**Qué se hizo:**
+- `app/main.py`: importado `router` desde `app.routers.master` y registrado con `app.include_router(master_router)`.
+- `api/index.py`: importado `router` desde `app.routers.master` y registrado con `app.include_router(master_router)`.
+- Los 6 endpoints de FASE MASTER quedan disponibles tanto en la app FastAPI real como en la entrada serverless de Vercel:
+  - `GET /api/master/status`
+  - `GET /api/master/imports`
+  - `GET /api/master/imports/pending`
+  - `GET /api/master/imports/{id}`
+  - `POST /api/master/imports/{id}/approve`
+  - `POST /api/master/imports/{id}/reject`
+
+**Colisiones de rutas verificadas:**
+- No hay colisión entre `GET /api/master/imports/pending` y `GET /api/master/imports/{id}`.
+- Se mantiene intacta la ruta legacy `GET /api/master` en `app/main.py`.
+- No se cambiaron prefijos de ruta ni comportamiento existente.
+
+**Tests T5:**
+- `tests/test_master_router.py` — PASS. Añadidas pruebas de integración para confirmar accesibilidad del router registrado en `app.main` y en `api.index`, y para verificar que `/api/master/imports/pending` no cae en la ruta dinámica `/{id}`.
+- `tests/test_master_import.py` — PASS.
+- `tests/test_master_approve.py` — PASS.
+- `tests/test_master_export.py` — XFAIL esperado hasta T6.
+- `tests/test_import.py` — PASS sin regresiones.
+
+**Sin cambios en T5:**
+- Sin cambios en lógica de aprobación (`approval_service.py` intacto).
+- Sin cambios en `/api/import` ni `/api/items/analisis`.
+- Sin cambios en exportación Excel.
+- Sin recálculo de ratios.
+- Sin cambios en frontend.
+
+**Siguiente tarea:** T6 — `generate_master_excel_approved()` / export oficial `LUV_RATIOS_MASTER.xlsx`.
+
 ---
 
 ## Arquitectura

@@ -59,6 +59,70 @@ def client_and_session():
 
 
 @pytest.fixture
+def main_app_client_and_session():
+    """Real app.main FastAPI app with master router registered."""
+    from app import main as main_module
+    from app.routers import master as master_module
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def _fk_on(conn, _):
+        conn.execute("PRAGMA foreign_keys=ON")
+
+    Base.metadata.create_all(engine)
+    _Session = sessionmaker(bind=engine)
+
+    original_get_db = master_module._db.get_db
+
+    def _fake_get_db():
+        return _Session()
+
+    master_module._db.get_db = _fake_get_db
+    client = TestClient(main_module.app)
+
+    yield client, _Session
+
+    master_module._db.get_db = original_get_db
+
+
+@pytest.fixture
+def vercel_app_client_and_session():
+    """Real api.index FastAPI app with master router registered."""
+    from api import index as index_module
+    from app.routers import master as master_module
+
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+    @event.listens_for(engine, "connect")
+    def _fk_on(conn, _):
+        conn.execute("PRAGMA foreign_keys=ON")
+
+    Base.metadata.create_all(engine)
+    _Session = sessionmaker(bind=engine)
+
+    original_get_db = master_module._db.get_db
+
+    def _fake_get_db():
+        return _Session()
+
+    master_module._db.get_db = _fake_get_db
+    client = TestClient(index_module.app)
+
+    yield client, _Session
+
+    master_module._db.get_db = original_get_db
+
+
+@pytest.fixture
 def client(client_and_session):
     c, _ = client_and_session
     return c
@@ -70,6 +134,26 @@ def db_session(client_and_session):
     s = Session()
     yield s
     s.close()
+
+
+@pytest.fixture
+def main_app_client(main_app_client_and_session):
+    c, _ = main_app_client_and_session
+    return c
+
+
+@pytest.fixture
+def main_app_db_session(main_app_client_and_session):
+    _, Session = main_app_client_and_session
+    s = Session()
+    yield s
+    s.close()
+
+
+@pytest.fixture
+def vercel_app_client(vercel_app_client_and_session):
+    c, _ = vercel_app_client_and_session
+    return c
 
 
 def _sha256(seed: str) -> str:
@@ -110,6 +194,32 @@ class TestMasterStatus:
         """Endpoint is readable without authentication for T4 (auth is T4+ concern)."""
         resp = client.get("/api/master/status")
         assert resp.status_code == 200
+
+
+class TestRouterRegistrationRealApps:
+    def test_main_app_exposes_master_status(self, main_app_client):
+        resp = main_app_client.get("/api/master/status")
+        assert resp.status_code == 200
+        assert resp.json()["phase"] == "FASE_MASTER"
+
+    def test_main_app_pending_route_does_not_collide_with_import_id(
+        self, main_app_client, main_app_db_session
+    ):
+        _seed_import(main_app_db_session, "tr_main_pending_a", approval_status="PENDING_REVIEW")
+        _seed_import(main_app_db_session, "tr_main_pending_b", approval_status="APPROVED")
+
+        pending = main_app_client.get("/api/master/imports/pending")
+        assert pending.status_code == 200
+        assert all(item["approval_status"] == "PENDING_REVIEW" for item in pending.json())
+
+        detail = main_app_client.get("/api/master/imports/1")
+        assert detail.status_code == 200
+        assert detail.json()["id"] == 1
+
+    def test_vercel_app_exposes_master_status(self, vercel_app_client):
+        resp = vercel_app_client.get("/api/master/status")
+        assert resp.status_code == 200
+        assert resp.json()["approval_flow_enabled"] is True
 
 
 # ---------------------------------------------------------------------------

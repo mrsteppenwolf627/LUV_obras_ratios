@@ -29,6 +29,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.visuales import router as visuales_router
 from app.routers.items_analisis import router as items_analisis_router
 from app.routers.import_budgets import router as import_budgets_router
+from app.routers.master import router as master_router
 from app.routers.stats import router as stats_router
 from app.routers.items_extended import router as items_extended_router
 
@@ -45,6 +46,7 @@ app.add_middleware(
 app.include_router(visuales_router)
 app.include_router(items_analisis_router)
 app.include_router(import_budgets_router)
+app.include_router(master_router)
 app.include_router(stats_router)
 app.include_router(items_extended_router)
 
