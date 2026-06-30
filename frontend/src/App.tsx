@@ -4,6 +4,7 @@ import Home from './components/Home';
 import ImportForm from './components/ImportForm';
 import Layout from './components/Layout';
 import RatiosCharts from './components/RatiosCharts';
+import MasterReviewPage from './pages/MasterReviewPage';
 import Visuales from './pages/Visuales';
 
 const TemporaryDisabledPage = () => (
@@ -26,7 +27,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/import" element={<ImportForm />} />
-          <Route path="/master" element={<TemporaryDisabledPage />} />
+          <Route path="/master" element={<MasterReviewPage />} />
+          <Route path="/master/revision" element={<MasterReviewPage />} />
           <Route path="/archived" element={<TemporaryDisabledPage />} />
           <Route path="/ratios" element={<Visuales />} />
           <Route path="/visuales" element={<Visuales />} />

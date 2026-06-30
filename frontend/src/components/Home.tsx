@@ -1,4 +1,4 @@
-import { ArrowRight, PieChart, Upload } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, PieChart, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Home = () => {
@@ -18,6 +18,14 @@ const Home = () => {
       icon: PieChart,
       accent: 'text-primary',
     },
+    {
+      title: 'Revision Master',
+      description:
+        'Aprueba o rechaza importaciones pendientes antes de recalcular ratios oficiales y actualizar el master.',
+      link: '/master/revision',
+      icon: ClipboardCheck,
+      accent: 'text-primary',
+    },
   ];
 
   return (
@@ -31,7 +39,7 @@ const Home = () => {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
         {cards.map((card) => {
           const Icon = card.icon;
           return (

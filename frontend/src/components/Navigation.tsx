@@ -1,4 +1,4 @@
-import { Home, PieChart, Upload } from 'lucide-react';
+import { ClipboardCheck, Home, PieChart, Upload } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ const Navigation = () => {
   const navItems = [
     { name: 'Home', path: '/', icon: Home },
     { name: 'Importar', path: '/import', icon: Upload },
+    { name: 'Revision Master', path: '/master/revision', icon: ClipboardCheck },
     { name: 'Visuales', path: '/visuales', icon: PieChart },
   ];
 

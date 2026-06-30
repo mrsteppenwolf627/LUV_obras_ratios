@@ -1344,3 +1344,44 @@ Las filas item-level reales son **`Nat == 'Partida'`**. Las `Capítulo` son agre
   - `ac 01- mesa de plancha` â†’ `median=450.0`, `muestras=1`
   - `ac 07- armero` â†’ `median=690.0`, `muestras=1`
 - Con este contrato, la tab `Rango` ya no repite el rango global `SIN_CATEGORIA 2-24000` para todas las selecciones.
+---
+
+## ACTUALIZACION T9 (30 junio 2026)
+
+**Estado:** COMPLETADA
+
+**Que se hizo en frontend:**
+- Se anadio una pantalla minima de revision master.
+- Ruta activa: `/master/revision`.
+- Tambien queda accesible desde `/master`.
+- La UI lista importaciones `PENDING_REVIEW` y permite ver detalle, aprobar y rechazar.
+
+**Datos visibles en la pantalla:**
+- `filename`
+- `status` tecnico
+- `approval_status`
+- `import_date`
+- `items_count`
+
+**Acciones conectadas al backend existente:**
+- `GET /api/master/status`
+- `GET /api/master/imports/pending`
+- `GET /api/master/imports/{id}`
+- `POST /api/master/imports/{id}/approve`
+- `POST /api/master/imports/{id}/reject`
+
+**UX minima aplicada:**
+- aviso claro de que aprobar recalcula ratios oficiales y actualiza `LUV_RATIOS_MASTER.xlsx`
+- aviso claro de que rechazar excluye la importacion del master oficial
+- validacion frontend para exigir `notes` al rechazar
+- refresco de lista tras aprobar o rechazar
+
+**Estado arquitectonico tras T9:**
+- El flujo FASE MASTER ya es operable desde frontend.
+- No se tocaron `/api/import`, `/api/items/analisis`, logica de recalculo, exportador Excel ni deployment.
+
+**Validacion T9:**
+- `npm test` en `frontend/` - PASS (`55 passed`)
+- `npm run build` en `frontend/` - PASS
+
+**Siguiente tarea:** T10 - cierre y documentacion final de FASE MASTER.
