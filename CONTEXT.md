@@ -1,5 +1,25 @@
 # CONTEXT: LUV Ratios
 
+## ACTUALIZACION T12 (1 julio 2026)
+
+**Estado:** COMPLETADA
+
+**Bugfix ruta serverless de importacion:**
+- Se confirmo que `app/main.py` exponia `POST /api/import` pero `api/index.py` no registraba esa ruta en el entrypoint serverless de Vercel.
+- El 404 en produccion no venia del frontend: la llamada ya llegaba correctamente a `/api/import`, pero la app serverless no tenia ese endpoint montado.
+- Se corrigio `api/index.py` registrando la misma funcion legacy de importacion ya usada en `app.main`, sin cambiar su comportamiento.
+
+**Cobertura anadida:**
+- `tests/test_master_router.py`
+- Se anadio una prueba minima para `api.index` que verifica que `POST /api/import` existe en la app serverless y ya no responde 404.
+
+**No tocado en T12:**
+- frontend
+- FASE MASTER
+- `/api/items/analisis`
+- recalculo
+- exportacion
+
 ## ACTUALIZACION T11 (1 julio 2026)
 
 **Estado:** COMPLETADA

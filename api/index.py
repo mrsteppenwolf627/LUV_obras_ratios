@@ -26,6 +26,7 @@ import app.config  # noqa: F401
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.main import api_import as legacy_api_import
 from app.routers.visuales import router as visuales_router
 from app.routers.items_analisis import router as items_analisis_router
 from app.routers.import_budgets import router as import_budgets_router
@@ -49,6 +50,7 @@ app.include_router(import_budgets_router)
 app.include_router(master_router)
 app.include_router(stats_router)
 app.include_router(items_extended_router)
+app.post("/api/import")(legacy_api_import)
 
 
 @app.get("/api/health")

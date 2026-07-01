@@ -236,6 +236,10 @@ class TestRouterRegistrationRealApps:
         assert resp.status_code == 200
         assert resp.json()["approval_flow_enabled"] is True
 
+    def test_vercel_app_exposes_legacy_import_route(self, vercel_app_client):
+        resp = vercel_app_client.post("/api/import")
+        assert resp.status_code == 422
+
 
 # ---------------------------------------------------------------------------
 # 2. GET /api/master/imports
