@@ -1,5 +1,32 @@
 # CONTEXT: LUV Ratios
 
+## ACTUALIZACION T11 (1 julio 2026)
+
+**Estado:** COMPLETADA
+
+**Bugfix frontend de importacion:**
+- Se diagnostico el fallo 404 de la pantalla de importacion cuando el frontend resolvia la subida contra `/import` en lugar de `/api/import`.
+- La correccion se aplico en `frontend/src/utils/axios.ts` normalizando `VITE_API_URL` para que:
+  - use `/api` cuando la variable no exista o llegue vacia;
+  - anada `/api` si la variable apunta solo al host;
+  - no duplique `/api` cuando ya venga incluido.
+- Con este ajuste, la llamada de `ImportForm` queda alineada con el contrato backend `POST /api/import` sin tocar backend ni el flujo FASE MASTER.
+
+**Cobertura frontend anadida:**
+- `frontend/src/__tests__/axios.test.ts`
+- Verifica resolucion correcta de base URL para:
+  - variable ausente
+  - variable vacia
+  - host sin `/api`
+  - host con `/api`
+
+**No tocado en T11:**
+- backend
+- `/api/master`
+- flujo FASE MASTER
+- exportacion
+- visuales y ratios
+
 ## ACTUALIZACION T10 (30 junio 2026)
 
 **Estado:** COMPLETADA
