@@ -486,6 +486,25 @@ class TestApproveEndpoint:
         assert resp.status_code == 200
         assert export_path.exists()
 
+    def test_approve_uses_tmp_export_path_on_vercel(self, client, db_session, monkeypatch):
+        export_path = Path("/tmp/LUV_RATIOS_MASTER.xlsx")
+        local_path = Path("data/master/LUV_RATIOS_MASTER.xlsx")
+        export_path.unlink(missing_ok=True)
+        local_path.unlink(missing_ok=True)
+
+        monkeypatch.setenv("VERCEL", "1")
+
+        record = _seed_import(db_session, "tr_approve_export_vercel")
+        _seed_budget_for_import(db_session, record)
+
+        resp = client.post(
+            f"/api/master/imports/{record.id}/approve",
+            json={"reviewed_by": "aitor", "notes": "OK"},
+        )
+        assert resp.status_code == 200
+        assert export_path.exists()
+        assert not local_path.exists()
+
 
 # ---------------------------------------------------------------------------
 # 7. POST /api/master/imports/{import_id}/reject

@@ -401,7 +401,7 @@ def generate_master_excel(
 
 def generate_master_excel_approved(
     session: Session,
-    output_path: str | Path = APPROVED_OUTPUT,
+    output_path: str | Path | None = None,
 ) -> str:
     """Generate the official master workbook using only APPROVED imports.
 
@@ -412,7 +412,12 @@ def generate_master_excel_approved(
         non-approved imports. T6 documents this limitation instead of performing
         a larger aggregate refactor.
     """
-    out = Path(output_path)
+    if output_path is None:
+        from app.utils.excel_export import resolve_official_master_export_path
+
+        out = resolve_official_master_export_path()
+    else:
+        out = Path(output_path)
     out.parent.mkdir(parents=True, exist_ok=True)
 
     budgets = list_approved_budgets(session)

@@ -1,5 +1,30 @@
 # CONTEXT: LUV Ratios
 
+## ACTUALIZACION T13 (1 julio 2026)
+
+**Estado:** COMPLETADA
+
+**Bugfix export oficial en Vercel serverless:**
+- Se diagnostico un `OSError: [Errno 30] Read-only file system` al aprobar importaciones en produccion.
+- La causa era que el flujo canonico approved-only intentaba guardar `LUV_RATIOS_MASTER.xlsx` en `data/master/`, ruta no escribible dentro del runtime serverless de Vercel.
+- Se implemento una resolucion de ruta oficial para el export:
+  - en local/dev: `data/master/LUV_RATIOS_MASTER.xlsx`
+  - en Vercel/serverless: `/tmp/LUV_RATIOS_MASTER.xlsx`
+
+**Alcance del cambio:**
+- `generate_or_get_excel()` usa la ruta oficial resuelta por entorno.
+- `recalculate_after_approval()` usa la misma ruta oficial al regenerar el master approved-only.
+- `generate_master_excel_approved()` resuelve esa ruta automaticamente cuando no se le pasa `output_path`.
+
+**Notas operativas:**
+- En Vercel, `/tmp` es temporal y no persistente entre invocaciones.
+- Este fix resuelve el bloqueo del filesystem read-only sin introducir almacenamiento externo.
+- La persistencia externa del artefacto oficial queda fuera del MVP actual.
+
+**Cobertura anadida/ajustada:**
+- tests de ruta oficial local vs `VERCEL=1`
+- tests del approve flow para confirmar export a `/tmp` en serverless
+
 ## ACTUALIZACION T12 (1 julio 2026)
 
 **Estado:** COMPLETADA

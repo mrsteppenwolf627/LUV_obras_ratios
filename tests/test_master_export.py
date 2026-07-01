@@ -203,3 +203,20 @@ def test_master_export_filename_is_luv_ratios_master(session, tmp_excel):
         f"El archivo oficial debe llamarse LUV_RATIOS_MASTER.xlsx, "
         f"pero se generó como {Path(output_path_str).name!r}."
     )
+
+
+def test_official_export_path_uses_tmp_on_vercel(monkeypatch):
+    from app.utils.excel_export import resolve_official_master_export_path
+
+    monkeypatch.setenv("VERCEL", "1")
+
+    assert resolve_official_master_export_path() == Path("/tmp/LUV_RATIOS_MASTER.xlsx")
+
+
+def test_official_export_path_uses_data_master_locally(monkeypatch):
+    from app.utils.excel_export import resolve_official_master_export_path
+
+    monkeypatch.delenv("VERCEL", raising=False)
+    monkeypatch.delenv("VERCEL_ENV", raising=False)
+
+    assert resolve_official_master_export_path() == Path("data/master/LUV_RATIOS_MASTER.xlsx")

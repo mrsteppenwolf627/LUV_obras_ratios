@@ -751,7 +751,7 @@ class TestLegacyApiImportFrozen:
 
         monkeypatch.setattr(
             "app.services.master_recalculation_service.generate_master_excel_approved",
-            lambda session: real_generate(session, export_path),
+            lambda session, output_path=None: real_generate(session, export_path),
         )
 
         monkeypatch.setattr("src.core.auditor.compute_file_hash", lambda _path: "cd" * 32)
@@ -777,6 +777,45 @@ class TestLegacyApiImportFrozen:
         approve_resp = client.post(
             f"/api/master/imports/{import_data['import_id']}/approve",
             json={"reviewed_by": "aitor", "notes": "Aprobado en flujo canónico"},
+        )
+        assert approve_resp.status_code == 200
+        assert export_path.exists()
+
+        session = Session()
+        record = session.query(BudgetImport).filter_by(id=import_data["import_id"]).first()
+        assert record.approval_status == "APPROVED"
+        session.close()
+
+    def test_legacy_import_approve_uses_tmp_export_path_on_vercel(
+        self, client_and_session, monkeypatch
+    ):
+        client, Session = client_and_session
+        export_path = Path("/tmp/LUV_RATIOS_MASTER.xlsx")
+        export_path.unlink(missing_ok=True)
+
+        monkeypatch.setenv("VERCEL", "1")
+        monkeypatch.setattr("src.core.auditor.compute_file_hash", lambda _path: "ef" * 32)
+        monkeypatch.setattr(
+            "src.core.excel_reader.read_excel",
+            lambda _path: {
+                "filename": "legacy_vercel.xlsx",
+                "source_format": "excel",
+                "total_cost": 500.0,
+                "chapters": [
+                    {"chapter_code": "03", "chapter_name": "Acabados", "total_cost": 500.0}
+                ],
+                "errors": [],
+                "warnings": [],
+            },
+        )
+
+        import_resp = _post_legacy_file(client, "legacy_vercel.xlsx")
+        assert import_resp.status_code == 200
+        import_data = import_resp.json()
+
+        approve_resp = client.post(
+            f"/api/master/imports/{import_data['import_id']}/approve",
+            json={"reviewed_by": "aitor", "notes": "Aprobado en serverless"},
         )
         assert approve_resp.status_code == 200
         assert export_path.exists()

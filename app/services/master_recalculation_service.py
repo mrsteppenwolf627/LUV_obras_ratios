@@ -7,6 +7,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from app.utils.excel_export import resolve_official_master_export_path
 from src.db.queries import get_budget_by_hash, list_approved_budgets
 from src.db.schema import Budget, BudgetImport, LineItem, Ratio
 from src.export.excel_master_generator import generate_master_excel_approved
@@ -139,7 +140,12 @@ def recalculate_after_approval(session: Session, import_id: int) -> dict:
         )
 
     session.flush()
-    export_path = Path(generate_master_excel_approved(session))
+    export_path = Path(
+        generate_master_excel_approved(
+            session,
+            output_path=resolve_official_master_export_path(),
+        )
+    )
     session.flush()
 
     return {
